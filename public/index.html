@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ZEUS - Watch Movies &amp; TV Shows Online Free HD</title>
+
+  <!-- SEO Meta Tags -->
+  <meta name="description" content="ZEUS - Watch free movies and TV shows online in HD. Discover trending, popular and top-rated movies, latest TV shows, and search thousands of titles.">
+  <meta name="keywords" content="free movies online, watch movies free, free streaming, TV shows online, HD movies, trending movies, ZEUS">
+  <meta name="author" content="ZEUS">
+  <meta name="robots" content="index, follow">
+  <meta name="theme-color" content="#000000">
+
+  <!-- Open Graph Tags -->
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="ZEUS">
+  <meta property="og:title" content="ZEUS - Watch Movies &amp; TV Shows Online Free HD">
+  <meta property="og:description" content="Watch free movies and TV shows online in HD. Trending, popular and top-rated titles, latest TV shows and more.">
+  <meta property="og:url" content="https://zeus.example.com/">
+  <meta property="og:image" content="https://zeus.example.com/favicon.svg">
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="ZEUS - Watch Movies &amp; TV Shows Online Free HD">
+  <meta name="twitter:description" content="Watch free movies and TV shows online in HD.">
+  <meta name="twitter:image" content="https://zeus.example.com/favicon.svg">
+
+  <!-- Favicon -->
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="favicon.svg">
+
+
+  <!-- Performance: warm connections to external origins -->
+  <link rel="preconnect" href="https://image.tmdb.org">
+  <link rel="dns-prefetch" href="https://vidsrc.xyz">
+  <link rel="dns-prefetch" href="https://inv.nadeko.net">
+  <link rel="dns-prefetch" href="https://yewtu.be">
+  <link rel="dns-prefetch" href="https://invidious.nerdvpn.de">
+  <link rel="dns-prefetch" href="https://iv.ggtyler.dev">
+  <link rel="dns-prefetch" href="https://invidious.f5.si">
+  <link rel="dns-prefetch" href="https://iv.melmac.space">
+  <link rel="dns-prefetch" href="https://api.themoviedb.org">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+  <!-- Apple TV+ typography: Inter (SF Pro fallback ladder in CSS) -->
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap">
+
+  <!-- Styles -->
+  <link rel="stylesheet" href="style.css?v=2.7">
+
+  <!-- Smooth menu transitions: arrived via an in-site nav? hide the black loader from first paint -->
+  <script>try{if(sessionStorage.getItem('zeus_nav_transition')==='1')document.documentElement.classList.add('no-page-loader')}catch(e){}</script>
+
+  <!-- Structured Data (JSON-LD) -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    "name": "ZEUS",
+    "url": "https://zeus.example.com/",
+    "description": "Watch free movies and TV shows online in HD.",
+    "potentialAction": {
+      "@type": "SearchAction",
+      "target": "https://zeus.example.com/search.html?query={search_term_string}",
+      "query-input": "required name=search_term_string"
+    }
+  }
+  </script>
+  <!-- Adsterra Social Bar -->
+  <script src="https://pl31074978.profitableratecpmnetwork.com/5b/7f/22/5b7f22ede7d8a6ba8985f7ae6f0fee5d.js"></script>
+
+  <!-- Adsterra Popunder -->
+  <script src="https://pl31074980.profitableratecpmnetwork.com/53/a6/6e/53a66e7f76455d567a95800c6705deda.js"></script>
+</head>
+<body>
+
+  <!-- Ambient lighting — blurred colour glow behind everything,
+       painted with the hero / hovered title's backdrop (Apple TV+
+       vibrancy), plus the cinematic vignette overlay on top -->
+  <div class="ambient-bg" id="ambient-bg" aria-hidden="true"></div>
+  <div id="ambient-vignette" aria-hidden="true"></div>
+
+  <!-- Page Loading Animation -->
+  <div class="page-loader" id="page-loader" role="status" aria-label="Loading ZEUS">
+    <div class="loader-logo">
+      <div class="loader-bolt" aria-hidden="true">
+        <svg viewBox="0 0 24 24"><path d="M13 2 4.5 13.5h5.2L8.6 22l8.9-11.8h-5.4L13 2z"/></svg>
+      </div>
+      <span class="loader-name">ZEUS</span>
+    </div>
+    <div class="loader-bar"></div>
+  </div>
+
+  <!-- Disclaimer banner (dismissible, remembered in localStorage) -->
+  <div class="disclaimer-banner" id="disclaimer-banner" hidden>
+    <div class="container disclaimer-inner">
+      <p class="disclaimer-text">⚠️ ZEUS does not host any videos. All content is provided by non-affiliated third parties. For informational and educational purposes only.</p>
+      <button class="disclaimer-close" id="disclaimer-close" type="button" aria-label="Dismiss disclaimer">
+        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- ==================== NAVBAR ==================== -->
+  <!-- nav-hero: transparent over the hero at the top of the page,
+       solid dark bar once scrolled (1FLEX style) -->
+  <header class="navbar nav-hero" id="navbar">
+    <div class="nav-container">
+      <a href="index.html" class="nav-logo" aria-label="ZEUS homepage"><img src="logo.svg" alt="ZEUS" class="nav-logo-img" decoding="async"></a>
+
+      <nav class="nav-menu" id="nav-menu" aria-label="Main navigation">
+        <ul class="nav-links">
+          <li><a href="index.html" class="nav-link active">Home</a></li>
+          <li><a href="browse.html?type=movie" class="nav-link">Movies</a></li>
+          <li><a href="browse.html?type=tv" class="nav-link">TV Shows</a></li>
+          <li class="nav-dropdown">
+            <button class="nav-link dropdown-toggle" type="button" aria-expanded="false" aria-haspopup="true">
+              Genre
+              <svg class="chevron" viewBox="0 0 24 24"><path d="M7 10l5 5 5-5z"/></svg>
+            </button>
+            <ul class="dropdown-menu" role="menu" aria-label="Movie genres">
+              <li role="none"><a role="menuitem" href="browse.html?genre=28">Action</a></li>
+              <li role="none"><a role="menuitem" href="browse.html?genre=12">Adventure</a></li>
+              <li role="none"><a role="menuitem" href="browse.html?genre=16">Animation</a></li>
+              <li role="none"><a role="menuitem" href="browse.html?genre=35">Comedy</a></li>
+              <li role="none"><a role="menuitem" href="browse.html?genre=80">Crime</a></li>
+              <li role="none"><a role="menuitem" href="browse.html?genre=99">Documentary</a></li>
+              <li role="none"><a role="menuitem" href="browse.html?genre=18">Drama</a></li>
+              <li role="none"><a role="menuitem" href="browse.html?genre=10751">Family</a></li>
+              <li role="none"><a role="menuitem" href="browse.html?genre=14">Fantasy</a></li>
+              <li role="none"><a role="menuitem" href="browse.html?genre=36">History</a></li>
+              <li role="none"><a role="menuitem" href="browse.html?genre=27">Horror</a></li>
+              <li role="none"><a role="menuitem" href="browse.html?genre=10402">Music</a></li>
+              <li role="none"><a role="menuitem" href="browse.html?genre=9648">Mystery</a></li>
+              <li role="none"><a role="menuitem" href="browse.html?genre=10749">Romance</a></li>
+              <li role="none"><a role="menuitem" href="browse.html?genre=878">Science Fiction</a></li>
+              <li role="none"><a role="menuitem" href="browse.html?genre=53">Thriller</a></li>
+              <li role="none"><a role="menuitem" href="browse.html?genre=10752">War</a></li>
+              <li role="none"><a role="menuitem" href="browse.html?genre=37">Western</a></li>
+            </ul>
+          </li>
+          <li><a href="browse.html?type=top" class="nav-link">Top IMDB</a></li>
+          <li><a href="watchlist.html" class="nav-link" data-nav="watchlist">Watchlist</a></li>
+        </ul>
+      </nav>
+
+      <div class="nav-actions">
+        <a href="watchlist.html" class="search-toggle watchlist-toggle" aria-label="Your watchlist" title="Your Watchlist">
+          <svg viewBox="0 0 24 24"><path d="M17 3H7a2 2 0 0 0-2 2v16l7-3 7 3V5a2 2 0 0 0-2-2z"/></svg>
+        </a>
+        <a href="search.html" class="search-toggle" aria-label="Search movies and TV shows">
+          <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><line x1="16.5" y1="16.5" x2="21" y2="21"/></svg>
+        </a>
+        <button class="hamburger" id="hamburger" aria-label="Toggle navigation menu" aria-expanded="false">
+          <span></span><span></span><span></span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ==================== HERO (auto-sliding featured) ==================== -->
+  <section class="hero" id="hero" aria-label="Featured movies and TV shows">
+    <div class="hero-skeleton" id="hero-skeleton"></div>
+    <!-- ZEUS page-load lightning flash (fires once, then fades) -->
+    <div class="hero-lightning" aria-hidden="true">
+      <svg viewBox="0 0 24 24"><path d="M13 2 4.5 13.5h5.2L8.6 22l8.9-11.8h-5.4L13 2z"/></svg>
+    </div>
+    <!-- Slides injected by index.js -->
+    <div class="hero-dots" id="hero-dots" role="tablist" aria-label="Featured slides"></div>
+    <button class="hero-arrow prev" id="hero-prev" aria-label="Previous featured slide">
+      <svg viewBox="0 0 24 24"><path d="M15.41 7.41 14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>
+    </button>
+    <button class="hero-arrow next" id="hero-next" aria-label="Next featured slide">
+      <svg viewBox="0 0 24 24"><path d="M10 6 8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg>
+    </button>
+    <!-- Trailer sound toggle (appears while a trailer is playing) -->
+    <button class="hero-mute-btn" id="hero-mute-btn" type="button" hidden
+            aria-label="Unmute trailer" title="Unmute trailer">
+      <svg class="icon-muted" viewBox="0 0 24 24" aria-hidden="true"><path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3 3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4 9.91 6.09 12 8.18V4z"/></svg>
+      <svg class="icon-unmuted" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>
+    </button>
+  </section>
+
+  <!-- ==================== MAIN CONTENT ==================== -->
+  <main>
+
+    <!-- NEW: TOP 10 Today (directly below the hero) -->
+    <section class="content-section" aria-labelledby="top10-title">
+      <div class="container">
+        <div class="section-header">
+          <div class="section-heading">
+            <h2 class="section-title" id="top10-title"><span class="title-bar"></span>TOP 10 Today</h2>
+            <p class="section-subtitle">The most watched titles right now</p>
+          </div>
+          <div class="section-controls">
+            <button class="scroll-btn prev" data-target="#top10-row" aria-label="Scroll top 10 left">
+              <svg viewBox="0 0 24 24"><path d="M15.41 7.41 14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>
+            </button>
+            <button class="scroll-btn next" data-target="#top10-row" aria-label="Scroll top 10 right">
+              <svg viewBox="0 0 24 24"><path d="M10 6 8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg>
+            </button>
+          </div>
+        </div>
+        <div class="movies-row" id="top10-row"></div>
+      </div>
+    </section>
+
+    <!-- Trending Now -->
+    <section class="content-section" aria-labelledby="trending-title">
+      <div class="container">
+        <div class="section-header">
+          <h2 class="section-title" id="trending-title"><span class="title-bar"></span>Trending Now</h2>
+          <div class="section-controls">
+            <a href="browse.html?type=trending" class="see-all">See All
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M8.59 16.59 13.17 12 8.59 7.41 10 6l6 6-6 6z"/></svg>
+            </a>
+            <button class="scroll-btn prev" data-target="#trending-row" aria-label="Scroll trending left">
+              <svg viewBox="0 0 24 24"><path d="M15.41 7.41 14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>
+            </button>
+            <button class="scroll-btn next" data-target="#trending-row" aria-label="Scroll trending right">
+              <svg viewBox="0 0 24 24"><path d="M10 6 8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg>
+            </button>
+          </div>
+        </div>
+        <div class="movies-row movies-row--wide" id="trending-row"></div>
+      </div>
+    </section>
+
+    <!-- NEW: Streaming Provider Tabs (brand-coloured) -->
+  <section class="content-section provider-section" id="provider-section" data-brand="netflix" aria-labelledby="provider-title">
+    <div class="container">
+      <div class="section-header">
+          <div class="section-heading">
+            <h2 class="section-title" id="provider-title"><span class="title-bar"></span>Only on <span class="brand-name">Netflix</span></h2>
+            <p class="section-subtitle">Popular movies &amp; shows on this streaming service</p>
+          </div>
+          <div class="section-controls">
+            <button class="scroll-btn prev" data-target="#provider-row" aria-label="Scroll provider titles left">
+              <svg viewBox="0 0 24 24"><path d="M15.41 7.41 14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>
+            </button>
+            <button class="scroll-btn next" data-target="#provider-row" aria-label="Scroll provider titles right">
+              <svg viewBox="0 0 24 24"><path d="M10 6 8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg>
+            </button>
+          </div>
+        </div>
+        <div class="provider-tabs" id="provider-tabs" role="tablist" aria-label="Streaming providers">
+          <button class="provider-tab provider-tab--netflix active" type="button" role="tab" aria-selected="true" data-provider="8" data-name="Netflix">
+            <span class="provider-label">NETFLIX</span>
+          </button>
+          <button class="provider-tab provider-tab--prime" type="button" role="tab" aria-selected="false" data-provider="9" data-name="Prime Video">
+            <span class="provider-label">
+              <span class="pw-p">prime</span><span class="pw-v">video</span>
+              <span class="pw-smile" aria-hidden="true"><svg viewBox="0 0 72 10" preserveAspectRatio="none"><path d="M1.5 1.5 C 14 9.5, 58 9.5, 66 3.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M60.5 1.2 L67.5 3.9 L63.9 8.6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+            </span>
+          </button>
+          <button class="provider-tab provider-tab--hbo" type="button" role="tab" aria-selected="false" data-provider="1899" data-name="Max">
+            <span class="provider-label">max</span>
+          </button>
+          <button class="provider-tab provider-tab--disney" type="button" role="tab" aria-selected="false" data-provider="337" data-name="Disney+">
+            <span class="provider-label">
+              <span class="provider-ico provider-ico--sparkle" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 2l1.8 6.2L20 10l-6.2 1.8L12 18l-1.8-6.2L4 10l6.2-1.8L12 2z"/></svg></span>
+              Disney<span class="pw-plus">+</span>
+            </span>
+          </button>
+          <button class="provider-tab provider-tab--apple" type="button" role="tab" aria-selected="false" data-provider="350" data-name="Apple TV+">
+            <span class="provider-label">
+              <svg class="pw-apple" viewBox="0 0 24 24" aria-hidden="true"><path d="M16.7 12.9c0-2.4 2-3.6 2.1-3.7-1.1-1.7-2.9-1.9-3.5-1.9-1.5-.2-2.9.9-3.7.9-.8 0-1.9-.9-3.2-.9-1.6 0-3.2 1-4 2.5-1.7 3-.4 7.4 1.2 9.8.8 1.2 1.8 2.5 3.1 2.4 1.2-.05 1.7-.8 3.2-.8 1.5 0 1.9.8 3.2.8 1.3-.02 2.2-1.2 3-2.4.9-1.4 1.3-2.7 1.3-2.8-.03-.01-2.6-1-2.7-3.9zM14.4 5.6c.7-.8 1.1-1.9 1-3-1 .04-2.2.66-2.9 1.5-.6.7-1.2 1.9-1 3 1.1.1 2.2-.6 2.9-1.5z"/></svg>
+              <span>tv+</span>
+            </span>
+          </button>
+          <button class="provider-tab provider-tab--paramount" type="button" role="tab" aria-selected="false" data-provider="531" data-name="Paramount+">
+            <span class="provider-label">PARAMOUNT<span class="pw-plus">+</span></span>
+          </button>
+          <button class="provider-tab provider-tab--hulu" type="button" role="tab" aria-selected="false" data-provider="15" data-name="Hulu">
+            <span class="provider-label">hulu</span>
+          </button>
+        </div>
+        <div class="movies-row" id="provider-row"></div>
+      </div>
+    </section>
+
+    <!-- Popular Movies -->
+    <section class="content-section" aria-labelledby="popular-title">
+      <div class="container">
+        <div class="section-header">
+          <h2 class="section-title" id="popular-title"><span class="title-bar"></span>Popular Movies</h2>
+          <div class="section-controls">
+            <a href="browse.html?type=movie" class="see-all">See All
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M8.59 16.59 13.17 12 8.59 7.41 10 6l6 6-6 6z"/></svg>
+            </a>
+            <button class="scroll-btn prev" data-target="#popular-row" aria-label="Scroll popular movies left">
+              <svg viewBox="0 0 24 24"><path d="M15.41 7.41 14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>
+            </button>
+            <button class="scroll-btn next" data-target="#popular-row" aria-label="Scroll popular movies right">
+              <svg viewBox="0 0 24 24"><path d="M10 6 8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg>
+            </button>
+          </div>
+        </div>
+        <div class="movies-row" id="popular-row"></div>
+      </div>
+    </section>
+
+    <!-- NEW: Current & upcoming TV shows -->
+    <section class="content-section" aria-labelledby="tv-upcoming-title">
+      <div class="container">
+        <div class="section-header">
+          <div class="section-heading">
+            <h2 class="section-title" id="tv-upcoming-title"><span class="title-bar"></span>Current &amp; upcoming TV shows</h2>
+            <p class="section-subtitle">New episodes and premieres on the way</p>
+          </div>
+          <div class="section-controls">
+            <button class="scroll-btn prev" data-target="#tv-upcoming-row" aria-label="Scroll TV shows left">
+              <svg viewBox="0 0 24 24"><path d="M15.41 7.41 14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>
+            </button>
+            <button class="scroll-btn next" data-target="#tv-upcoming-row" aria-label="Scroll TV shows right">
+              <svg viewBox="0 0 24 24"><path d="M10 6 8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg>
+            </button>
+          </div>
+        </div>
+        <div class="movies-row movies-row--wide" id="tv-upcoming-row"></div>
+      </div>
+    </section>
+
+    <!-- Top Rated -->
+    <section class="content-section" aria-labelledby="top-rated-title">
+      <div class="container">
+        <div class="section-header">
+          <h2 class="section-title" id="top-rated-title"><span class="title-bar"></span>Top Rated</h2>
+          <div class="section-controls">
+            <a href="browse.html?type=top" class="see-all">See All
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M8.59 16.59 13.17 12 8.59 7.41 10 6l6 6-6 6z"/></svg>
+            </a>
+            <button class="scroll-btn prev" data-target="#top-rated-row" aria-label="Scroll top rated left">
+              <svg viewBox="0 0 24 24"><path d="M15.41 7.41 14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>
+            </button>
+            <button class="scroll-btn next" data-target="#top-rated-row" aria-label="Scroll top rated right">
+              <svg viewBox="0 0 24 24"><path d="M10 6 8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg>
+            </button>
+          </div>
+        </div>
+        <div class="movies-row" id="top-rated-row"></div>
+      </div>
+    </section>
+
+    <!-- NEW: Recently added in 4K -->
+    <section class="content-section" aria-labelledby="recent-4k-title">
+      <div class="container">
+        <div class="section-header">
+          <div class="section-heading">
+            <h2 class="section-title" id="recent-4k-title"><span class="title-bar"></span>Recently added in 4K</h2>
+            <p class="section-subtitle">The latest movies and series in Ultra HD</p>
+          </div>
+          <div class="section-controls">
+            <button class="scroll-btn prev" data-target="#recent-4k-row" aria-label="Scroll recent 4K left">
+              <svg viewBox="0 0 24 24"><path d="M15.41 7.41 14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>
+            </button>
+            <button class="scroll-btn next" data-target="#recent-4k-row" aria-label="Scroll recent 4K right">
+              <svg viewBox="0 0 24 24"><path d="M10 6 8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg>
+            </button>
+          </div>
+        </div>
+        <div class="movies-row movies-row--wide" id="recent-4k-row"></div>
+      </div>
+    </section>
+
+    <!-- Latest TV Shows -->
+    <section class="content-section" aria-labelledby="latest-tv-title">
+      <div class="container">
+        <div class="section-header">
+          <h2 class="section-title" id="latest-tv-title"><span class="title-bar"></span>Latest TV Shows</h2>
+          <div class="section-controls">
+            <a href="browse.html?type=tv" class="see-all">See All
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M8.59 16.59 13.17 12 8.59 7.41 10 6l6 6-6 6z"/></svg>
+            </a>
+            <button class="scroll-btn prev" data-target="#latest-tv-row" aria-label="Scroll TV shows left">
+              <svg viewBox="0 0 24 24"><path d="M15.41 7.41 14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>
+            </button>
+            <button class="scroll-btn next" data-target="#latest-tv-row" aria-label="Scroll TV shows right">
+              <svg viewBox="0 0 24 24"><path d="M10 6 8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg>
+            </button>
+          </div>
+        </div>
+        <div class="movies-row" id="latest-tv-row"></div>
+      </div>
+    </section>
+
+    <!-- NEW: Popular Genres (mood cards) -->
+    <section class="content-section" aria-labelledby="genres-title">
+      <div class="container">
+        <div class="section-header">
+          <div class="section-heading">
+            <h2 class="section-title" id="genres-title"><span class="title-bar"></span>Popular Genres</h2>
+            <p class="section-subtitle">Find something by mood</p>
+          </div>
+          <div class="section-controls">
+            <button class="scroll-btn prev" data-target="#genre-row" aria-label="Scroll genres left">
+              <svg viewBox="0 0 24 24"><path d="M15.41 7.41 14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>
+            </button>
+            <button class="scroll-btn next" data-target="#genre-row" aria-label="Scroll genres right">
+              <svg viewBox="0 0 24 24"><path d="M10 6 8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg>
+            </button>
+          </div>
+        </div>
+        <div class="genre-row" id="genre-row"></div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Adsterra 728x90 banner -->
+  <div class="ad-banner-wrapper" style="display:flex; justify-content:center; padding: 20px 0; max-width: 100%; overflow: hidden;">
+    <script type="text/javascript">
+      atOptions = {
+        'key' : '3f79095a9e4739907d22bbfd059ff12b',
+        'format' : 'iframe',
+        'height' : 90,
+        'width' : 728,
+        'params' : {}
+      };
+    </script>
+    <script src="https://www.highrevenueformat.com/3f79095a9e4739907d22bbfd059ff12b/invoke.js"></script>
+  </div>
+
+  <!-- ==================== FOOTER ==================== -->
+  <footer>
+    <div class="footer-container">
+      <div class="footer-grid">
+        <div class="footer-brand">
+          <a href="index.html" class="nav-logo" aria-label="ZEUS homepage"><img src="logo.svg" alt="ZEUS" class="nav-logo-img" loading="lazy" decoding="async"></a>
+          <p class="footer-desc">
+            ZEUS — Stream the gods of cinema. Your ultimate destination to watch movies
+            and TV shows online for free in HD. Trending titles, top-rated classics and
+            the latest episodes — all in one place.
+          </p>
+          <div class="footer-social">
+            <a href="#" class="social-link" aria-label="Facebook">
+              <svg viewBox="0 0 24 24"><path d="M13.5 21v-8.2h2.8l.4-3.2h-3.2V7.6c0-.9.3-1.6 1.6-1.6h1.7V3.1C16.5 3 15.5 3 14.4 3c-2.4 0-4 1.4-4 4.1v2.5H7.6v3.2h2.8V21h3.1z"/></svg>
+            </a>
+            <a href="#" class="social-link" aria-label="X (Twitter)">
+              <svg viewBox="0 0 24 24"><path d="M17.7 3H21l-7.1 8.2L22.2 21h-6.6l-5.1-6.1L4.6 21H1.3l7.6-8.7L1.8 3h6.7l4.6 5.6L17.7 3zm-1.2 16h1.8L6.9 4.8H5L16.5 19z"/></svg>
+            </a>
+            <a href="#" class="social-link" aria-label="Instagram">
+              <svg viewBox="0 0 24 24"><path d="M12 2.2c3.2 0 3.6 0 4.9.1 1.2.1 1.8.2 2.2.4.6.2 1 .5 1.4.9.4.4.7.8.9 1.4.2.4.4 1 .4 2.2.1 1.3.1 1.7.1 4.9s0 3.6-.1 4.9c-.1 1.2-.2 1.8-.4 2.2-.2.6-.5 1-.9 1.4-.4.4-.8.7-1.4.9-.4.2-1 .4-2.2.4-1.3.1-1.7.1-4.9.1s-3.6 0-4.9-.1c-1.2-.1-1.8-.2-2.2-.4-.6-.2-1-.5-1.4-.9-.4-.4-.7-.8-.9-1.4-.2-.4-.4-1-.4-2.2C2.2 15.6 2.2 15.2 2.2 12s0-3.6.1-4.9c.1-1.2.2-1.8.4-2.2.2-.6.5-1 .9-1.4.4-.4.8-.7 1.4-.9.4-.2 1-.4 2.2-.4C8.4 2.2 8.8 2.2 12 2.2zm0 1.8c-3.1 0-3.5 0-4.8.1-1.1.1-1.5.2-1.8.3-.5.2-.8.4-1.1.7-.3.3-.5.6-.7 1.1-.1.3-.3.8-.3 1.8-.1 1.3-.1 1.6-.1 4.8s0 3.5.1 4.8c.1 1.1.2 1.5.3 1.8.2.5.4.8.7 1.1.3.3.6.5 1.1.7.3.1.8.3 1.8.3 1.3.1 1.6.1 4.8.1s3.5 0 4.8-.1c1.1-.1 1.5-.2 1.8-.3.5-.2.8-.4 1.1-.7.3-.3.5-.6.7-1.1.1-.3.3-.8.3-1.8.1-1.3.1-1.6.1-4.8s0-3.5-.1-4.8c-.1-1.1-.2-1.5-.3-1.8-.2-.5-.4-.8-.7-1.1-.3-.3-.6-.5-1.1-.7-.3-.1-.8-.3-1.8-.3-1.3-.1-1.6-.1-4.8-.1zm0 3.1a4.9 4.9 0 1 1 0 9.8 4.9 4.9 0 0 1 0-9.8zm0 8.1a3.2 3.2 0 1 0 0-6.4 3.2 3.2 0 0 0 0 6.4zm6.2-8.4a1.1 1.1 0 1 1-2.3 0 1.1 1.1 0 0 1 2.3 0z"/></svg>
+            </a>
+            <a href="#" class="social-link" aria-label="YouTube">
+              <svg viewBox="0 0 24 24"><path d="M23 8s-.2-1.6-.9-2.3c-.9-.9-1.9-.9-2.3-1C16.6 4.5 12 4.5 12 4.5s-4.6 0-7.8.2c-.4.1-1.4.1-2.3 1C1.2 6.4 1 8 1 8S.8 9.9.8 11.8v1.7C.8 15.4 1 17.3 1 17.3s.2 1.6.9 2.3c.9.9 2 .9 2.5 1 1.8.2 7.6.2 7.6.2s4.6 0 7.8-.2c.4-.1 1.4-.1 2.3-1 .7-.7.9-2.3.9-2.3s.2-1.9.2-3.8v-1.7C23.2 9.9 23 8 23 8zM9.8 15.3V8.7l6.1 3.3-6.1 3.3z"/></svg>
+            </a>
+          </div>
+        </div>
+
+        <div class="footer-col">
+          <h3 class="footer-title">Browse</h3>
+          <ul class="footer-links">
+            <li><a href="index.html">Home</a></li>
+            <li><a href="browse.html?type=movie">Movies</a></li>
+            <li><a href="browse.html?type=tv">TV Shows</a></li>
+            <li><a href="browse.html?type=top">Top IMDB</a></li>
+            <li><a href="browse.html?type=trending">Trending</a></li>
+            <li><a href="watchlist.html">Watchlist</a></li>
+          </ul>
+        </div>
+
+        <div class="footer-col">
+          <h3 class="footer-title">Genres</h3>
+          <ul class="footer-links">
+            <li><a href="browse.html?genre=28">Action</a></li>
+            <li><a href="browse.html?genre=35">Comedy</a></li>
+            <li><a href="browse.html?genre=27">Horror</a></li>
+            <li><a href="browse.html?genre=878">Sci-Fi</a></li>
+            <li><a href="browse.html?genre=53">Thriller</a></li>
+          </ul>
+        </div>
+
+        <div class="footer-col">
+          <h3 class="footer-title">Help</h3>
+          <ul class="footer-links">
+            <li><a href="search.html">Search</a></li>
+            <li><a href="dmca.html">DMCA</a></li>
+            <li><a href="terms.html">Terms of Service</a></li>
+            <li><a href="privacy.html">Privacy Policy</a></li>
+            <li><a href="#">Contact</a></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <p class="footer-disclaimer">
+      Disclaimer: ZEUS does not host any files on its server. All contents are provided by
+      non-affiliated third parties. This product uses the TMDB API but is not endorsed or certified by TMDB.
+    </p>
+
+    <div class="footer-bottom">
+      <div class="footer-bottom-inner">
+        <span>&copy; <span id="current-year">2026</span> <span class="accent">ZEUS</span>. All rights reserved.</span>
+        <nav class="footer-legal" aria-label="Legal">
+          <a href="dmca.html">DMCA</a>
+          <span class="legal-sep" aria-hidden="true">|</span>
+          <a href="privacy.html">Privacy Policy</a>
+          <span class="legal-sep" aria-hidden="true">|</span>
+          <a href="terms.html">Terms of Service</a>
+        </nav>
+        <span class="tmdb-credit">Powered by
+          <img src="favicon.svg" alt="TMDB" height="14" loading="lazy" decoding="async"> TMDB API
+        </span>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Back to Top -->
+  <button class="back-to-top" id="back-to-top" aria-label="Back to top">
+    <svg viewBox="0 0 24 24"><path d="M7.41 15.41 12 10.83l4.59 4.58L18 14l-6-6-6 6z"/></svg>
+  </button>
+
+  <!-- Scripts -->
+  <script src="config.js?v=2.7"></script>
+  <script src="api.js?v=2.7"></script>
+  <script src="watchlist.js?v=2.7"></script>
+  <script src="index.js?v=2.7"></script>
+</body>
+</html>

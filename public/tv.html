@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TV Show Details - ZEUS</title>
+
+  <!-- SEO Meta Tags -->
+  <meta name="description" content="Watch this TV show online free in HD on ZEUS. Seasons, episodes, cast, ratings and streaming links.">
+  <meta name="robots" content="index, follow">
+  <meta name="theme-color" content="#000000">
+
+  <!-- Open Graph Tags -->
+  <meta property="og:type" content="video.tv_show">
+  <meta property="og:site_name" content="ZEUS">
+  <meta property="og:title" content="TV Show Details - ZEUS">
+  <meta property="og:description" content="Watch this TV show online free in HD on ZEUS.">
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image">
+
+  <!-- Favicon -->
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="favicon.svg">
+
+
+  <!-- Performance: warm connections to external origins -->
+  <link rel="preconnect" href="https://image.tmdb.org">
+  <link rel="dns-prefetch" href="https://vidsrc.xyz">
+  <link rel="dns-prefetch" href="https://inv.nadeko.net">
+  <link rel="dns-prefetch" href="https://yewtu.be">
+  <link rel="dns-prefetch" href="https://invidious.nerdvpn.de">
+  <link rel="dns-prefetch" href="https://iv.ggtyler.dev">
+  <link rel="dns-prefetch" href="https://invidious.f5.si">
+  <link rel="dns-prefetch" href="https://iv.melmac.space">
+  <link rel="dns-prefetch" href="https://api.themoviedb.org">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+  <!-- Apple TV+ typography: Inter (SF Pro fallback ladder in CSS) -->
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap">
+
+  <!-- Styles -->
+  <link rel="stylesheet" href="style.css?v=2.7">
+
+  <!-- Smooth menu transitions: arrived via an in-site nav? hide the black loader from first paint -->
+  <script>try{if(sessionStorage.getItem('zeus_nav_transition')==='1')document.documentElement.classList.add('no-page-loader')}catch(e){}</script>
+  <!-- Adsterra Social Bar -->
+  <script src="https://pl31074978.profitableratecpmnetwork.com/5b/7f/22/5b7f22ede7d8a6ba8985f7ae6f0fee5d.js"></script>
+
+  <!-- Adsterra Popunder -->
+  <script src="https://pl31074980.profitableratecpmnetwork.com/53/a6/6e/53a66e7f76455d567a95800c6705deda.js"></script>
+</head>
+<body>
+
+  <!-- Ambient lighting — blurred colour glow behind everything,
+       painted with the featured title's backdrop (Apple TV+
+       vibrancy), plus the cinematic vignette overlay on top -->
+  <div class="ambient-bg" id="ambient-bg" aria-hidden="true"></div>
+  <div id="ambient-vignette" aria-hidden="true"></div>
+
+  <!-- Page Loading Animation -->
+  <div class="page-loader" id="page-loader" role="status" aria-label="Loading">
+    <div class="loader-logo">
+      <div class="loader-bolt" aria-hidden="true">
+        <svg viewBox="0 0 24 24"><path d="M13 2 4.5 13.5h5.2L8.6 22l8.9-11.8h-5.4L13 2z"/></svg>
+      </div>
+      <span class="loader-name">ZEUS</span>
+    </div>
+    <div class="loader-bar"></div>
+  </div>
+
+  <!-- Disclaimer banner (dismissible, remembered in localStorage) -->
+  <div class="disclaimer-banner" id="disclaimer-banner" hidden>
+    <div class="container disclaimer-inner">
+      <p class="disclaimer-text">⚠️ ZEUS does not host any videos. All content is provided by non-affiliated third parties. For informational and educational purposes only.</p>
+      <button class="disclaimer-close" id="disclaimer-close" type="button" aria-label="Dismiss disclaimer">
+        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- ==================== NAVBAR ==================== -->
+  <header class="navbar" id="navbar">
+    <div class="nav-container">
+      <a href="index.html" class="nav-logo" aria-label="ZEUS homepage"><img src="logo.svg" alt="ZEUS" class="nav-logo-img" decoding="async"></a>
+
+      <nav class="nav-menu" id="nav-menu" aria-label="Main navigation">
+        <ul class="nav-links">
+          <li><a href="index.html" class="nav-link">Home</a></li>
+          <li><a href="browse.html?type=movie" class="nav-link">Movies</a></li>
+          <li><a href="browse.html?type=tv" class="nav-link">TV Shows</a></li>
+          <li class="nav-dropdown">
+            <button class="nav-link dropdown-toggle" type="button" aria-expanded="false" aria-haspopup="true">
+              Genre
+              <svg class="chevron" viewBox="0 0 24 24"><path d="M7 10l5 5 5-5z"/></svg>
+            </button>
+            <ul class="dropdown-menu" role="menu" aria-label="Movie genres">
+              <li role="none"><a role="menuitem" href="browse.html?genre=28">Action</a></li>
+              <li role="none"><a role="menuitem" href="browse.html?genre=12">Adventure</a></li>
+              <li role="none"><a role="menuitem" href="browse.html?genre=16">Animation</a></li>
+              <li role="none"><a role="menuitem" href="browse.html?genre=35">Comedy</a></li>
+              <li role="none"><a role="menuitem" href="browse.html?genre=80">Crime</a></li>
+              <li role="none"><a role="menuitem" href="browse.html?genre=99">Documentary</a></li>
+              <li role="none"><a role="menuitem" href="browse.html?genre=18">Drama</a></li>
+              <li role="none"><a role="menuitem" href="browse.html?genre=10751">Family</a></li>
+              <li role="none"><a role="menuitem" href="browse.html?genre=14">Fantasy</a></li>
+              <li role="none"><a role="menuitem" href="browse.html?genre=36">History</a></li>
+              <li role="none"><a role="menuitem" href="browse.html?genre=27">Horror</a></li>
+              <li role="none"><a role="menuitem" href="browse.html?genre=10402">Music</a></li>
+              <li role="none"><a role="menuitem" href="browse.html?genre=9648">Mystery</a></li>
+              <li role="none"><a role="menuitem" href="browse.html?genre=10749">Romance</a></li>
+              <li role="none"><a role="menuitem" href="browse.html?genre=878">Science Fiction</a></li>
+              <li role="none"><a role="menuitem" href="browse.html?genre=53">Thriller</a></li>
+              <li role="none"><a role="menuitem" href="browse.html?genre=10752">War</a></li>
+              <li role="none"><a role="menuitem" href="browse.html?genre=37">Western</a></li>
+            </ul>
+          </li>
+          <li><a href="browse.html?type=top" class="nav-link">Top IMDB</a></li>
+          <li><a href="watchlist.html" class="nav-link" data-nav="watchlist">Watchlist</a></li>
+        </ul>
+      </nav>
+
+      <div class="nav-actions">
+        <a href="watchlist.html" class="search-toggle watchlist-toggle" aria-label="Your watchlist" title="Your Watchlist">
+          <svg viewBox="0 0 24 24"><path d="M17 3H7a2 2 0 0 0-2 2v16l7-3 7 3V5a2 2 0 0 0-2-2z"/></svg>
+        </a>
+        <a href="search.html" class="search-toggle" aria-label="Search movies and TV shows">
+          <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><line x1="16.5" y1="16.5" x2="21" y2="21"/></svg>
+        </a>
+        <button class="hamburger" id="hamburger" aria-label="Toggle navigation menu" aria-expanded="false">
+          <span></span><span></span><span></span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ==================== TV DETAILS ==================== -->
+  <main class="detail-page" id="detail-page">
+
+    <div class="detail-backdrop-wrap">
+      <img class="detail-backdrop" id="detail-backdrop" alt="" decoding="async" src="data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10'%3E%3Crect width='10' height='10' fill='%23101018'/%3E%3C/svg%3E">
+    </div>
+
+    <div class="container" id="detail-container">
+      <div class="skeleton-detail" id="detail-skeleton">
+        <div>
+          <div class="sk-poster shimmer"></div>
+        </div>
+        <div>
+          <div class="sk-line-lg shimmer" style="width: 65%;"></div>
+          <div class="skeleton-line w-50 shimmer" style="margin-bottom: 22px;"></div>
+          <div class="skeleton-line w-80 shimmer" style="margin-bottom: 10px;"></div>
+          <div class="skeleton-line w-80 shimmer" style="margin-bottom: 10px;"></div>
+          <div class="skeleton-line w-60 shimmer" style="margin-bottom: 24px;"></div>
+          <div class="skeleton-line w-80 shimmer" style="height: 44px; border-radius: 10px;"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Seasons -->
+    <section class="content-section" id="seasons-section" hidden>
+      <div class="container">
+        <div class="section-header">
+          <h2 class="section-title"><span class="title-bar"></span>Seasons</h2>
+        </div>
+        <div class="seasons-row" id="seasons-row"></div>
+      </div>
+    </section>
+
+    <!-- Episodes (season selector) -->
+    <section class="content-section" id="episodes-section" hidden>
+      <div class="container">
+        <div class="section-header">
+          <h2 class="section-title"><span class="title-bar"></span>Episodes</h2>
+          <div class="season-select-wrap">
+            <label for="season-select">Season</label>
+            <select class="season-select" id="season-select" aria-label="Select season"></select>
+          </div>
+        </div>
+        <div class="episodes-list" id="episodes-list"></div>
+      </div>
+    </section>
+
+    <!-- Cast -->
+    <section class="content-section" id="cast-section" hidden>
+      <div class="container">
+        <div class="section-header">
+          <h2 class="section-title"><span class="title-bar"></span>Top Cast</h2>
+        </div>
+        <div class="cast-row" id="cast-row"></div>
+      </div>
+    </section>
+
+    <!-- Similar Shows -->
+    <section class="content-section" id="similar-section" hidden>
+      <div class="container">
+        <div class="section-header">
+          <h2 class="section-title"><span class="title-bar"></span>Similar TV Shows</h2>
+        </div>
+        <div class="movies-grid" id="similar-grid"></div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ==================== FOOTER ==================== -->
+  <footer>
+    <div class="footer-container">
+      <div class="footer-grid">
+        <div class="footer-brand">
+          <a href="index.html" class="nav-logo" aria-label="ZEUS homepage"><img src="logo.svg" alt="ZEUS" class="nav-logo-img" loading="lazy" decoding="async"></a>
+          <p class="footer-desc">
+            Your ultimate destination to stream movies and TV shows online for free in HD.
+            Discover trending titles, top-rated classics and the latest episodes — all in one place.
+          </p>
+          <div class="footer-social">
+            <a href="#" class="social-link" aria-label="Facebook">
+              <svg viewBox="0 0 24 24"><path d="M13.5 21v-8.2h2.8l.4-3.2h-3.2V7.6c0-.9.3-1.6 1.6-1.6h1.7V3.1C16.5 3 15.5 3 14.4 3c-2.4 0-4 1.4-4 4.1v2.5H7.6v3.2h2.8V21h3.1z"/></svg>
+            </a>
+            <a href="#" class="social-link" aria-label="X (Twitter)">
+              <svg viewBox="0 0 24 24"><path d="M17.7 3H21l-7.1 8.2L22.2 21h-6.6l-5.1-6.1L4.6 21H1.3l7.6-8.7L1.8 3h6.7l4.6 5.6L17.7 3zm-1.2 16h1.8L6.9 4.8H5L16.5 19z"/></svg>
+            </a>
+            <a href="#" class="social-link" aria-label="Instagram">
+              <svg viewBox="0 0 24 24"><path d="M12 2.2c3.2 0 3.6 0 4.9.1 1.2.1 1.8.2 2.2.4.6.2 1 .5 1.4.9.4.4.7.8.9 1.4.2.4.4 1 .4 2.2.1 1.3.1 1.7.1 4.9s0 3.6-.1 4.9c-.1 1.2-.2 1.8-.4 2.2-.2.6-.5 1-.9 1.4-.4.4-.8.7-1.4.9-.4.2-1 .4-2.2.4-1.3.1-1.7.1-4.9.1s-3.6 0-4.9-.1c-1.2-.1-1.8-.2-2.2-.4-.6-.2-1-.5-1.4-.9-.4-.4-.7-.8-.9-1.4-.2-.4-.4-1-.4-2.2C2.2 15.6 2.2 15.2 2.2 12s0-3.6.1-4.9c.1-1.2.2-1.8.4-2.2.2-.6.5-1 .9-1.4.4-.4.8-.7 1.4-.9.4-.2 1-.4 2.2-.4C8.4 2.2 8.8 2.2 12 2.2zm0 1.8c-3.1 0-3.5 0-4.8.1-1.1.1-1.5.2-1.8.3-.5.2-.8.4-1.1.7-.3.3-.5.6-.7 1.1-.1.3-.3.8-.3 1.8-.1 1.3-.1 1.6-.1 4.8s0 3.5.1 4.8c.1 1.1.2 1.5.3 1.8.2.5.4.8.7 1.1.3.3.6.5 1.1.7.3.1.8.3 1.8.3 1.3.1 1.6.1 4.8.1s3.5 0 4.8-.1c1.1-.1 1.5-.2 1.8-.3.5-.2.8-.4 1.1-.7.3-.3.5-.6.7-1.1.1-.3.3-.8.3-1.8.1-1.3.1-1.6.1-4.8s0-3.5-.1-4.8c-.1-1.1-.2-1.5-.3-1.8-.2-.5-.4-.8-.7-1.1-.3-.3-.6-.5-1.1-.7-.3-.1-.8-.3-1.8-.3-1.3-.1-1.6-.1-4.8-.1zm0 3.1a4.9 4.9 0 1 1 0 9.8 4.9 4.9 0 0 1 0-9.8zm0 8.1a3.2 3.2 0 1 0 0-6.4 3.2 3.2 0 0 0 0 6.4zm6.2-8.4a1.1 1.1 0 1 1-2.3 0 1.1 1.1 0 0 1 2.3 0z"/></svg>
+            </a>
+            <a href="#" class="social-link" aria-label="YouTube">
+              <svg viewBox="0 0 24 24"><path d="M23 8s-.2-1.6-.9-2.3c-.9-.9-1.9-.9-2.3-1C16.6 4.5 12 4.5 12 4.5s-4.6 0-7.8.2c-.4.1-1.4.1-2.3 1C1.2 6.4 1 8 1 8S.8 9.9.8 11.8v1.7C.8 15.4 1 17.3 1 17.3s.2 1.6.9 2.3c.9.9 2 .9 2.5 1 1.8.2 7.6.2 7.6.2s4.6 0 7.8-.2c.4-.1 1.4-.1 2.3-1 .7-.7.9-2.3.9-2.3s.2-1.9.2-3.8v-1.7C23.2 9.9 23 8 23 8zM9.8 15.3V8.7l6.1 3.3-6.1 3.3z"/></svg>
+            </a>
+          </div>
+        </div>
+
+        <div class="footer-col">
+          <h3 class="footer-title">Browse</h3>
+          <ul class="footer-links">
+            <li><a href="index.html">Home</a></li>
+            <li><a href="browse.html?type=movie">Movies</a></li>
+            <li><a href="browse.html?type=tv">TV Shows</a></li>
+            <li><a href="browse.html?type=top">Top IMDB</a></li>
+            <li><a href="browse.html?type=trending">Trending</a></li>
+            <li><a href="watchlist.html">Watchlist</a></li>
+          </ul>
+        </div>
+
+        <div class="footer-col">
+          <h3 class="footer-title">Genres</h3>
+          <ul class="footer-links">
+            <li><a href="browse.html?genre=28">Action</a></li>
+            <li><a href="browse.html?genre=35">Comedy</a></li>
+            <li><a href="browse.html?genre=27">Horror</a></li>
+            <li><a href="browse.html?genre=878">Sci-Fi</a></li>
+            <li><a href="browse.html?genre=53">Thriller</a></li>
+          </ul>
+        </div>
+
+        <div class="footer-col">
+          <h3 class="footer-title">Help</h3>
+          <ul class="footer-links">
+            <li><a href="search.html">Search</a></li>
+            <li><a href="dmca.html">DMCA</a></li>
+            <li><a href="terms.html">Terms of Service</a></li>
+            <li><a href="privacy.html">Privacy Policy</a></li>
+            <li><a href="#">Contact</a></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <p class="footer-disclaimer">
+      Disclaimer: ZEUS does not host any files on its server. All contents are provided by
+      non-affiliated third parties. This product uses the TMDB API but is not endorsed or certified by TMDB.
+    </p>
+
+    <div class="footer-bottom">
+      <div class="footer-bottom-inner">
+        <span>&copy; <span id="current-year">2026</span> <span class="accent">ZEUS</span>. All rights reserved.</span>
+        <nav class="footer-legal" aria-label="Legal">
+          <a href="dmca.html">DMCA</a>
+          <span class="legal-sep" aria-hidden="true">|</span>
+          <a href="privacy.html">Privacy Policy</a>
+          <span class="legal-sep" aria-hidden="true">|</span>
+          <a href="terms.html">Terms of Service</a>
+        </nav>
+        <span class="tmdb-credit">Powered by
+          <img src="favicon.svg" alt="TMDB" height="14" loading="lazy" decoding="async"> TMDB API
+        </span>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Back to Top -->
+  <button class="back-to-top" id="back-to-top" aria-label="Back to top">
+    <svg viewBox="0 0 24 24"><path d="M7.41 15.41 12 10.83l4.59 4.58L18 14l-6-6-6 6z"/></svg>
+  </button>
+
+  <!-- Scripts -->
+  <script src="config.js?v=2.7"></script>
+  <script src="api.js?v=2.7"></script>
+  <script src="watchlist.js?v=2.7"></script>
+  <script src="tv.js?v=2.7"></script>
+</body>
+</html>

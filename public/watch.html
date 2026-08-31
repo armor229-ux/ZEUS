@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Watch Online Free - ZEUS</title>
+
+  <!-- SEO Meta Tags -->
+  <meta name="description" content="Watch movies and TV shows online free in HD on ZEUS with multiple streaming servers.">
+  <meta name="robots" content="noindex, follow">
+  <meta name="theme-color" content="#000000">
+
+  <!-- Open Graph Tags -->
+  <meta property="og:type" content="video.other">
+  <meta property="og:site_name" content="ZEUS">
+  <meta property="og:title" content="Watch Online Free - ZEUS">
+  <meta property="og:description" content="Watch movies and TV shows online free in HD on ZEUS.">
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image">
+
+  <!-- Favicon -->
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="favicon.svg">
+
+
+  <!-- Performance: warm connections to external origins -->
+  <link rel="preconnect" href="https://image.tmdb.org">
+  <link rel="dns-prefetch" href="https://vidlink.pro">
+  <link rel="dns-prefetch" href="https://vidsrc.xyz">
+  <link rel="dns-prefetch" href="https://inv.nadeko.net">
+  <link rel="dns-prefetch" href="https://yewtu.be">
+  <link rel="dns-prefetch" href="https://invidious.nerdvpn.de">
+  <link rel="dns-prefetch" href="https://iv.ggtyler.dev">
+  <link rel="dns-prefetch" href="https://invidious.f5.si">
+  <link rel="dns-prefetch" href="https://iv.melmac.space">
+  <link rel="dns-prefetch" href="https://api.themoviedb.org">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+  <!-- Apple TV+ typography: Inter (SF Pro fallback ladder in CSS) -->
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap">
+
+  <!-- Styles -->
+  <link rel="stylesheet" href="style.css?v=2.17">
+
+  <!-- Smooth menu transitions: arrived via an in-site nav? hide the black loader from first paint -->
+  <script>try{if(sessionStorage.getItem('zeus_nav_transition')==='1')document.documentElement.classList.add('no-page-loader')}catch(e){}</script>
+  <!-- Adsterra Social Bar -->
+  <script src="https://pl31074978.profitableratecpmnetwork.com/5b/7f/22/5b7f22ede7d8a6ba8985f7ae6f0fee5d.js"></script>
+
+  <!-- Adsterra Popunder -->
+  <script src="https://pl31074980.profitableratecpmnetwork.com/53/a6/6e/53a66e7f76455d567a95800c6705deda.js"></script>
+</head>
+<body>
+
+  <!-- Ambient lighting — blurred colour glow behind everything,
+       painted with the featured title's backdrop (Apple TV+
+       vibrancy), plus the cinematic vignette overlay on top -->
+  <div class="ambient-bg" id="ambient-bg" aria-hidden="true"></div>
+  <div id="ambient-vignette" aria-hidden="true"></div>
+
+  <!-- Page Loading Animation -->
+  <div class="page-loader" id="page-loader" role="status" aria-label="Loading">
+    <div class="loader-logo">
+      <div class="loader-bolt" aria-hidden="true">
+        <svg viewBox="0 0 24 24"><path d="M13 2 4.5 13.5h5.2L8.6 22l8.9-11.8h-5.4L13 2z"/></svg>
+      </div>
+      <span class="loader-name">ZEUS</span>
+    </div>
+    <div class="loader-bar"></div>
+  </div>
+
+  <!-- Disclaimer banner (dismissible, remembered in localStorage) -->
+  <div class="disclaimer-banner" id="disclaimer-banner" hidden>
+    <div class="container disclaimer-inner">
+      <p class="disclaimer-text">⚠️ ZEUS does not host any videos. All content is provided by non-affiliated third parties. For informational and educational purposes only.</p>
+      <button class="disclaimer-close" id="disclaimer-close" type="button" aria-label="Dismiss disclaimer">
+        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- ==================== NAVBAR ==================== -->
+  <header class="navbar scrolled" id="navbar">
+    <div class="nav-container">
+      <a href="index.html" class="nav-logo" aria-label="ZEUS homepage"><img src="logo.svg" alt="ZEUS" class="nav-logo-img"></a>
+
+      <nav class="nav-menu" id="nav-menu" aria-label="Main navigation">
+        <ul class="nav-links">
+          <li><a href="index.html" class="nav-link">Home</a></li>
+          <li><a href="browse.html?type=movie" class="nav-link">Movies</a></li>
+          <li><a href="browse.html?type=tv" class="nav-link">TV Shows</a></li>
+          <li class="nav-dropdown">
+            <button class="nav-link dropdown-toggle" type="button" aria-expanded="false" aria-haspopup="true">
+              Genre
+              <svg class="chevron" viewBox="0 0 24 24"><path d="M7 10l5 5 5-5z"/></svg>
+            </button>
+            <ul class="dropdown-menu" role="menu" aria-label="Movie genres">
+              <li role="none"><a role="menuitem" href="browse.html?genre=28">Action</a></li>
+              <li role="none"><a role="menuitem" href="browse.html?genre=12">Adventure</a></li>
+              <li role="none"><a role="menuitem" href="browse.html?genre=16">Animation</a></li>
+              <li role="none"><a role="menuitem" href="browse.html?genre=35">Comedy</a></li>
+              <li role="none"><a role="menuitem" href="browse.html?genre=80">Crime</a></li>
+              <li role="none"><a role="menuitem" href="browse.html?genre=99">Documentary</a></li>
+              <li role="none"><a role="menuitem" href="browse.html?genre=18">Drama</a></li>
+              <li role="none"><a role="menuitem" href="browse.html?genre=10751">Family</a></li>
+              <li role="none"><a role="menuitem" href="browse.html?genre=14">Fantasy</a></li>
+              <li role="none"><a role="menuitem" href="browse.html?genre=36">History</a></li>
+              <li role="none"><a role="menuitem" href="browse.html?genre=27">Horror</a></li>
+              <li role="none"><a role="menuitem" href="browse.html?genre=10402">Music</a></li>
+              <li role="none"><a role="menuitem" href="browse.html?genre=9648">Mystery</a></li>
+              <li role="none"><a role="menuitem" href="browse.html?genre=10749">Romance</a></li>
+              <li role="none"><a role="menuitem" href="browse.html?genre=878">Science Fiction</a></li>
+              <li role="none"><a role="menuitem" href="browse.html?genre=53">Thriller</a></li>
+              <li role="none"><a role="menuitem" href="browse.html?genre=10752">War</a></li>
+              <li role="none"><a role="menuitem" href="browse.html?genre=37">Western</a></li>
+            </ul>
+          </li>
+          <li><a href="browse.html?type=top" class="nav-link">Top IMDB</a></li>
+          <li><a href="watchlist.html" class="nav-link" data-nav="watchlist">Watchlist</a></li>
+        </ul>
+      </nav>
+
+      <div class="nav-actions">
+        <a href="watchlist.html" class="search-toggle watchlist-toggle" aria-label="Your watchlist" title="Your Watchlist">
+          <svg viewBox="0 0 24 24"><path d="M17 3H7a2 2 0 0 0-2 2v16l7-3 7 3V5a2 2 0 0 0-2-2z"/></svg>
+        </a>
+        <a href="search.html" class="search-toggle" aria-label="Search movies and TV shows">
+          <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><line x1="16.5" y1="16.5" x2="21" y2="21"/></svg>
+        </a>
+        <button class="hamburger" id="hamburger" aria-label="Toggle navigation menu" aria-expanded="false">
+          <span></span><span></span><span></span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ==================== WATCH PAGE ==================== -->
+  <main class="watch-page">
+    <div class="container watch-container" id="watch-container">
+
+      <!-- ============ PREMIUM PLAYER SHELL (Netplayz / Movy style) ============
+           Top chrome bar: back + title + runtime on the left,
+           the server picker button on the right — wrapped around
+           the cinematic 16:9 iframe stage. The AUTO (Source
+           Checker) action lives inside the Servers modal. -->
+      <div class="player-shell" id="player-shell">
+
+        <!-- Top chrome bar -->
+        <div class="player-chrome-top">
+          <div class="chrome-left">
+            <button class="chrome-back" id="chrome-back" type="button" aria-label="Go back">
+              <svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+            </button>
+            <div class="watch-title-wrap">
+              <h1 class="watch-title" id="watch-title">Loading title…</h1>
+              <p class="watch-subtitle" id="watch-subtitle">Preparing your stream</p>
+            </div>
+          </div>
+
+          <div class="chrome-right">
+            <!-- 🌐 Servers picker (the AUTO Best action lives
+                 inside the Servers modal) -->
+            <button class="chrome-btn chrome-btn--server" id="servers-btn" type="button" aria-haspopup="dialog" title="Choose a Premium source">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm7.93 9h-3.02a15.7 15.7 0 0 0-1.2-5.1A8.03 8.03 0 0 1 19.93 11zM12 4.04c.9 1.32 1.9 3.4 2.07 6.96H9.93C10.1 7.44 11.1 5.36 12 4.04zM4.07 13h3.02c.14 1.86.55 3.6 1.2 5.1A8.03 8.03 0 0 1 4.07 13zm3.02-2H4.07a8.03 8.03 0 0 1 4.22-5.1 15.7 15.7 0 0 0-1.2 5.1zm4.91 8.96c-.9-1.32-1.9-3.4-2.07-6.96h4.14c-.17 3.56-1.17 5.64-2.07 6.96zm2.71-1.86c.65-1.5 1.06-3.24 1.2-5.1h3.02a8.03 8.03 0 0 1-4.22 5.1zm2.07-7.1c-.1-2.2-.54-4.2-1.2-5.9a8.03 8.03 0 0 1 4.22 5.1h-3.02z"/></svg>
+              Servers
+            </button>
+          </div>
+        </div>
+
+        <!-- Player stage -->
+        <div class="player-wrapper" id="player-wrapper">
+          <div class="player-loading" id="player-loading">
+            <div class="spinner" role="status" aria-label="Loading player"></div>
+            <p>Loading stream… if this server doesn't respond, we'll try the next one automatically</p>
+          </div>
+
+          <!-- Source Checker progress overlay (Test servers / AUTO mode) -->
+          <div class="source-check-overlay" id="source-check-overlay" role="status" aria-live="polite" hidden>
+            <div class="source-check-card">
+              <div class="source-check-head">
+                <span class="source-check-pulse" aria-hidden="true"></span>
+                <p class="source-check-title">Checking sources…</p>
+              </div>
+              <p class="source-check-sub">Moving to the next source…</p>
+              <div class="source-check-bar"><div class="source-check-bar-fill" id="source-check-bar-fill"></div></div>
+              <p class="source-check-counter"><span id="source-check-count">0</span> of <span id="source-check-total">0</span> checked</p>
+            </div>
+          </div>
+
+          <iframe id="player-frame"
+                  title="Video player"
+                  frameborder="0"
+                  allowfullscreen
+                  allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
+                  referrerpolicy="origin"></iframe>
+        </div>
+      </div>
+
+      <!-- AutoNext Episode toggle (TV only): plays the next
+           episode automatically when the video ends or all
+           sources fail -->
+      <div class="autonext-bar" id="autonext-bar" hidden>
+        <label class="autonext-toggle">
+          <input type="checkbox" id="autonext-toggle-input" aria-label="AutoNext episode">
+          <span class="autonext-track" aria-hidden="true"><span class="autonext-thumb"></span></span>
+          <span class="autonext-label">AutoNext Episode</span>
+        </label>
+        <span class="autonext-hint">Plays the next episode automatically when the video ends or all sources fail</span>
+      </div>
+
+      <!-- TV episode controls -->
+      <div class="episode-controls" id="episode-controls" hidden>
+        <button class="ep-nav-btn" id="prev-episode" aria-label="Previous episode">
+          <svg viewBox="0 0 24 24"><path d="M15.41 7.41 14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>
+          Prev
+        </button>
+        <select class="season-select" id="watch-season-select" aria-label="Select season"></select>
+        <select class="season-select" id="watch-episode-select" aria-label="Select episode"></select>
+        <button class="ep-nav-btn" id="next-episode" aria-label="Next episode">
+          Next
+          <svg viewBox="0 0 24 24"><path d="M10 6 8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg>
+        </button>
+      </div>
+
+      <!-- Adsterra 728x90 banner -->
+      <div class="ad-banner-wrapper" style="display:flex; justify-content:center; padding: 20px 0; max-width: 100%; overflow: hidden;">
+        <script type="text/javascript">
+          atOptions = {
+            'key' : '3f79095a9e4739907d22bbfd059ff12b',
+            'format' : 'iframe',
+            'height' : 90,
+            'width' : 728,
+            'params' : {}
+          };
+        </script>
+        <script src="https://www.highrevenueformat.com/3f79095a9e4739907d22bbfd059ff12b/invoke.js"></script>
+      </div>
+
+      <!-- Title info below player -->
+      <div class="watch-info" id="watch-info" hidden>
+        <div class="watch-info-poster">
+          <img id="watch-info-poster-img" alt="Title poster"
+               loading="lazy" decoding="async"
+               data-fallback="poster" onerror="handleImageError(this)">
+        </div>
+        <div>
+          <h2 class="watch-info-title" id="watch-info-title"></h2>
+          <div class="watch-info-meta" id="watch-info-meta"></div>
+          <p class="watch-overview" id="watch-overview"></p>
+          <div class="watch-info-actions" id="watch-info-actions"></div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- ==================== FOOTER ==================== -->
+  <footer>
+    <div class="footer-bottom">
+      <div class="footer-bottom-inner">
+        <span>&copy; <span id="current-year">2026</span> <span class="accent">ZEUS</span>. All rights reserved.</span>
+        <nav class="footer-legal" aria-label="Legal">
+          <a href="dmca.html">DMCA</a>
+          <span class="legal-sep" aria-hidden="true">|</span>
+          <a href="privacy.html">Privacy Policy</a>
+          <span class="legal-sep" aria-hidden="true">|</span>
+          <a href="terms.html">Terms of Service</a>
+        </nav>
+        <span class="tmdb-credit">Powered by
+          <img src="favicon.svg" alt="TMDB" height="14" loading="lazy" decoding="async"> TMDB API
+        </span>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Back to Top -->
+  <button class="back-to-top" id="back-to-top" aria-label="Back to top">
+    <svg viewBox="0 0 24 24"><path d="M7.41 15.41 12 10.83l4.59 4.58L18 14l-6-6-6 6z"/></svg>
+  </button>
+
+  <!-- ============ SERVER PICKER MODAL ============ -->
+  <div class="server-modal" id="server-modal" role="dialog" aria-modal="true" aria-labelledby="server-modal-title" aria-hidden="true">
+    <div class="server-modal-backdrop" id="server-modal-backdrop"></div>
+    <div class="server-modal-panel">
+      <div class="server-modal-header">
+        <h3 class="server-modal-title" id="server-modal-title">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16v2H4zm0 5h16v2H4zm0 5h16v2H4z"/></svg>
+          Servers
+        </h3>
+        <div class="server-modal-tools">
+          <!-- AUTO Best: the ONLY AUTO trigger on the page — load
+               candidate servers one by one until one is PROVEN to
+               work (sequential trial), then keep it -->
+          <button class="sm-tool sm-tool--auto" id="auto-modal-btn" type="button" title="Automatically try every server and play the first one proven to work">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m19 9 1.25-2.75L23 5l-2.75-1.25L19 1l-1.25 2.75L15 5l2.75 1.25zm-7.5.5L9 4 6.5 9.5 1 12l5.5 2.5L9 20l2.5-5.5L17 12zM19 15l-1.25 2.75L15 19l2.75 1.25L19 23l1.25-2.75L23 19l-2.75-1.25z"/></svg>
+            AUTO Best
+          </button>
+          <button class="sm-tool sm-tool--test" id="test-servers-btn" type="button" title="Preflight-test every server in this tab and update health dots">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12h4l3-8 4 16 3-8h4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            Test servers
+          </button>
+          <button class="sm-tool" id="hide-failed-toggle" type="button" aria-pressed="true" title="Hide servers whose engine failed recently">
+            <span class="sm-tool-indicator" aria-hidden="true"></span>
+            Hide failed
+          </button>
+          <button class="sm-tool sm-tool--report" id="report-server-btn" type="button" title="Report the current server as broken and switch to another one">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.4 6 14 4H5v17h2v-7h5.6l.4 2h7V6z"/></svg>
+            Report server
+          </button>
+          <!-- Reset status: wipes stale health stats + preflight hints
+               (legacy bad data made everything look UNSTABLE) -->
+          <button class="sm-tool sm-tool--reset" id="reset-server-stats-btn" type="button" title="Clear stored server health data and start fresh">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17.65 6.35A7.95 7.95 0 0 0 12 4a8 8 0 1 0 7.73 10h-2.08A6 6 0 1 1 12 6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
+            Reset status
+          </button>
+        </div>
+        <button class="server-modal-close" id="server-modal-close" type="button" aria-label="Close servers">
+          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </div>
+      <div class="server-modal-body">
+        <p class="sm-note">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m19 9 1.25-2.75L23 5l-2.75-1.25L19 1l-1.25 2.75L15 5l2.75 1.25zm-7.5.5L9 4 6.5 9.5 1 12l5.5 2.5L9 20l2.5-5.5L17 12zM19 15l-1.25 2.75L15 19l2.75 1.25L19 23l1.25-2.75L23 19l-2.75-1.25z"/></svg>
+          Servers include multi-language subtitles and up to 1080p quality. AUTO Best picks the first server that responds.
+        </p>
+        <div id="server-list" class="server-list">
+          <div class="server-group">
+            <div class="server-group-title">Recommended</div>
+            <button class="server-item" data-server="vidcore" data-name="VidCore">
+              <span class="server-name">VidCore</span>
+              <span class="server-badge">Subs • 4K</span>
+            </button>
+            <button class="server-item" data-server="superembed" data-name="SuperEmbed">
+              <span class="server-name">SuperEmbed</span>
+              <span class="server-badge">Multi-source • Subs</span>
+            </button>
+            <button class="server-item" data-server="vidlinkpro" data-name="VidLink Pro">
+              <span class="server-name">VidLink Pro</span>
+              <span class="server-badge">Stable • Subs</span>
+            </button>
+            <button class="server-item" data-server="embedlc" data-name="Embed.lc">
+              <span class="server-name">Embed.lc</span>
+              <span class="server-badge">Clean • Subs</span>
+            </button>
+          </div>
+
+          <div class="server-group">
+            <div class="server-group-title">Reliable</div>
+            <button class="server-item" data-server="autoembed" data-name="AutoEmbed">
+              <span class="server-name">AutoEmbed</span>
+              <span class="server-badge">Subs</span>
+            </button>
+            <button class="server-item" data-server="vidsrcto" data-name="VidSrc.to">
+              <span class="server-name">VidSrc.to</span>
+              <span class="server-badge">Multi-host • Subs</span>
+            </button>
+            <button class="server-item" data-server="vidsrccc" data-name="VidSrc.cc">
+              <span class="server-name">VidSrc.cc</span>
+              <span class="server-badge">Fast • Subs</span>
+            </button>
+            <button class="server-item" data-server="2embedcc" data-name="2Embed.cc">
+              <span class="server-name">2Embed.cc</span>
+              <span class="server-badge">Fallback • Subs</span>
+            </button>
+          </div>
+
+          <div class="server-group">
+            <div class="server-group-title">Asian dramas</div>
+            <button class="server-item" data-server="nontongo" data-name="Nontongo.win">
+              <span class="server-name">Nontongo.win</span>
+              <span class="server-badge">K/C/J • Multi-sub</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ CINEMATIC ENTRANCE LIGHTING ============
+       Deep black overlay → blurred TMDB backdrop → god-ray
+       light sweep → Zeus lightning flash → title fade-in →
+       overlay fades out while the player scales in. -->
+  <div class="cine-overlay" id="cine-overlay" aria-hidden="true">
+    <div class="cine-backdrop" id="cine-backdrop"></div>
+    <div class="cine-sweep" aria-hidden="true"></div>
+    <div class="cine-flash" aria-hidden="true"></div>
+    <div class="cine-center">
+      <svg class="cine-bolt" viewBox="0 0 24 24" aria-hidden="true"><path d="M13 2 4.5 13.5h5.2L8.6 22l8.9-11.8h-5.4L13 2z"/></svg>
+      <p class="cine-title" id="cine-title">ZEUS</p>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="config.js?v=2.7"></script>
+  <script src="api.js?v=2.7"></script>
+  <script src="watchlist.js?v=2.7"></script>
+  <script src="watch.js?v=2.19"></script>
+</body>
+</html>

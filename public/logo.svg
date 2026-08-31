@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 84" width="360" height="84" role="img" aria-label="ZEUS">
+  <defs>
+    <linearGradient id="boltGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#FFF200"/>
+      <stop offset="45%" stop-color="#FFD700"/>
+      <stop offset="100%" stop-color="#FFB800"/>
+    </linearGradient>
+    <linearGradient id="textGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="100%" stop-color="#F4F0DC"/>
+    </linearGradient>
+    <!-- Real lightning yellow glow: white-hot core + golden outer aura -->
+    <filter id="boltGlow" x="-60%" y="-60%" width="220%" height="220%">
+      <feGaussianBlur stdDeviation="3" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <filter id="textGlow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="1.6" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Yellow lightning bolt striking beside the wordmark -->
+  <g filter="url(#boltGlow)">
+    <path d="M40 4 14 46h17.5L24 80l34-46H39.5L48.5 4z" fill="url(#boltGrad)"/>
+  </g>
+
+  <!-- Wordmark: bold, uppercase, tight letter-spacing, pure white -->
+  <text x="72" y="60"
+        font-family="'SF Pro Display', 'Helvetica Neue', Helvetica, Arial, sans-serif"
+        font-size="52"
+        font-weight="900"
+        letter-spacing="1.5"
+        fill="url(#textGrad)"
+        filter="url(#textGlow)">ZEUS</text>
+</svg>
