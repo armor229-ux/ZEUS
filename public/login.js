@@ -1,7 +1,11 @@
 /* ============================================================
    ZEUS - login.js
-   Login / Account page behaviour: Sign In, Sign Up, Log Out,
-   and the "Generate Local Account" flow with Copy button.
+   Login page behaviour: Sign In, Sign Up, Log Out, and the
+   "Generate Local Account" flow with Copy button.
+   After a successful Sign In / Sign Up the user is redirected
+   automatically to the Account page (account.html). Generated
+   credentials stay visible with a countdown before the
+   redirect so they can be copied first.
    Depends on auth.js (authSignUp / authSignIn / authSignOut /
    authGenerateLocalAccount / authGetCurrentUser / authGetUsers).
    ============================================================ */
@@ -9,6 +13,9 @@
 'use strict';
 
 (function () {
+
+  const ACCOUNT_PAGE = 'account.html';
+  const GENERATE_REDIRECT_SECONDS = 8; /* time to read/copy credentials */
 
   /* ---------------- Elements ---------------- */
   const authCard = document.getElementById('auth-card');
@@ -30,6 +37,7 @@
   const logoutBtn = document.getElementById('logout-btn');
 
   let generatedCredentials = null;
+  let redirectTimer = null;
 
   /* ---------------- Inline messages ---------------- */
   function setMessage(text, type) {
@@ -42,6 +50,35 @@
     if (!messageEl) return;
     messageEl.textContent = '';
     messageEl.className = 'auth-message';
+  }
+
+  /* ---------------- Redirects ---------------- */
+
+  /** Go to the Account page after a short beat (lets the toast show). */
+  function goToAccount(delayMs) {
+    if (redirectTimer) window.clearTimeout(redirectTimer);
+    redirectTimer = window.setTimeout(() => {
+      window.location.href = ACCOUNT_PAGE;
+    }, delayMs || 0);
+  }
+
+  /** Countdown note inside the generated-credentials box. */
+  function startGeneratedRedirect(seconds) {
+    const note = document.getElementById('generated-redirect-note') ||
+                 document.createElement('p');
+    note.id = 'generated-redirect-note';
+    note.className = 'auth-generated-hint';
+    if (!note.parentNode && generatedBox) generatedBox.appendChild(note);
+
+    let left = seconds;
+    const tick = () => {
+      if (!authGetCurrentUser()) { note.remove(); return; } /* logged out meanwhile */
+      if (left <= 0) { goToAccount(0); return; }
+      note.textContent = 'Redirecting to your Account page in ' + left + 's — copy your credentials now.';
+      left -= 1;
+      redirectTimer = window.setTimeout(tick, 1000);
+    };
+    tick();
   }
 
   /* ---------------- Clipboard ---------------- */
@@ -112,6 +149,7 @@
       const user = await authSignIn(email, password);
       if (typeof showToast === 'function') showToast('Signed in as ' + user.email, 'success');
       render();
+      goToAccount(600); /* redirect to the Account page */
     } catch (err) {
       setMessage(err.message, 'error');
     } finally {
@@ -131,6 +169,7 @@
       const user = await authSignUp(email, password);
       if (typeof showToast === 'function') showToast('Account created — welcome, ' + user.email, 'success');
       render();
+      goToAccount(600); /* redirect to the Account page */
     } catch (err) {
       setMessage(err.message, 'error');
     } finally {
@@ -152,6 +191,9 @@
       generatedBox.hidden = false;
       if (typeof showToast === 'function') showToast('Local account created and signed in', 'success');
       render();
+      /* Credentials stay visible with a countdown, then the
+         Account page opens (auto-login already happened). */
+      startGeneratedRedirect(GENERATE_REDIRECT_SECONDS);
     } catch (err) {
       setMessage(err.message, 'error');
     } finally {
@@ -177,6 +219,9 @@
   function handleLogout() {
     authSignOut();
     generatedCredentials = null;
+    if (redirectTimer) window.clearTimeout(redirectTimer);
+    const note = document.getElementById('generated-redirect-note');
+    if (note) note.remove();
     generatedBox.hidden = true;
     signInForm.reset();
     signUpForm.reset();

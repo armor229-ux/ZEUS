@@ -1,16 +1,47 @@
 /* ============================================================
    ZEUS - watchparty.js
-   "Watch Party" button for the playback page (watch.html):
-   resolves the currently playing video URL and opens
-   WatchParty, falling back to copy-link + redirect when the
-   create flow can't be opened (e.g. popup blocked).
+   "Watch Party" button for the playback page (watch.html).
+
+   Click flow:
+     1) Resolve the best playable URL:
+          <video>.currentSrc  ->  <video>.src
+          -> the player <iframe>'s src
+          -> window.location.href as a last resort
+     2) Attempt WatchParty "autostart" URLs IN THIS ORDER
+        (all attempts kept — none removed):
+          a) https://www.watchparty.me/create?url=ENCODED_URL
+          b) https://www.watchparty.me/?url=ENCODED_URL
+          c) https://www.watchparty.me/#url=ENCODED_URL
+        Each is opened in a new tab (keeps ZEUS playback running;
+        same behavior as before). The first URL that opens wins —
+        normally (a). If the browser blocks the popup, (b) and
+        (c) are tried the same way before giving up.
+     3) Cross-site limitation: a page can never READ a cross-origin
+        WatchParty room, so autostart cannot be confirmed from ZEUS
+        (and no cross-origin DOM injection is attempted — it is
+        impossible and forbidden). Therefore the clipboard safety
+        net ALWAYS runs:
+          - copy the video URL to the clipboard automatically
+          - show "Video link copied. Paste it into WatchParty."
+          - redirect to https://www.watchparty.me/
+        When a WatchParty tab DID open, that tab already IS the
+        redirect target (the link is carried in its URL), so the
+        ZEUS player tab stays put — playback is never broken.
+        When every open attempt was blocked, the message shows
+        first and the current tab redirects to WatchParty.
    Loaded on watch.html only.
    ============================================================ */
 
 'use strict';
 
 const WATCHPARTY_HOME = 'https://www.watchparty.me/';
-const WATCHPARTY_CREATE_BASE = 'https://www.watchparty.me/create?url=';
+
+/* WatchParty URL attempts, tried in this exact order. */
+const WATCHPARTY_ATTEMPT_URLS = [
+  (encoded) => 'https://www.watchparty.me/create?url=' + encoded, /* 1st */
+  (encoded) => 'https://www.watchparty.me/?url=' + encoded,        /* 2nd */
+  (encoded) => 'https://www.watchparty.me/#url=' + encoded         /* 3rd */
+];
 
 /**
  * Resolve the URL of whatever is currently playing:
@@ -79,38 +110,58 @@ function watchpartyNotice(message, type) {
 }
 
 /**
- * Launch WatchParty:
- *   1) First attempt: the create-with-video flow
- *      https://www.watchparty.me/create?url=ENCODED_VIDEO_URL —
- *      opened in a new tab so playback here keeps running
- *      (nothing breaks if the user closes it or backs out).
- *   2) Fallback (popup blocked / open failed): copy the video
- *      URL to the clipboard automatically, show the notice
- *      "Video link copied. Paste it into WatchParty.", then
- *      redirect to https://www.watchparty.me/
+ * Try to open one WatchParty attempt URL in a new tab.
+ * @returns {Window|null} the opened window, or null when blocked.
+ */
+function watchpartyOpenAttempt(url) {
+  try {
+    const win = window.open(url, '_blank');
+    if (win) {
+      try { win.opener = null; } catch (err) { /* cross-origin — ignore */ }
+    }
+    return win;
+  } catch (err) {
+    return null;
+  }
+}
+
+/**
+ * Launch Watch Party:
+ *   1) Resolve the playing video URL.
+ *   2) Walk the attempt URL list in order until one opens in a
+ *      new tab (create?url= -> ?url= -> #url=).
+ *   3) Autostart can never be confirmed cross-origin, so always:
+ *      copy the URL to the clipboard + show the notice
+ *      "Video link copied. Paste it into WatchParty."
+ *      - tab opened  -> that tab is the redirect (player keeps
+ *                       playing here; nothing breaks)
+ *      - all blocked -> show the message first, then redirect
+ *                       this tab to https://www.watchparty.me/
  */
 async function watchpartyLaunch() {
   const videoUrl = watchpartyResolveVideoUrl();
-  const createUrl = WATCHPARTY_CREATE_BASE + encodeURIComponent(videoUrl);
+  const encoded = encodeURIComponent(videoUrl);
 
+  /* ---- Step 2: the ordered autostart attempts ---- */
   let opened = null;
-  try {
-    opened = window.open(createUrl, '_blank');
-    if (opened) {
-      try { opened.opener = null; } catch (err) { /* cross-origin — ignore */ }
-    }
-  } catch (err) {
-    opened = null;
+  for (let i = 0; i < WATCHPARTY_ATTEMPT_URLS.length; i++) {
+    opened = watchpartyOpenAttempt(WATCHPARTY_ATTEMPT_URLS[i](encoded));
+    if (opened) break; /* this attempt opened — WatchParty has the URL */
   }
 
-  if (opened) return; /* WatchParty create flow is opening — done */
-
-  /* Fallback: clipboard + notice + redirect */
+  /* ---- Step 3: clipboard safety net (autostart unverifiable) ---- */
   const copied = await watchpartyCopyToClipboard(videoUrl);
-  watchpartyNotice(copied
-    ? 'Video link copied. Paste it into WatchParty.'
-    : 'Video link (copy manually): ' + videoUrl);
-  setTimeout(() => { window.location.href = WATCHPARTY_HOME; }, 2600);
+  if (copied) {
+    watchpartyNotice('Video link copied. Paste it into WatchParty.', 'info');
+  } else {
+    watchpartyNotice('Video link (copy manually): ' + videoUrl, 'info');
+  }
+
+  /* No WatchParty tab could be opened at all (popup blocked):
+     after the message, send this tab to WatchParty instead. */
+  if (!opened) {
+    setTimeout(() => { window.location.href = WATCHPARTY_HOME; }, 2600);
+  }
 }
 
 /** Add the Watch Party button next to the Servers picker (idempotent). */

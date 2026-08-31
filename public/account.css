@@ -1,0 +1,296 @@
+/* ============================================================
+   ZEUS — account.css
+   Account dashboard (account.html): profile header + library
+   section cards (Likes / Favorite Movies / Watched Movies /
+   Favorite Series). Reuses the design tokens from style.css
+   so the look stays consistent with the rest of the site.
+   ============================================================ */
+
+.account-container {
+  max-width: 880px;
+  margin: 0 auto;
+}
+
+/* ============================================================
+   PROFILE HEADER CARD
+   ============================================================ */
+.account-profile {
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  padding: 28px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+}
+.account-profile-avatar {
+  width: 68px;
+  height: 68px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, rgba(255, 215, 0, 0.28), rgba(255, 215, 0, 0.06));
+  border: 1px solid rgba(255, 215, 0, 0.45);
+  color: var(--accent-primary);
+  font-size: 28px;
+  font-weight: 800;
+  line-height: 1;
+}
+.account-profile-info {
+  flex: 1;
+  min-width: 0;
+}
+.account-profile-email {
+  font-size: 21px;
+  font-weight: 800;
+  letter-spacing: -0.3px;
+  color: var(--text-primary);
+  word-break: break-all;
+}
+.account-profile-meta {
+  margin-top: 5px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+.account-profile-meta .account-since {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+.account-profile-logout {
+  flex-shrink: 0;
+  padding: 12px 22px;
+  font-size: 13.5px;
+}
+
+/* ============================================================
+   LIBRARY SECTION CARDS
+   ============================================================ */
+.account-sections {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  margin-top: 26px;
+}
+.account-section {
+  padding: 22px 24px 24px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-lg);
+}
+.account-section-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.account-section-title {
+  position: relative;
+  padding-left: 13px;
+  font-size: 19px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  color: var(--text-primary);
+}
+/* Same vertical-bar recipe as the site's .section-title rows */
+.account-section-title::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 8%;
+  width: 4px;
+  height: 84%;
+  background: #e50914;
+  border-radius: 2px;
+}
+.account-count {
+  padding: 4px 12px;
+  border-radius: var(--radius-pill);
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--border-subtle);
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--text-secondary);
+}
+.account-count.is-empty {
+  color: var(--text-tertiary);
+}
+
+/* ---- Item rows ---- */
+.account-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 16px;
+}
+/* Long lists scroll inside the card */
+.account-list.has-items {
+  max-height: 420px;
+  overflow-y: auto;
+  padding-right: 6px;
+}
+.account-list.has-items::-webkit-scrollbar {
+  width: 8px;
+}
+.account-list.has-items::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 8px;
+}
+.account-list.has-items::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.18);
+  border-radius: 8px;
+}
+.account-list.has-items::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.account-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-subtle);
+  transition: background 0.25s ease, border-color 0.25s ease;
+}
+.account-item:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: var(--border-glass);
+}
+.account-item-poster {
+  display: block;
+  width: 44px;
+  flex-shrink: 0;
+  aspect-ratio: 2 / 3;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  background: #1a1a2e;
+}
+.account-item-poster img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.account-item-info {
+  flex: 1;
+  min-width: 0;
+}
+.account-item-title {
+  display: block;
+  font-size: 14.5px;
+  font-weight: 700;
+  color: var(--text-primary);
+  text-decoration: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.account-item-title:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.account-item-meta {
+  margin-top: 3px;
+  font-size: 12.5px;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.account-item-type {
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  background: rgba(255, 255, 255, 0.07);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+.account-item-remove {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  flex-shrink: 0;
+  padding: 8px 14px;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(255, 69, 58, 0.28);
+  background: transparent;
+  color: var(--text-secondary);
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+.account-item-remove svg {
+  width: 14px;
+  height: 14px;
+  fill: currentColor;
+}
+.account-item-remove:hover {
+  background: rgba(255, 69, 58, 0.12);
+  border-color: rgba(255, 69, 58, 0.5);
+  color: #FF6961;
+}
+
+/* ---- Empty state ---- */
+.account-empty {
+  margin-top: 16px;
+  padding: 30px 20px;
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-md);
+  text-align: center;
+}
+.account-empty svg {
+  width: 30px;
+  height: 30px;
+  fill: none;
+  stroke: var(--text-tertiary);
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  margin-bottom: 10px;
+}
+.account-empty p {
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: var(--text-secondary);
+}
+
+/* ============================================================
+   RESPONSIVE
+   ============================================================ */
+@media (max-width: 640px) {
+  .account-profile {
+    flex-direction: column;
+    text-align: center;
+    padding: 26px 18px;
+  }
+  .account-profile-info {
+    width: 100%;
+  }
+  .account-section {
+    padding: 18px 16px 18px;
+  }
+  .account-item {
+    gap: 11px;
+    padding: 9px 10px;
+  }
+  .account-item-poster {
+    width: 38px;
+  }
+  .account-item-remove {
+    padding: 8px 11px;
+  }
+  .account-item-remove span {
+    display: none; /* icon-only Remove on small screens */
+  }
+}

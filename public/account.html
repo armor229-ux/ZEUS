@@ -3,18 +3,18 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>My Watchlist - ZEUS</title>
+  <title>My Account - ZEUS</title>
 
   <!-- SEO Meta Tags -->
-  <meta name="description" content="Your personal ZEUS watchlist — every movie and TV show you saved, ready to stream online free in HD.">
+  <meta name="description" content="Your ZEUS account — likes, favorite movies, watched movies and favorite series, saved locally in your browser.">
   <meta name="robots" content="noindex, follow">
   <meta name="theme-color" content="#000000">
 
   <!-- Open Graph Tags -->
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="ZEUS">
-  <meta property="og:title" content="My Watchlist - ZEUS">
-  <meta property="og:description" content="Every movie and TV show you saved, ready to stream online free in HD.">
+  <meta property="og:title" content="My Account - ZEUS">
+  <meta property="og:description" content="Your ZEUS account — likes, favorite movies, watched movies and favorite series.">
 
   <!-- Twitter Card -->
   <meta name="twitter:card" content="summary_large_image">
@@ -26,14 +26,6 @@
 
   <!-- Performance: warm connections to external origins -->
   <link rel="preconnect" href="https://image.tmdb.org">
-  <link rel="dns-prefetch" href="https://vidsrc.xyz">
-  <link rel="dns-prefetch" href="https://inv.nadeko.net">
-  <link rel="dns-prefetch" href="https://yewtu.be">
-  <link rel="dns-prefetch" href="https://invidious.nerdvpn.de">
-  <link rel="dns-prefetch" href="https://iv.ggtyler.dev">
-  <link rel="dns-prefetch" href="https://invidious.f5.si">
-  <link rel="dns-prefetch" href="https://iv.melmac.space">
-  <link rel="dns-prefetch" href="https://api.themoviedb.org">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 
@@ -42,14 +34,10 @@
 
   <!-- Styles -->
   <link rel="stylesheet" href="style.css?v=2.7">
+  <link rel="stylesheet" href="account.css?v=3.0">
 
   <!-- Smooth menu transitions: arrived via an in-site nav? hide the black loader from first paint -->
   <script>try{if(sessionStorage.getItem('zeus_nav_transition')==='1')document.documentElement.classList.add('no-page-loader')}catch(e){}</script>
-  <!-- Adsterra Social Bar -->
-  <script src="https://pl31074978.profitableratecpmnetwork.com/5b/7f/22/5b7f22ede7d8a6ba8985f7ae6f0fee5d.js"></script>
-
-  <!-- Adsterra Popunder -->
-  <script src="https://pl31074980.profitableratecpmnetwork.com/53/a6/6e/53a66e7f76455d567a95800c6705deda.js"></script>
 </head>
 <body>
 
@@ -117,12 +105,12 @@
             </ul>
           </li>
           <li><a href="browse.html?type=top" class="nav-link" data-nav="top">Top IMDB</a></li>
-          <li><a href="watchlist.html" class="nav-link active" data-nav="watchlist">Watchlist</a></li>
+          <li><a href="watchlist.html" class="nav-link" data-nav="watchlist">Watchlist</a></li>
         </ul>
       </nav>
 
       <div class="nav-actions">
-        <a href="watchlist.html" class="search-toggle watchlist-toggle active" aria-label="Your watchlist" title="Your Watchlist">
+        <a href="watchlist.html" class="search-toggle watchlist-toggle" aria-label="Your watchlist" title="Your Watchlist">
           <svg viewBox="0 0 24 24"><path d="M17 3H7a2 2 0 0 0-2 2v16l7-3 7 3V5a2 2 0 0 0-2-2z"/></svg>
         </a>
         <a href="search.html" class="search-toggle" aria-label="Search movies and TV shows">
@@ -135,22 +123,70 @@
     </div>
   </header>
 
-  <!-- ==================== WATCHLIST PAGE ==================== -->
-  <main class="browse-page watchlist-page">
-    <div class="container">
+  <!-- ==================== ACCOUNT PAGE ==================== -->
+  <main class="browse-page account-page">
+    <div class="container account-container">
 
       <div class="browse-header">
-        <h1 id="watchlist-title"><span class="title-bar"></span>My Watchlist</h1>
-        <div class="watchlist-header-row">
-          <p class="browse-subtitle" id="watchlist-subtitle">Your saved movies and TV shows appear here.</p>
-          <button class="btn btn-outline btn-clear-watchlist" id="clear-watchlist-btn" type="button" hidden>
-            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 19a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
-            Clear All
-          </button>
-        </div>
+        <h1 id="account-page-title"><span class="title-bar"></span>My Account</h1>
+        <p class="browse-subtitle" id="account-page-subtitle">Your likes, favorites and watched titles — saved locally in this browser.</p>
       </div>
 
-      <div class="movies-grid" id="watchlist-grid"></div>
+      <!-- Signed-out notice (account.js replaces the dashboard with it) -->
+      <div class="auth-card" id="account-signedout" hidden>
+        <p class="auth-message visible auth-message--error" role="status">Please sign in to view your account.</p>
+        <a class="btn btn-primary auth-submit" href="login.html">Go to Login</a>
+      </div>
+
+      <!-- ============ Profile header ============ -->
+      <div class="account-profile" id="account-profile" hidden>
+        <div class="account-profile-avatar" id="account-avatar" aria-hidden="true"></div>
+        <div class="account-profile-info">
+          <h2 class="account-profile-email" id="account-email"></h2>
+          <p class="account-profile-meta" id="account-member-since"></p>
+        </div>
+        <button class="btn btn-outline account-profile-logout" id="account-logout-btn" type="button">
+          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.59L17 17l5-5-5-5zM4 5h8V3H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h8v-2H4V5z"/></svg>
+          Log Out
+        </button>
+      </div>
+
+      <!-- ============ Library sections ============ -->
+      <div class="account-sections" id="account-sections" hidden>
+
+        <section class="account-section" aria-labelledby="account-likes-title">
+          <div class="account-section-head">
+            <h2 class="account-section-title" id="account-likes-title">Likes</h2>
+            <span class="account-count" id="account-likes-count">(0)</span>
+          </div>
+          <div class="account-list" id="account-likes-list"></div>
+        </section>
+
+        <section class="account-section" aria-labelledby="account-favmovies-title">
+          <div class="account-section-head">
+            <h2 class="account-section-title" id="account-favmovies-title">Favorite Movies</h2>
+            <span class="account-count" id="account-favmovies-count">(0)</span>
+          </div>
+          <div class="account-list" id="account-favmovies-list"></div>
+        </section>
+
+        <section class="account-section" aria-labelledby="account-watched-title">
+          <div class="account-section-head">
+            <h2 class="account-section-title" id="account-watched-title">Watched Movies</h2>
+            <span class="account-count" id="account-watched-count">(0)</span>
+          </div>
+          <div class="account-list" id="account-watched-list"></div>
+        </section>
+
+        <section class="account-section" aria-labelledby="account-favseries-title">
+          <div class="account-section-head">
+            <h2 class="account-section-title" id="account-favseries-title">Favorite Series</h2>
+            <span class="account-count" id="account-favseries-count">(0)</span>
+          </div>
+          <div class="account-list" id="account-favseries-list"></div>
+        </section>
+
+      </div>
 
     </div>
   </main>
@@ -208,10 +244,11 @@
           <h3 class="footer-title">Help</h3>
           <ul class="footer-links">
             <li><a href="search.html">Search</a></li>
+            <li><a href="login.html">Login</a></li>
+            <li><a href="account.html">Account</a></li>
             <li><a href="dmca.html">DMCA</a></li>
             <li><a href="terms.html">Terms of Service</a></li>
             <li><a href="privacy.html">Privacy Policy</a></li>
-            <li><a href="#">Contact</a></li>
           </ul>
         </div>
       </div>
@@ -250,5 +287,6 @@
   <script src="watchlist.js?v=2.7"></script>
   <script src="auth.js?v=3.1"></script>
   <script src="library.js?v=3.0"></script>
+  <script src="account.js?v=3.0"></script>
 </body>
 </html>
