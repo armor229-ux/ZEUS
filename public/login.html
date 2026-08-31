@@ -3,18 +3,18 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Privacy Policy - ZEUS</title>
+  <title>Login - ZEUS</title>
 
   <!-- SEO Meta Tags -->
-  <meta name="description" content="ZEUS privacy policy: no accounts, no personal data collection. Only localStorage is used for your watchlist. Third-party players may collect their own data.">
+  <meta name="description" content="Sign in or create a free local ZEUS account — stored in your browser only.">
   <meta name="robots" content="noindex, follow">
   <meta name="theme-color" content="#000000">
 
   <!-- Open Graph Tags -->
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="ZEUS">
-  <meta property="og:title" content="Privacy Policy - ZEUS">
-  <meta property="og:description" content="No accounts, no personal data collection. Only localStorage for your watchlist.">
+  <meta property="og:title" content="Login - ZEUS">
+  <meta property="og:description" content="Sign in or create a free local ZEUS account — stored in your browser only.">
 
   <!-- Twitter Card -->
   <meta name="twitter:card" content="summary_large_image">
@@ -42,6 +42,7 @@
 
   <!-- Styles -->
   <link rel="stylesheet" href="style.css?v=2.7">
+  <link rel="stylesheet" href="auth.css?v=3.0">
 
   <!-- Smooth menu transitions: arrived via an in-site nav? hide the black loader from first paint -->
   <script>try{if(sessionStorage.getItem('zeus_nav_transition')==='1')document.documentElement.classList.add('no-page-loader')}catch(e){}</script>
@@ -87,9 +88,9 @@
 
       <nav class="nav-menu" id="nav-menu" aria-label="Main navigation">
         <ul class="nav-links">
-          <li><a href="index.html" class="nav-link">Home</a></li>
-          <li><a href="browse.html?type=movie" class="nav-link">Movies</a></li>
-          <li><a href="browse.html?type=tv" class="nav-link">TV Shows</a></li>
+          <li><a href="index.html" class="nav-link" data-nav="home">Home</a></li>
+          <li><a href="browse.html?type=movie" class="nav-link" data-nav="movie">Movies</a></li>
+          <li><a href="browse.html?type=tv" class="nav-link" data-nav="tv">TV Shows</a></li>
           <li class="nav-dropdown">
             <button class="nav-link dropdown-toggle" type="button" aria-expanded="false" aria-haspopup="true">
               Genre
@@ -116,8 +117,9 @@
               <li role="none"><a role="menuitem" href="browse.html?genre=37">Western</a></li>
             </ul>
           </li>
-          <li><a href="browse.html?type=top" class="nav-link">Top IMDB</a></li>
+          <li><a href="browse.html?type=top" class="nav-link" data-nav="top">Top IMDB</a></li>
           <li><a href="watchlist.html" class="nav-link" data-nav="watchlist">Watchlist</a></li>
+          <li><a href="login.html" class="nav-link active" data-nav="login">Login</a></li>
         </ul>
       </nav>
 
@@ -135,110 +137,92 @@
     </div>
   </header>
 
-  <!-- ==================== PRIVACY POLICY PAGE ==================== -->
-  <main class="legal-page">
-    <div class="container">
+  <!-- ==================== LOGIN / ACCOUNT PAGE ==================== -->
+  <main class="browse-page login-page">
+    <div class="container login-container">
 
-      <div class="legal-header">
-        <h1><span class="title-bar"></span>Privacy Policy</h1>
-        <p class="legal-subtitle">
-          How ZEUS handles (and does not collect) your data. The short version: no accounts,
-          no sign-ups, no personal information.
-        </p>
-        <span class="legal-meta">
-          <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor" aria-hidden="true"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
-          Last updated: January 2026
-        </span>
+      <div class="browse-header">
+        <h1 id="login-title"><span class="title-bar"></span>Login</h1>
+        <p class="browse-subtitle" id="login-subtitle">Sign in, create a local account, or generate one instantly — stored in this browser only, no server involved.</p>
       </div>
 
-      <div class="legal-body">
-
-        <h2><span class="title-bar"></span>1. No Accounts, No Personal Data</h2>
-        <p>
-          ZEUS has <strong>no user accounts, no registration and no sign-up forms</strong>. At no point do we
-          ask for, collect, store or process personal information such as your name, email address,
-          phone number, payment details or date of birth. You can browse, search and play content
-          on ZEUS entirely anonymously.
-        </p>
-        <p>
-          We also do not run our own analytics, advertising networks, tracking pixels or
-          fingerprinting scripts on this site. The site is a static front-end: your browser
-          fetches pages and public movie data (from the TMDB API), and that is the whole story.
-        </p>
-
-        <h2><span class="title-bar"></span>2. Local Storage (Watchlist &amp; Preferences)</h2>
-        <p>
-          The only data ZEUS saves lives <strong>inside your own browser</strong>, in a feature called
-          localStorage. This data never leaves your device and is never transmitted to us. We use it for:
-        </p>
-        <ul>
-          <li><strong>Your Watchlist</strong> — the movies and TV shows you save with the heart button are kept
-            in your browser under the key <code>streamverse_watchlist</code>, so your list is still there the next
-            time you visit.</li>
-          <li><strong>Disclaimer dismissal</strong> — once you close the disclaimer banner at the top of the
-            page, we remember that choice (key <code>streamverse_disclaimer_dismissed</code>) so it does not
-            appear again.</li>
-        </ul>
-        <p>
-          You can clear this data at any time through your browser settings ("Clear browsing data &rarr;
-          Cookies and other site data"), or by using the <strong>Clear All</strong> button on the Watchlist page.
-        </p>
-
-        <h2><span class="title-bar"></span>3. Third-Party Embed Players</h2>
-        <p>
-          Video playback is provided by independent third-party embed services (for example
-          <strong>vidsrc.to, vidsrc.cc, vidsrc.su, multiembed.mov and player.autoembed.cc</strong>). When you
-          open the watch page, an iframe connects your browser <strong>directly to those providers</strong>.
-        </p>
-        <p>
-          <strong>These providers are separate companies and may collect their own data</strong> — such as your
-          IP address, device information, or cookies — in accordance with their own privacy policies.
-          ZEUS does not control that collection and is not responsible for it. If you prefer to avoid
-          third-party data collection entirely, do not open the video player. Also note that Google Fonts
-          (used for typography) receives your IP address to serve font files.
-        </p>
-
-        <h2><span class="title-bar"></span>4. Cookies Notice</h2>
-        <p>
-          ZEUS itself sets <strong>no tracking cookies</strong>. We only use localStorage as described above,
-          which is technically similar to a cookie in that it is stored on your device, but it is
-          never sent to our servers with requests. Third-party embed players may set their own
-          cookies when you press play, as noted in the previous section.
-        </p>
-
-        <h2><span class="title-bar"></span>5. TMDB API</h2>
-        <p>
-          Movie and TV metadata (titles, posters, overviews, ratings, cast lists) is fetched live from
-          The Movie Database (TMDB) API. Your browser sends requests to TMDB's servers to retrieve this
-          public data. TMDB may log those requests like any web server does. ZEUS is not endorsed or
-          certified by TMDB.
-        </p>
-
-        <h2><span class="title-bar"></span>6. Children's Privacy</h2>
-        <p>
-          ZEUS is a general-audience discovery site and does not knowingly collect any personal
-          information from anyone, including children under 13. Since no personal data is collected
-          at all, no such data is stored or shared. Parents concerned about third-party players should
-          supervise playback, as those services operate under their own policies.
-        </p>
-
-        <h2><span class="title-bar"></span>7. Changes to This Policy</h2>
-        <p>
-          If this policy changes, the updated version will be posted on this page with a revised
-          "Last updated" date. Since the site collects no personal data, significant privacy changes
-          are not expected.
-        </p>
-
-        <div class="legal-card contact">
-          <h3>Questions?</h3>
-          <p>If you have questions about this privacy policy, contact us at:</p>
-          <a class="legal-email" href="mailto:privacy@zeus.example">
-            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M20 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2zm0 4-8 5-8-5V6l8 5 8-5v2z"/></svg>
-            privacy@zeus.example
-          </a>
+      <!-- ============ Signed-out view: Sign In / Sign Up / Generate ============ -->
+      <div class="auth-card" id="auth-card">
+        <div class="auth-tabs" role="tablist" aria-label="Account access">
+          <button class="auth-tab active" id="tab-signin" role="tab" aria-selected="true" type="button">Sign In</button>
+          <button class="auth-tab" id="tab-signup" role="tab" aria-selected="false" type="button">Sign Up</button>
         </div>
 
+        <!-- Sign In -->
+        <form class="auth-form" id="signin-form" novalidate>
+          <label class="auth-label" for="signin-email">Email</label>
+          <input class="auth-input" id="signin-email" name="email" type="email" autocomplete="email" placeholder="you@example.com">
+          <label class="auth-label" for="signin-password">Password</label>
+          <input class="auth-input" id="signin-password" name="password" type="password" autocomplete="current-password" placeholder="Your password">
+          <button class="btn btn-primary auth-submit" id="signin-submit" type="submit">
+            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M11 7 9.6 8.4 12.2 11H3v2h9.2l-2.6 2.6L11 17l5-5-5-5zm2-4h-9a2 2 0 0 0-2 2v4h2V5h9v14h-9v-4H2v4a2 2 0 0 0 2 2h9a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2z"/></svg>
+            Sign In
+          </button>
+        </form>
+
+        <!-- Sign Up -->
+        <form class="auth-form" id="signup-form" hidden novalidate>
+          <label class="auth-label" for="signup-email">Email</label>
+          <input class="auth-input" id="signup-email" name="email" type="email" autocomplete="email" placeholder="you@example.com">
+          <label class="auth-label" for="signup-password">Password (minimum 8 characters)</label>
+          <input class="auth-input" id="signup-password" name="password" type="password" autocomplete="new-password" placeholder="Create a password">
+          <button class="btn btn-primary auth-submit" id="signup-submit" type="submit">
+            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M15 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm-9-2V7H4v3H1v2h3v3h2v-3h3v-2H6zm9 4c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+            Create Account
+          </button>
+        </form>
+
+        <div class="auth-divider"><span>or</span></div>
+
+        <!-- Generate Local Account -->
+        <button class="btn btn-glass auth-generate" id="generate-btn" type="button">
+          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="m19 9 1.25-2.75L23 5l-2.75-1.25L19 1l-1.25 2.75L15 5l2.75 1.25zm-7.5.5L9 4 6.5 9.5 1 12l5.5 2.5L9 20l2.5-5.5L17 12zM19 15l-1.25 2.75L15 19l2.75 1.25L19 23l1.25-2.75L23 19l-2.75-1.25z"/></svg>
+          Generate Local Account
+        </button>
+
+        <!-- Inline messages -->
+        <p class="auth-message" id="auth-message" role="status" aria-live="polite"></p>
       </div>
+
+      <!-- ============ Signed-in view: account + log out ============ -->
+      <div class="auth-card auth-account-card" id="account-card" hidden>
+        <div class="auth-account-avatar" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 3a3.5 3.5 0 1 1 0 7 3.5 3.5 0 0 1 0-7zm0 15.5a8.03 8.03 0 0 1-5.66-2.33c.9-1.62 2.62-2.67 4.56-2.67h2.2c1.94 0 3.66 1.05 4.56 2.67A8.03 8.03 0 0 1 12 20.5z"/></svg>
+        </div>
+        <h2 class="auth-account-email" id="account-email"></h2>
+        <p class="auth-account-meta" id="account-meta"></p>
+        <div class="auth-account-actions">
+          <button class="btn btn-outline" id="logout-btn" type="button">
+            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.59L17 17l5-5-5-5zM4 5h8V3H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h8v-2H4V5z"/></svg>
+            Log Out
+          </button>
+        </div>
+      </div>
+
+      <!-- Generated credentials (standalone — stays visible after the
+           auto-login so the user can read and copy them) -->
+      <div class="auth-generated" id="auth-generated" hidden>
+        <p class="auth-generated-title">Your generated account</p>
+        <div class="auth-generated-row">
+          <span class="auth-generated-label">Email</span>
+          <code id="generated-email"></code>
+        </div>
+        <div class="auth-generated-row">
+          <span class="auth-generated-label">Password</span>
+          <code id="generated-password"></code>
+        </div>
+        <button class="btn btn-outline auth-copy-btn" id="generated-copy-btn" type="button">
+          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M16 1H4a2 2 0 0 0-2 2v14h2V3h12V1zm3 4H8a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2zm0 16H8V7h11v14z"/></svg>
+          Copy
+        </button>
+        <p class="auth-generated-hint">Save these credentials — accounts are stored locally in this browser and the password is shown only here.</p>
+      </div>
+
     </div>
   </main>
 
@@ -249,8 +233,8 @@
         <div class="footer-brand">
           <a href="index.html" class="nav-logo" aria-label="ZEUS homepage"><img src="logo.svg" alt="ZEUS" class="nav-logo-img" loading="lazy" decoding="async"></a>
           <p class="footer-desc">
-            Your ultimate destination to discover movies and TV shows online for free in HD.
-            Find trending titles, top-rated classics and the latest episodes — all in one place.
+            Your ultimate destination to stream movies and TV shows online for free in HD.
+            Discover trending titles, top-rated classics and the latest episodes — all in one place.
           </p>
           <div class="footer-social">
             <a href="#" class="social-link" aria-label="Facebook">
@@ -295,10 +279,10 @@
           <h3 class="footer-title">Help</h3>
           <ul class="footer-links">
             <li><a href="search.html">Search</a></li>
+            <li><a href="login.html">Login</a></li>
             <li><a href="dmca.html">DMCA</a></li>
             <li><a href="terms.html">Terms of Service</a></li>
             <li><a href="privacy.html">Privacy Policy</a></li>
-            <li><a href="#">Contact</a></li>
           </ul>
         </div>
       </div>
@@ -335,7 +319,7 @@
   <script src="config.js?v=2.7"></script>
   <script src="api.js?v=2.7"></script>
   <script src="watchlist.js?v=2.7"></script>
-  <script src="legal.js?v=2.7"></script>
   <script src="auth.js?v=3.0"></script>
+  <script src="login.js?v=3.0"></script>
 </body>
 </html>

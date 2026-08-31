@@ -1,6 +1,26 @@
 # Project Worklog
 
 ---
+Task ID: 2
+Agent: Z.ai Code (main agent)
+Task: Add exactly 3 features to ZEUS (as-is, no refactoring): (1) Login page with local accounts (localStorage + Web Crypto SHA-256), (2) "Generate Local Account" button with auto-login + copy, (3) Watch Party button on the playback page redirecting to watchparty.me.
+
+Work Log:
+- Detected stack: plain HTML/CSS/JS multi-page site (classic scripts, global functions, one style.css). Followed repo patterns: page scripts call initCommonUI() at DOMContentLoaded; watchlist.js provides global showToast(); .nav-menu/.nav-links powers desktop nav AND mobile drawer; .chrome-btn styles the player-chrome buttons.
+- Created public/auth.js: auth utilities — localStorage keys zeus_users [{id,email,passwordHash,createdAt}] and zeus_current_user {id,email,loginAt}; SHA-256(email+":"+password) via Web Crypto; signUp/signIn/signOut/generateLocalAccount; injects Login/Account link into #nav-menu .nav-links on every page; storage + custom-event sync.
+- Created public/auth.css: login page card/tabs/inputs/messages (reusing style.css :root tokens and .search-input focus recipe) + .chrome-btn--watchparty variant (ZEUS lightning-yellow accent).
+- Created public/login.html: cloned watchlist.html skeleton (loader, disclaimer, navbar with active Login link, footer, back-to-top); auth card with Sign In/Sign Up tabs, Generate Local Account button, standalone generated-credentials panel + Copy; signed-in account card with Log Out.
+- Created public/login.js: tab switching, validation messages (inline, role=status), sign in/up/logout handlers, generate flow (user-XXXXXXXX@local.zeus + 12–16 alphanum password), copy single line "email: ...  password: ..."; calls initCommonUI() like every other page script (fixed the page-loader not dismissing).
+- Created public/watchparty.js: injects "Watch Party" chrome-btn into #player-shell .chrome-right on watch.html; resolves video URL (HTML5 video.currentSrc/src → #player-frame src → location.href); primary: window.open watchparty.me/create?url=ENCODED (new tab keeps playback intact, opener severed); fallback when open blocked: clipboard copy (+execCommand fallback) → toast "Video link copied. Paste it into WatchParty." → redirect to watchparty.me after 2.6s.
+- Edited 10 existing HTML files with ONE script line each (auth.js?v=3.0 after the last script); watch.html additionally got watchparty.js?v=3.0. Verified with diff -r vs pristine: ONLY additions, zero modifications to existing lines.
+- Browser-verified end-to-end: signup validation (empty/email-format/<8/duplicate), auto-login, hash matches SHA-256(email:password) with no plaintext in storage, sign-in (wrong + correct), logout, generate (format user-8wkxocfk@local.zeus, 16-char pw, panel stays visible after auto-login), copy exact single-line format, nav link state on all 11 pages + mobile drawer, Watch Party click opened watchparty.me/create?url=... (WatchParty created a real room), ZEUS playback tab fully intact afterwards, popup-blocked fallback produced copy + exact toast + redirect. No console/page errors; dev.log clean.
+
+Stage Summary:
+- 5 new files: auth.js, auth.css, login.html, login.js, watchparty.js (all in public/ = repo root).
+- 10 modified files: index/browse/search/movie/tv/watch/watchlist/privacy/terms/dmca .html — 1 added script line each (watch.html: 2 lines). No other changes to any existing file.
+- Features verified working in browser. Awaiting further explicit instructions.
+
+---
 Task ID: 1
 Agent: Z.ai Code (main agent)
 Task: Serve the uploaded ZEUS-main.zip project exactly as it exists — no regeneration, no refactoring, no structural changes (per user's Universal Protection Prompt).
