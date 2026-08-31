@@ -1,0 +1,2292 @@
+{
+  "A": {},
+  "B": {},
+  "C": {
+    "onError": true,
+    "onReady": true,
+    "onStateChange": true
+  },
+  "addCueRange": {},
+  "clearVideo": {},
+  "closure_uid_730168503": 1,
+  "cuePlaylist": {},
+  "cueVideoById": {},
+  "cueVideoByUrl": {},
+  "getApiInterface": {},
+  "getAvailablePlaybackRates": {},
+  "getAvailableQualityLevels": {},
+  "getCurrentTime": {},
+  "getDebugText": {},
+  "getDuration": {},
+  "getMediaReferenceTime": {},
+  "getPlaybackQuality": {},
+  "getPlaybackRate": {},
+  "getPlayerMode": {},
+  "getPlayerState": {},
+  "getPlaylist": {},
+  "getPlaylistId": {},
+  "getPlaylistIndex": {},
+  "getSize": {},
+  "getSphericalProperties": {},
+  "getVideoBytesLoaded": {},
+  "getVideoBytesTotal": {},
+  "getVideoData": {},
+  "getVideoLoadedFraction": {},
+  "getVideoStartBytes": {},
+  "getVideoUrl": {},
+  "getVolume": {},
+  "h": {},
+  "hideVideoInfo": {},
+  "i": 9,
+  "id": 1,
+  "isMuted": {},
+  "isVideoInfoVisible": {},
+  "j": {
+    "A": 10,
+    "B": false,
+    "h": [
+      null,
+      "onReady",
+      {},
+      null,
+      "onStateChange",
+      {},
+      null,
+      "onError",
+      {},
+      null
+    ],
+    "i": {
+      "onError": [
+        7
+      ],
+      "onReady": [
+        1
+      ],
+      "onStateChange": [
+        4
+      ]
+    },
+    "j": false,
+    "m": [],
+    "u": 0
+  },
+  "l": {},
+  "loadModule": {},
+  "loadPlaylist": {},
+  "loadVideoById": {},
+  "loadVideoByUrl": {},
+  "logImaAdEvent": {},
+  "m": [],
+  "mute": {},
+  "mutedAutoplay": {},
+  "nextVideo": {},
+  "options": {
+    "events": {
+      "onError": {},
+      "onReady": {},
+      "onStateChange": {}
+    },
+    "height": "100%",
+    "host": "https://www.youtube.com",
+    "playerVars": {
+      "controls": 1,
+      "modestbranding": 1,
+      "playsinline": 1,
+      "rel": 0
+    },
+    "title": "video player",
+    "videoId": "dQw4w9WgXcQ",
+    "width": "100%"
+  },
+  "pauseVideo": {},
+  "playVideo": {},
+  "playVideoAt": {},
+  "playerInfo": {
+    "apiInterface": [
+      "cueVideoById",
+      "loadVideoById",
+      "cueVideoByUrl",
+      "loadVideoByUrl",
+      "playVideo",
+      "pauseVideo",
+      "stopVideo",
+      "clearVideo",
+      "getVideoBytesLoaded",
+      "getVideoBytesTotal",
+      "getVideoLoadedFraction",
+      "getVideoStartBytes",
+      "cuePlaylist",
+      "loadPlaylist",
+      "nextVideo",
+      "previousVideo",
+      "playVideoAt",
+      "setShuffle",
+      "setLoop",
+      "getPlaylist",
+      "getPlaylistIndex",
+      "getPlaylistId",
+      "loadModule",
+      "unloadModule",
+      "setOption",
+      "getOption",
+      "getOptions",
+      "mute",
+      "unMute",
+      "isMuted",
+      "setVolume",
+      "getVolume",
+      "seekTo",
+      "getPlayerMode",
+      "getPlayerState",
+      "getAvailablePlaybackRates",
+      "getPlaybackQuality",
+      "setPlaybackQuality",
+      "getAvailableQualityLevels",
+      "getCurrentTime",
+      "getDuration",
+      "addEventListener",
+      "removeEventListener",
+      "getDebugText",
+      "getVideoData",
+      "addCueRange",
+      "removeCueRange",
+      "setSize",
+      "getApiInterface",
+      "destroy",
+      "mutedAutoplay",
+      "getVideoEmbedCode",
+      "getVideoUrl",
+      "getMediaReferenceTime",
+      "getSize",
+      "setFauxFullscreen",
+      "setCenterCrop",
+      "logImaAdEvent",
+      "preloadVideoById",
+      "wakeUpControls",
+      "showVideoInfo",
+      "hideVideoInfo",
+      "isVideoInfoVisible",
+      "getPlaybackRate",
+      "setPlaybackRate",
+      "getSphericalProperties",
+      "setSphericalProperties"
+    ],
+    "availablePlaybackRates": [
+      0.25,
+      0.5,
+      0.75,
+      1,
+      1.25,
+      1.5,
+      1.75,
+      2
+    ],
+    "availableQualityLevels": [],
+    "currentTime": 0,
+    "currentTimeLastUpdated_": 1788210640.392,
+    "debugText": "{\n  \"debug_videoId\": \"dQw4w9WgXcQ\",\n  \"debug_playbackQuality\": \"unknown\",\n  \"debug_date\": \"Mon Aug 31 2026 21:10:40 GMT+0000 (Coordinated Universal Time)\",\n  \"origin\": \"https://www.youtube.com\",\n  \"timestamp\": 1788210640392\n}",
+    "duration": 214,
+    "mediaReferenceTime": 0,
+    "muted": false,
+    "option": null,
+    "options": [],
+    "playbackQuality": "unknown",
+    "playbackRate": 1,
+    "playerMode": {},
+    "playerState": 5,
+    "playlist": null,
+    "playlistId": null,
+    "playlistIndex": -1,
+    "size": {
+      "height": 478,
+      "width": 850
+    },
+    "sphericalProperties": {},
+    "videoBytesLoaded": 0,
+    "videoBytesTotal": 1,
+    "videoData": {
+      "allowLiveDvr": false,
+      "author": "",
+      "backgroundable": false,
+      "cpn": "iGLbR79IHUtEa0Km",
+      "errorCode": null,
+      "hasProgressBarBoundaries": false,
+      "isListed": false,
+      "isLive": false,
+      "isManifestless": false,
+      "isMultiChannelAudio": false,
+      "isPlayable": true,
+      "isPremiere": false,
+      "isSeekable": null,
+      "isWindowedLive": false,
+      "itct": "CAAQru4BIhMIzofy3-PLlgMVDGT1BR29Rx2eygEEjNeyzw==",
+      "paidContentOverlayDurationMs": 0,
+      "playerResponseCpn": "",
+      "progressBarEndPositionUtcTimeMillis": null,
+      "progressBarStartPositionUtcTimeMillis": null,
+      "title": "Rick Astley - Never Gonna Give You Up (Official Video) (4K Remaster)",
+      "video_id": "dQw4w9WgXcQ"
+    },
+    "videoEmbedCode": "<iframe width=\"850\" height=\"478\" src=\"https://www.youtube.com/embed/dQw4w9WgXcQ\" title=\"Rick Astley - Never Gonna Give You Up (Official Video) (4K Remaster)\" frameborder=\"0\" allow=\"accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share\" referrerpolicy=\"strict-origin-when-cross-origin\" allowfullscreen></iframe>",
+    "videoInfoVisible": false,
+    "videoLoadedFraction": 0,
+    "videoStartBytes": 0,
+    "videoUrl": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+    "volume": 100
+  },
+  "preloadVideoById": {},
+  "previousVideo": {},
+  "removeCueRange": {},
+  "removeEventListener": {},
+  "seekTo": {},
+  "setCenterCrop": {},
+  "setFauxFullscreen": {},
+  "setLoop": {},
+  "setOption": {},
+  "setPlaybackQuality": {},
+  "setPlaybackRate": {},
+  "setShuffle": {},
+  "setSphericalProperties": {},
+  "setVolume": {},
+  "showVideoInfo": {},
+  "stopVideo": {},
+  "u": true,
+  "unMute": {},
+  "unloadModule": {},
+  "v": {},
+  "videoTitle": "Rick Astley - Never Gonna Give You Up (Official Video) (4K Remaster)",
+  "wakeUpControls": {}
+}
+{
+  "A": {},
+  "B": {},
+  "C": {
+    "onError": true,
+    "onReady": true,
+    "onStateChange": true
+  },
+  "addCueRange": {},
+  "clearVideo": {},
+  "closure_uid_730168503": 1,
+  "cuePlaylist": {},
+  "cueVideoById": {},
+  "cueVideoByUrl": {},
+  "getApiInterface": {},
+  "getAvailablePlaybackRates": {},
+  "getAvailableQualityLevels": {},
+  "getCurrentTime": {},
+  "getDebugText": {},
+  "getDuration": {},
+  "getMediaReferenceTime": {},
+  "getPlaybackQuality": {},
+  "getPlaybackRate": {},
+  "getPlayerMode": {},
+  "getPlayerState": {},
+  "getPlaylist": {},
+  "getPlaylistId": {},
+  "getPlaylistIndex": {},
+  "getSize": {},
+  "getSphericalProperties": {},
+  "getVideoBytesLoaded": {},
+  "getVideoBytesTotal": {},
+  "getVideoData": {},
+  "getVideoLoadedFraction": {},
+  "getVideoStartBytes": {},
+  "getVideoUrl": {},
+  "getVolume": {},
+  "h": {},
+  "hideVideoInfo": {},
+  "i": 9,
+  "id": 1,
+  "isMuted": {},
+  "isVideoInfoVisible": {},
+  "j": {
+    "A": 10,
+    "B": false,
+    "h": [
+      null,
+      "onReady",
+      {},
+      null,
+      "onStateChange",
+      {},
+      null,
+      "onError",
+      {},
+      null
+    ],
+    "i": {
+      "onError": [
+        7
+      ],
+      "onReady": [
+        1
+      ],
+      "onStateChange": [
+        4
+      ]
+    },
+    "j": false,
+    "m": [],
+    "u": 0
+  },
+  "l": {},
+  "loadModule": {},
+  "loadPlaylist": {},
+  "loadVideoById": {},
+  "loadVideoByUrl": {},
+  "logImaAdEvent": {},
+  "m": [],
+  "mute": {},
+  "mutedAutoplay": {},
+  "nextVideo": {},
+  "options": {
+    "events": {
+      "onError": {},
+      "onReady": {},
+      "onStateChange": {}
+    },
+    "height": "100%",
+    "host": "https://www.youtube.com",
+    "playerVars": {
+      "controls": 1,
+      "modestbranding": 1,
+      "playsinline": 1,
+      "rel": 0
+    },
+    "title": "video player",
+    "videoId": "dQw4w9WgXcQ",
+    "width": "100%"
+  },
+  "pauseVideo": {},
+  "playVideo": {},
+  "playVideoAt": {},
+  "playerInfo": {
+    "apiInterface": [
+      "cueVideoById",
+      "loadVideoById",
+      "cueVideoByUrl",
+      "loadVideoByUrl",
+      "playVideo",
+      "pauseVideo",
+      "stopVideo",
+      "clearVideo",
+      "getVideoBytesLoaded",
+      "getVideoBytesTotal",
+      "getVideoLoadedFraction",
+      "getVideoStartBytes",
+      "cuePlaylist",
+      "loadPlaylist",
+      "nextVideo",
+      "previousVideo",
+      "playVideoAt",
+      "setShuffle",
+      "setLoop",
+      "getPlaylist",
+      "getPlaylistIndex",
+      "getPlaylistId",
+      "loadModule",
+      "unloadModule",
+      "setOption",
+      "getOption",
+      "getOptions",
+      "mute",
+      "unMute",
+      "isMuted",
+      "setVolume",
+      "getVolume",
+      "seekTo",
+      "getPlayerMode",
+      "getPlayerState",
+      "getAvailablePlaybackRates",
+      "getPlaybackQuality",
+      "setPlaybackQuality",
+      "getAvailableQualityLevels",
+      "getCurrentTime",
+      "getDuration",
+      "addEventListener",
+      "removeEventListener",
+      "getDebugText",
+      "getVideoData",
+      "addCueRange",
+      "removeCueRange",
+      "setSize",
+      "getApiInterface",
+      "destroy",
+      "mutedAutoplay",
+      "getVideoEmbedCode",
+      "getVideoUrl",
+      "getMediaReferenceTime",
+      "getSize",
+      "setFauxFullscreen",
+      "setCenterCrop",
+      "logImaAdEvent",
+      "preloadVideoById",
+      "wakeUpControls",
+      "showVideoInfo",
+      "hideVideoInfo",
+      "isVideoInfoVisible",
+      "getPlaybackRate",
+      "setPlaybackRate",
+      "getSphericalProperties",
+      "setSphericalProperties"
+    ],
+    "availablePlaybackRates": [
+      0.25,
+      0.5,
+      0.75,
+      1,
+      1.25,
+      1.5,
+      1.75,
+      2
+    ],
+    "availableQualityLevels": [
+      "hd2160",
+      "hd1440",
+      "hd1080",
+      "hd720",
+      "large",
+      "medium",
+      "small",
+      "tiny",
+      "auto"
+    ],
+    "currentTime": 2.527664,
+    "currentTimeLastUpdated_": 1788210654.844,
+    "debugText": "{\n  \"debug_videoId\": \"dQw4w9WgXcQ\",\n  \"debug_playbackQuality\": \"unknown\",\n  \"debug_date\": \"Mon Aug 31 2026 21:10:40 GMT+0000 (Coordinated Universal Time)\",\n  \"origin\": \"https://www.youtube.com\",\n  \"timestamp\": 1788210640392\n}",
+    "duration": 213.061,
+    "mediaReferenceTime": 2.5282,
+    "muted": false,
+    "option": null,
+    "options": [],
+    "playbackQuality": "hd720",
+    "playbackRate": 1,
+    "playerMode": {},
+    "playerState": 1,
+    "playlist": null,
+    "playlistId": null,
+    "playlistIndex": -1,
+    "preferredQuality": "auto",
+    "progressState": {
+      "airingEnd": 0,
+      "airingStart": 0,
+      "allowSeeking": true,
+      "clipEnd": null,
+      "clipStart": 0,
+      "current": 2.5282,
+      "displayedStart": -1,
+      "duration": 214,
+      "ingestionTime": null,
+      "isAtLiveHead": false,
+      "loaded": 30.001,
+      "offset": 0,
+      "seekableEnd": 213.04,
+      "seekableStart": 0,
+      "viewerLivestreamJoinMediaTime": 0
+    },
+    "size": {
+      "height": 478,
+      "width": 850
+    },
+    "sphericalProperties": {},
+    "videoBytesLoaded": 0.14080943955017575,
+    "videoBytesTotal": 1,
+    "videoContentRect": {
+      "height": 478,
+      "left": 0,
+      "top": 0,
+      "width": 850
+    },
+    "videoData": {
+      "allowLiveDvr": false,
+      "author": "Rick Astley",
+      "backgroundable": false,
+      "cpn": "iGLbR79IHUtEa0Km",
+      "errorCode": null,
+      "eventId": "2-2VarWjOpqspt8Pj-6ymQw",
+      "hasProgressBarBoundaries": false,
+      "isListed": true,
+      "isLive": false,
+      "isManifestless": false,
+      "isMultiChannelAudio": false,
+      "isPlayable": true,
+      "isPremiere": false,
+      "isSeekable": null,
+      "isWindowedLive": false,
+      "itct": "CAAQu2kiEwj1_MXl48uWAxUalukFHQ-3LMPKAQSM17LP",
+      "paidContentOverlayDurationMs": 0,
+      "playerResponseCpn": "",
+      "progressBarEndPositionUtcTimeMillis": null,
+      "progressBarStartPositionUtcTimeMillis": null,
+      "title": "Rick Astley - Never Gonna Give You Up (Official Video) (4K Remaster)",
+      "video_id": "dQw4w9WgXcQ",
+      "video_quality": "hd720",
+      "video_quality_features": []
+    },
+    "videoEmbedCode": "<iframe width=\"850\" height=\"478\" src=\"https://www.youtube.com/embed/dQw4w9WgXcQ\" title=\"Rick Astley - Never Gonna Give You Up (Official Video) (4K Remaster)\" frameborder=\"0\" allow=\"accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share\" referrerpolicy=\"strict-origin-when-cross-origin\" allowfullscreen></iframe>",
+    "videoInfoVisible": false,
+    "videoLoadedFraction": 0.14080943955017575,
+    "videoStartBytes": 0,
+    "videoUrl": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+    "volume": 100
+  },
+  "preloadVideoById": {},
+  "previousVideo": {},
+  "removeCueRange": {},
+  "removeEventListener": {},
+  "seekTo": {},
+  "setCenterCrop": {},
+  "setFauxFullscreen": {},
+  "setLoop": {},
+  "setOption": {},
+  "setPlaybackQuality": {},
+  "setPlaybackRate": {},
+  "setShuffle": {},
+  "setSphericalProperties": {},
+  "setVolume": {},
+  "showVideoInfo": {},
+  "stopVideo": {},
+  "u": true,
+  "unMute": {},
+  "unloadModule": {},
+  "v": {
+    "captions": {
+      "options": [
+        "reload",
+        "fontSize",
+        "track",
+        "tracklist",
+        "translationLanguages",
+        "sampleSubtitle"
+      ],
+      "track": {
+        "displayName": "English",
+        "id": null,
+        "is_default": false,
+        "is_servable": false,
+        "is_translateable": true,
+        "kind": "",
+        "languageCode": "en",
+        "languageName": "English",
+        "name": "",
+        "vss_id": ".en"
+      },
+      "tracklist": [
+        {
+          "displayName": "English",
+          "id": null,
+          "is_default": false,
+          "is_servable": false,
+          "is_translateable": true,
+          "kind": "",
+          "languageCode": "en",
+          "languageName": "English",
+          "name": "",
+          "vss_id": ".en"
+        },
+        {
+          "displayName": "German (Germany)",
+          "id": null,
+          "is_default": false,
+          "is_servable": false,
+          "is_translateable": true,
+          "kind": "",
+          "languageCode": "de-DE",
+          "languageName": "German (Germany)",
+          "name": "",
+          "vss_id": ".de-DE"
+        },
+        {
+          "displayName": "Japanese",
+          "id": null,
+          "is_default": false,
+          "is_servable": false,
+          "is_translateable": true,
+          "kind": "",
+          "languageCode": "ja",
+          "languageName": "Japanese",
+          "name": "",
+          "vss_id": ".ja"
+        },
+        {
+          "displayName": "Portuguese (Brazil)",
+          "id": null,
+          "is_default": false,
+          "is_servable": false,
+          "is_translateable": true,
+          "kind": "",
+          "languageCode": "pt-BR",
+          "languageName": "Portuguese (Brazil)",
+          "name": "",
+          "vss_id": ".pt-BR"
+        },
+        {
+          "displayName": "Spanish (Latin America)",
+          "id": null,
+          "is_default": false,
+          "is_servable": false,
+          "is_translateable": true,
+          "kind": "",
+          "languageCode": "es-419",
+          "languageName": "Spanish (Latin America)",
+          "name": "",
+          "vss_id": ".es-419"
+        }
+      ],
+      "translationLanguages": [
+        {
+          "languageCode": "ab",
+          "languageName": "Abkhazian"
+        },
+        {
+          "languageCode": "aa",
+          "languageName": "Afar"
+        },
+        {
+          "languageCode": "af",
+          "languageName": "Afrikaans"
+        },
+        {
+          "languageCode": "ak",
+          "languageName": "Akan"
+        },
+        {
+          "languageCode": "sq",
+          "languageName": "Albanian"
+        },
+        {
+          "languageCode": "am",
+          "languageName": "Amharic"
+        },
+        {
+          "languageCode": "ar",
+          "languageName": "Arabic"
+        },
+        {
+          "languageCode": "hy",
+          "languageName": "Armenian"
+        },
+        {
+          "languageCode": "as",
+          "languageName": "Assamese"
+        },
+        {
+          "languageCode": "ay",
+          "languageName": "Aymara"
+        },
+        {
+          "languageCode": "az",
+          "languageName": "Azerbaijani"
+        },
+        {
+          "languageCode": "bn",
+          "languageName": "Bangla"
+        },
+        {
+          "languageCode": "ba",
+          "languageName": "Bashkir"
+        },
+        {
+          "languageCode": "eu",
+          "languageName": "Basque"
+        },
+        {
+          "languageCode": "be",
+          "languageName": "Belarusian"
+        },
+        {
+          "languageCode": "bho",
+          "languageName": "Bhojpuri"
+        },
+        {
+          "languageCode": "bs",
+          "languageName": "Bosnian"
+        },
+        {
+          "languageCode": "br",
+          "languageName": "Breton"
+        },
+        {
+          "languageCode": "bg",
+          "languageName": "Bulgarian"
+        },
+        {
+          "languageCode": "my",
+          "languageName": "Burmese"
+        },
+        {
+          "languageCode": "ca",
+          "languageName": "Catalan"
+        },
+        {
+          "languageCode": "ceb",
+          "languageName": "Cebuano"
+        },
+        {
+          "languageCode": "zh-Hans",
+          "languageName": "Chinese (Simplified)"
+        },
+        {
+          "languageCode": "zh-Hant",
+          "languageName": "Chinese (Traditional)"
+        },
+        {
+          "languageCode": "co",
+          "languageName": "Corsican"
+        },
+        {
+          "languageCode": "hr",
+          "languageName": "Croatian"
+        },
+        {
+          "languageCode": "cs",
+          "languageName": "Czech"
+        },
+        {
+          "languageCode": "da",
+          "languageName": "Danish"
+        },
+        {
+          "languageCode": "dv",
+          "languageName": "Divehi"
+        },
+        {
+          "languageCode": "nl",
+          "languageName": "Dutch"
+        },
+        {
+          "languageCode": "dz",
+          "languageName": "Dzongkha"
+        },
+        {
+          "languageCode": "en",
+          "languageName": "English"
+        },
+        {
+          "languageCode": "eo",
+          "languageName": "Esperanto"
+        },
+        {
+          "languageCode": "et",
+          "languageName": "Estonian"
+        },
+        {
+          "languageCode": "ee",
+          "languageName": "Ewe"
+        },
+        {
+          "languageCode": "fo",
+          "languageName": "Faroese"
+        },
+        {
+          "languageCode": "fj",
+          "languageName": "Fijian"
+        },
+        {
+          "languageCode": "fil",
+          "languageName": "Filipino"
+        },
+        {
+          "languageCode": "fi",
+          "languageName": "Finnish"
+        },
+        {
+          "languageCode": "fr",
+          "languageName": "French"
+        },
+        {
+          "languageCode": "gaa",
+          "languageName": "Ga"
+        },
+        {
+          "languageCode": "gl",
+          "languageName": "Galician"
+        },
+        {
+          "languageCode": "lg",
+          "languageName": "Ganda"
+        },
+        {
+          "languageCode": "ka",
+          "languageName": "Georgian"
+        },
+        {
+          "languageCode": "de",
+          "languageName": "German"
+        },
+        {
+          "languageCode": "el",
+          "languageName": "Greek"
+        },
+        {
+          "languageCode": "gn",
+          "languageName": "Guarani"
+        },
+        {
+          "languageCode": "gu",
+          "languageName": "Gujarati"
+        },
+        {
+          "languageCode": "ht",
+          "languageName": "Haitian Creole"
+        },
+        {
+          "languageCode": "ha",
+          "languageName": "Hausa"
+        },
+        {
+          "languageCode": "haw",
+          "languageName": "Hawaiian"
+        },
+        {
+          "languageCode": "iw",
+          "languageName": "Hebrew"
+        },
+        {
+          "languageCode": "hi",
+          "languageName": "Hindi"
+        },
+        {
+          "languageCode": "hmn",
+          "languageName": "Hmong"
+        },
+        {
+          "languageCode": "hu",
+          "languageName": "Hungarian"
+        },
+        {
+          "languageCode": "is",
+          "languageName": "Icelandic"
+        },
+        {
+          "languageCode": "ig",
+          "languageName": "Igbo"
+        },
+        {
+          "languageCode": "id",
+          "languageName": "Indonesian"
+        },
+        {
+          "languageCode": "iu",
+          "languageName": "Inuktitut"
+        },
+        {
+          "languageCode": "ga",
+          "languageName": "Irish"
+        },
+        {
+          "languageCode": "it",
+          "languageName": "Italian"
+        },
+        {
+          "languageCode": "ja",
+          "languageName": "Japanese"
+        },
+        {
+          "languageCode": "jv",
+          "languageName": "Javanese"
+        },
+        {
+          "languageCode": "kl",
+          "languageName": "Kalaallisut"
+        },
+        {
+          "languageCode": "kn",
+          "languageName": "Kannada"
+        },
+        {
+          "languageCode": "kk",
+          "languageName": "Kazakh"
+        },
+        {
+          "languageCode": "kha",
+          "languageName": "Khasi"
+        },
+        {
+          "languageCode": "km",
+          "languageName": "Khmer"
+        },
+        {
+          "languageCode": "rw",
+          "languageName": "Kinyarwanda"
+        },
+        {
+          "languageCode": "ko",
+          "languageName": "Korean"
+        },
+        {
+          "languageCode": "kri",
+          "languageName": "Krio"
+        },
+        {
+          "languageCode": "ku",
+          "languageName": "Kurdish"
+        },
+        {
+          "languageCode": "ky",
+          "languageName": "Kyrgyz"
+        },
+        {
+          "languageCode": "lo",
+          "languageName": "Lao"
+        },
+        {
+          "languageCode": "la",
+          "languageName": "Latin"
+        },
+        {
+          "languageCode": "lv",
+          "languageName": "Latvian"
+        },
+        {
+          "languageCode": "ln",
+          "languageName": "Lingala"
+        },
+        {
+          "languageCode": "lt",
+          "languageName": "Lithuanian"
+        },
+        {
+          "languageCode": "lua",
+          "languageName": "Luba-Lulua"
+        },
+        {
+          "languageCode": "luo",
+          "languageName": "Luo"
+        },
+        {
+          "languageCode": "lb",
+          "languageName": "Luxembourgish"
+        },
+        {
+          "languageCode": "mk",
+          "languageName": "Macedonian"
+        },
+        {
+          "languageCode": "mg",
+          "languageName": "Malagasy"
+        },
+        {
+          "languageCode": "ms",
+          "languageName": "Malay"
+        },
+        {
+          "languageCode": "ml",
+          "languageName": "Malayalam"
+        },
+        {
+          "languageCode": "mt",
+          "languageName": "Maltese"
+        },
+        {
+          "languageCode": "gv",
+          "languageName": "Manx"
+        },
+        {
+          "languageCode": "mi",
+          "languageName": "Māori"
+        },
+        {
+          "languageCode": "mr",
+          "languageName": "Marathi"
+        },
+        {
+          "languageCode": "mn",
+          "languageName": "Mongolian"
+        },
+        {
+          "languageCode": "mfe",
+          "languageName": "Morisyen"
+        },
+        {
+          "languageCode": "ne",
+          "languageName": "Nepali"
+        },
+        {
+          "languageCode": "new",
+          "languageName": "Newari"
+        },
+        {
+          "languageCode": "nso",
+          "languageName": "Northern Sotho"
+        },
+        {
+          "languageCode": "no",
+          "languageName": "Norwegian"
+        },
+        {
+          "languageCode": "ny",
+          "languageName": "Nyanja"
+        },
+        {
+          "languageCode": "oc",
+          "languageName": "Occitan"
+        },
+        {
+          "languageCode": "or",
+          "languageName": "Odia"
+        },
+        {
+          "languageCode": "om",
+          "languageName": "Oromo"
+        },
+        {
+          "languageCode": "os",
+          "languageName": "Ossetic"
+        },
+        {
+          "languageCode": "pam",
+          "languageName": "Pampanga"
+        },
+        {
+          "languageCode": "ps",
+          "languageName": "Pashto"
+        },
+        {
+          "languageCode": "fa",
+          "languageName": "Persian"
+        },
+        {
+          "languageCode": "pl",
+          "languageName": "Polish"
+        },
+        {
+          "languageCode": "pt",
+          "languageName": "Portuguese"
+        },
+        {
+          "languageCode": "pt-PT",
+          "languageName": "Portuguese (Portugal)"
+        },
+        {
+          "languageCode": "pa",
+          "languageName": "Punjabi"
+        },
+        {
+          "languageCode": "qu",
+          "languageName": "Quechua"
+        },
+        {
+          "languageCode": "ro",
+          "languageName": "Romanian"
+        },
+        {
+          "languageCode": "rn",
+          "languageName": "Rundi"
+        },
+        {
+          "languageCode": "ru",
+          "languageName": "Russian"
+        },
+        {
+          "languageCode": "sm",
+          "languageName": "Samoan"
+        },
+        {
+          "languageCode": "sg",
+          "languageName": "Sango"
+        },
+        {
+          "languageCode": "sa",
+          "languageName": "Sanskrit"
+        },
+        {
+          "languageCode": "gd",
+          "languageName": "Scottish Gaelic"
+        },
+        {
+          "languageCode": "sr",
+          "languageName": "Serbian"
+        },
+        {
+          "languageCode": "crs",
+          "languageName": "Seselwa Creole French"
+        },
+        {
+          "languageCode": "sn",
+          "languageName": "Shona"
+        },
+        {
+          "languageCode": "sd",
+          "languageName": "Sindhi"
+        },
+        {
+          "languageCode": "si",
+          "languageName": "Sinhala"
+        },
+        {
+          "languageCode": "sk",
+          "languageName": "Slovak"
+        },
+        {
+          "languageCode": "sl",
+          "languageName": "Slovenian"
+        },
+        {
+          "languageCode": "so",
+          "languageName": "Somali"
+        },
+        {
+          "languageCode": "st",
+          "languageName": "Southern Sotho"
+        },
+        {
+          "languageCode": "es",
+          "languageName": "Spanish"
+        },
+        {
+          "languageCode": "su",
+          "languageName": "Sundanese"
+        },
+        {
+          "languageCode": "sw",
+          "languageName": "Swahili"
+        },
+        {
+          "languageCode": "ss",
+          "languageName": "Swati"
+        },
+        {
+          "languageCode": "sv",
+          "languageName": "Swedish"
+        },
+        {
+          "languageCode": "tg",
+          "languageName": "Tajik"
+        },
+        {
+          "languageCode": "ta",
+          "languageName": "Tamil"
+        },
+        {
+          "languageCode": "tt",
+          "languageName": "Tatar"
+        },
+        {
+          "languageCode": "te",
+          "languageName": "Telugu"
+        },
+        {
+          "languageCode": "th",
+          "languageName": "Thai"
+        },
+        {
+          "languageCode": "bo",
+          "languageName": "Tibetan"
+        },
+        {
+          "languageCode": "ti",
+          "languageName": "Tigrinya"
+        },
+        {
+          "languageCode": "to",
+          "languageName": "Tongan"
+        },
+        {
+          "languageCode": "ts",
+          "languageName": "Tsonga"
+        },
+        {
+          "languageCode": "tn",
+          "languageName": "Tswana"
+        },
+        {
+          "languageCode": "tum",
+          "languageName": "Tumbuka"
+        },
+        {
+          "languageCode": "tr",
+          "languageName": "Turkish"
+        },
+        {
+          "languageCode": "tk",
+          "languageName": "Turkmen"
+        },
+        {
+          "languageCode": "uk",
+          "languageName": "Ukrainian"
+        },
+        {
+          "languageCode": "ur",
+          "languageName": "Urdu"
+        },
+        {
+          "languageCode": "ug",
+          "languageName": "Uyghur"
+        },
+        {
+          "languageCode": "uz",
+          "languageName": "Uzbek"
+        },
+        {
+          "languageCode": "ve",
+          "languageName": "Venda"
+        },
+        {
+          "languageCode": "vi",
+          "languageName": "Vietnamese"
+        },
+        {
+          "languageCode": "war",
+          "languageName": "Waray"
+        },
+        {
+          "languageCode": "cy",
+          "languageName": "Welsh"
+        },
+        {
+          "languageCode": "fy",
+          "languageName": "Western Frisian"
+        },
+        {
+          "languageCode": "wo",
+          "languageName": "Wolof"
+        },
+        {
+          "languageCode": "xh",
+          "languageName": "Xhosa"
+        },
+        {
+          "languageCode": "yi",
+          "languageName": "Yiddish"
+        },
+        {
+          "languageCode": "yo",
+          "languageName": "Yoruba"
+        },
+        {
+          "languageCode": "zu",
+          "languageName": "Zulu"
+        }
+      ]
+    },
+    "namespaces": [
+      "captions"
+    ]
+  },
+  "videoTitle": "Rick Astley - Never Gonna Give You Up (Official Video) (4K Remaster)",
+  "wakeUpControls": {}
+}
+{
+  "A": {},
+  "B": {},
+  "C": {
+    "onError": true,
+    "onReady": true,
+    "onStateChange": true
+  },
+  "addCueRange": {},
+  "clearVideo": {},
+  "closure_uid_730168503": 1,
+  "cuePlaylist": {},
+  "cueVideoById": {},
+  "cueVideoByUrl": {},
+  "getApiInterface": {},
+  "getAvailablePlaybackRates": {},
+  "getAvailableQualityLevels": {},
+  "getCurrentTime": {},
+  "getDebugText": {},
+  "getDuration": {},
+  "getMediaReferenceTime": {},
+  "getPlaybackQuality": {},
+  "getPlaybackRate": {},
+  "getPlayerMode": {},
+  "getPlayerState": {},
+  "getPlaylist": {},
+  "getPlaylistId": {},
+  "getPlaylistIndex": {},
+  "getSize": {},
+  "getSphericalProperties": {},
+  "getVideoBytesLoaded": {},
+  "getVideoBytesTotal": {},
+  "getVideoData": {},
+  "getVideoLoadedFraction": {},
+  "getVideoStartBytes": {},
+  "getVideoUrl": {},
+  "getVolume": {},
+  "h": {},
+  "hideVideoInfo": {},
+  "i": 9,
+  "id": 1,
+  "isMuted": {},
+  "isVideoInfoVisible": {},
+  "j": {
+    "A": 10,
+    "B": false,
+    "h": [
+      null,
+      "onReady",
+      {},
+      null,
+      "onStateChange",
+      {},
+      null,
+      "onError",
+      {},
+      null
+    ],
+    "i": {
+      "onError": [
+        7
+      ],
+      "onReady": [
+        1
+      ],
+      "onStateChange": [
+        4
+      ]
+    },
+    "j": false,
+    "m": [],
+    "u": 0
+  },
+  "l": {},
+  "loadModule": {},
+  "loadPlaylist": {},
+  "loadVideoById": {},
+  "loadVideoByUrl": {},
+  "logImaAdEvent": {},
+  "m": [],
+  "mute": {},
+  "mutedAutoplay": {},
+  "nextVideo": {},
+  "options": {
+    "events": {
+      "onError": {},
+      "onReady": {},
+      "onStateChange": {}
+    },
+    "height": "100%",
+    "host": "https://www.youtube.com",
+    "playerVars": {
+      "controls": 1,
+      "modestbranding": 1,
+      "playsinline": 1,
+      "rel": 0
+    },
+    "title": "video player",
+    "videoId": "dQw4w9WgXcQ",
+    "width": "100%"
+  },
+  "pauseVideo": {},
+  "playVideo": {},
+  "playVideoAt": {},
+  "playerInfo": {
+    "apiInterface": [
+      "cueVideoById",
+      "loadVideoById",
+      "cueVideoByUrl",
+      "loadVideoByUrl",
+      "playVideo",
+      "pauseVideo",
+      "stopVideo",
+      "clearVideo",
+      "getVideoBytesLoaded",
+      "getVideoBytesTotal",
+      "getVideoLoadedFraction",
+      "getVideoStartBytes",
+      "cuePlaylist",
+      "loadPlaylist",
+      "nextVideo",
+      "previousVideo",
+      "playVideoAt",
+      "setShuffle",
+      "setLoop",
+      "getPlaylist",
+      "getPlaylistIndex",
+      "getPlaylistId",
+      "loadModule",
+      "unloadModule",
+      "setOption",
+      "getOption",
+      "getOptions",
+      "mute",
+      "unMute",
+      "isMuted",
+      "setVolume",
+      "getVolume",
+      "seekTo",
+      "getPlayerMode",
+      "getPlayerState",
+      "getAvailablePlaybackRates",
+      "getPlaybackQuality",
+      "setPlaybackQuality",
+      "getAvailableQualityLevels",
+      "getCurrentTime",
+      "getDuration",
+      "addEventListener",
+      "removeEventListener",
+      "getDebugText",
+      "getVideoData",
+      "addCueRange",
+      "removeCueRange",
+      "setSize",
+      "getApiInterface",
+      "destroy",
+      "mutedAutoplay",
+      "getVideoEmbedCode",
+      "getVideoUrl",
+      "getMediaReferenceTime",
+      "getSize",
+      "setFauxFullscreen",
+      "setCenterCrop",
+      "logImaAdEvent",
+      "preloadVideoById",
+      "wakeUpControls",
+      "showVideoInfo",
+      "hideVideoInfo",
+      "isVideoInfoVisible",
+      "getPlaybackRate",
+      "setPlaybackRate",
+      "getSphericalProperties",
+      "setSphericalProperties"
+    ],
+    "availablePlaybackRates": [
+      0.25,
+      0.5,
+      0.75,
+      1,
+      1.25,
+      1.5,
+      1.75,
+      2
+    ],
+    "availableQualityLevels": [
+      "hd2160",
+      "hd1440",
+      "hd1080",
+      "hd720",
+      "large",
+      "medium",
+      "small",
+      "tiny",
+      "auto"
+    ],
+    "currentTime": 2.648869,
+    "currentTimeLastUpdated_": 1788210654.97,
+    "debugText": "{\n  \"debug_videoId\": \"dQw4w9WgXcQ\",\n  \"debug_playbackQuality\": \"unknown\",\n  \"debug_date\": \"Mon Aug 31 2026 21:10:40 GMT+0000 (Coordinated Universal Time)\",\n  \"origin\": \"https://www.youtube.com\",\n  \"timestamp\": 1788210640392\n}",
+    "duration": 214,
+    "mediaReferenceTime": 2.648869,
+    "muted": false,
+    "option": null,
+    "options": [],
+    "playbackQuality": "hd720",
+    "playbackRate": 1,
+    "playerMode": {},
+    "playerState": 2,
+    "playlist": null,
+    "playlistId": null,
+    "playlistIndex": -1,
+    "preferredQuality": "auto",
+    "progressState": {
+      "airingEnd": 0,
+      "airingStart": 0,
+      "allowSeeking": true,
+      "clipEnd": null,
+      "clipStart": 0,
+      "current": 2.648869,
+      "displayedStart": -1,
+      "duration": 214,
+      "ingestionTime": null,
+      "isAtLiveHead": false,
+      "loaded": 30.001,
+      "offset": 0,
+      "seekableEnd": 213.04,
+      "seekableStart": 0,
+      "viewerLivestreamJoinMediaTime": 0
+    },
+    "size": {
+      "height": 478,
+      "width": 850
+    },
+    "sphericalProperties": {},
+    "videoBytesLoaded": 0.14080943955017575,
+    "videoBytesTotal": 1,
+    "videoContentRect": {
+      "height": 478,
+      "left": 0,
+      "top": 0,
+      "width": 850
+    },
+    "videoData": {
+      "allowLiveDvr": false,
+      "author": "Rick Astley",
+      "backgroundable": false,
+      "cpn": "iGLbR79IHUtEa0Km",
+      "errorCode": null,
+      "eventId": "2-2VarWjOpqspt8Pj-6ymQw",
+      "hasProgressBarBoundaries": false,
+      "isListed": true,
+      "isLive": false,
+      "isManifestless": false,
+      "isMultiChannelAudio": false,
+      "isPlayable": true,
+      "isPremiere": false,
+      "isSeekable": null,
+      "isWindowedLive": false,
+      "itct": "CAAQu2kiEwj1_MXl48uWAxUalukFHQ-3LMPKAQSM17LP",
+      "paidContentOverlayDurationMs": 0,
+      "playerResponseCpn": "",
+      "progressBarEndPositionUtcTimeMillis": null,
+      "progressBarStartPositionUtcTimeMillis": null,
+      "title": "Rick Astley - Never Gonna Give You Up (Official Video) (4K Remaster)",
+      "video_id": "dQw4w9WgXcQ",
+      "video_quality": "hd720",
+      "video_quality_features": []
+    },
+    "videoEmbedCode": "<iframe width=\"850\" height=\"478\" src=\"https://www.youtube.com/embed/dQw4w9WgXcQ\" title=\"Rick Astley - Never Gonna Give You Up (Official Video) (4K Remaster)\" frameborder=\"0\" allow=\"accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share\" referrerpolicy=\"strict-origin-when-cross-origin\" allowfullscreen></iframe>",
+    "videoInfoVisible": false,
+    "videoLoadedFraction": 0.14080943955017575,
+    "videoStartBytes": 0,
+    "videoUrl": "https://www.youtube.com/watch?t=2&v=dQw4w9WgXcQ",
+    "volume": 100
+  },
+  "preloadVideoById": {},
+  "previousVideo": {},
+  "removeCueRange": {},
+  "removeEventListener": {},
+  "seekTo": {},
+  "setCenterCrop": {},
+  "setFauxFullscreen": {},
+  "setLoop": {},
+  "setOption": {},
+  "setPlaybackQuality": {},
+  "setPlaybackRate": {},
+  "setShuffle": {},
+  "setSphericalProperties": {},
+  "setVolume": {},
+  "showVideoInfo": {},
+  "stopVideo": {},
+  "u": true,
+  "unMute": {},
+  "unloadModule": {},
+  "v": {
+    "captions": {
+      "options": [
+        "reload",
+        "fontSize",
+        "track",
+        "tracklist",
+        "translationLanguages",
+        "sampleSubtitle"
+      ],
+      "track": {
+        "displayName": "English",
+        "id": null,
+        "is_default": false,
+        "is_servable": false,
+        "is_translateable": true,
+        "kind": "",
+        "languageCode": "en",
+        "languageName": "English",
+        "name": "",
+        "vss_id": ".en"
+      },
+      "tracklist": [
+        {
+          "displayName": "English",
+          "id": null,
+          "is_default": false,
+          "is_servable": false,
+          "is_translateable": true,
+          "kind": "",
+          "languageCode": "en",
+          "languageName": "English",
+          "name": "",
+          "vss_id": ".en"
+        },
+        {
+          "displayName": "German (Germany)",
+          "id": null,
+          "is_default": false,
+          "is_servable": false,
+          "is_translateable": true,
+          "kind": "",
+          "languageCode": "de-DE",
+          "languageName": "German (Germany)",
+          "name": "",
+          "vss_id": ".de-DE"
+        },
+        {
+          "displayName": "Japanese",
+          "id": null,
+          "is_default": false,
+          "is_servable": false,
+          "is_translateable": true,
+          "kind": "",
+          "languageCode": "ja",
+          "languageName": "Japanese",
+          "name": "",
+          "vss_id": ".ja"
+        },
+        {
+          "displayName": "Portuguese (Brazil)",
+          "id": null,
+          "is_default": false,
+          "is_servable": false,
+          "is_translateable": true,
+          "kind": "",
+          "languageCode": "pt-BR",
+          "languageName": "Portuguese (Brazil)",
+          "name": "",
+          "vss_id": ".pt-BR"
+        },
+        {
+          "displayName": "Spanish (Latin America)",
+          "id": null,
+          "is_default": false,
+          "is_servable": false,
+          "is_translateable": true,
+          "kind": "",
+          "languageCode": "es-419",
+          "languageName": "Spanish (Latin America)",
+          "name": "",
+          "vss_id": ".es-419"
+        }
+      ],
+      "translationLanguages": [
+        {
+          "languageCode": "ab",
+          "languageName": "Abkhazian"
+        },
+        {
+          "languageCode": "aa",
+          "languageName": "Afar"
+        },
+        {
+          "languageCode": "af",
+          "languageName": "Afrikaans"
+        },
+        {
+          "languageCode": "ak",
+          "languageName": "Akan"
+        },
+        {
+          "languageCode": "sq",
+          "languageName": "Albanian"
+        },
+        {
+          "languageCode": "am",
+          "languageName": "Amharic"
+        },
+        {
+          "languageCode": "ar",
+          "languageName": "Arabic"
+        },
+        {
+          "languageCode": "hy",
+          "languageName": "Armenian"
+        },
+        {
+          "languageCode": "as",
+          "languageName": "Assamese"
+        },
+        {
+          "languageCode": "ay",
+          "languageName": "Aymara"
+        },
+        {
+          "languageCode": "az",
+          "languageName": "Azerbaijani"
+        },
+        {
+          "languageCode": "bn",
+          "languageName": "Bangla"
+        },
+        {
+          "languageCode": "ba",
+          "languageName": "Bashkir"
+        },
+        {
+          "languageCode": "eu",
+          "languageName": "Basque"
+        },
+        {
+          "languageCode": "be",
+          "languageName": "Belarusian"
+        },
+        {
+          "languageCode": "bho",
+          "languageName": "Bhojpuri"
+        },
+        {
+          "languageCode": "bs",
+          "languageName": "Bosnian"
+        },
+        {
+          "languageCode": "br",
+          "languageName": "Breton"
+        },
+        {
+          "languageCode": "bg",
+          "languageName": "Bulgarian"
+        },
+        {
+          "languageCode": "my",
+          "languageName": "Burmese"
+        },
+        {
+          "languageCode": "ca",
+          "languageName": "Catalan"
+        },
+        {
+          "languageCode": "ceb",
+          "languageName": "Cebuano"
+        },
+        {
+          "languageCode": "zh-Hans",
+          "languageName": "Chinese (Simplified)"
+        },
+        {
+          "languageCode": "zh-Hant",
+          "languageName": "Chinese (Traditional)"
+        },
+        {
+          "languageCode": "co",
+          "languageName": "Corsican"
+        },
+        {
+          "languageCode": "hr",
+          "languageName": "Croatian"
+        },
+        {
+          "languageCode": "cs",
+          "languageName": "Czech"
+        },
+        {
+          "languageCode": "da",
+          "languageName": "Danish"
+        },
+        {
+          "languageCode": "dv",
+          "languageName": "Divehi"
+        },
+        {
+          "languageCode": "nl",
+          "languageName": "Dutch"
+        },
+        {
+          "languageCode": "dz",
+          "languageName": "Dzongkha"
+        },
+        {
+          "languageCode": "en",
+          "languageName": "English"
+        },
+        {
+          "languageCode": "eo",
+          "languageName": "Esperanto"
+        },
+        {
+          "languageCode": "et",
+          "languageName": "Estonian"
+        },
+        {
+          "languageCode": "ee",
+          "languageName": "Ewe"
+        },
+        {
+          "languageCode": "fo",
+          "languageName": "Faroese"
+        },
+        {
+          "languageCode": "fj",
+          "languageName": "Fijian"
+        },
+        {
+          "languageCode": "fil",
+          "languageName": "Filipino"
+        },
+        {
+          "languageCode": "fi",
+          "languageName": "Finnish"
+        },
+        {
+          "languageCode": "fr",
+          "languageName": "French"
+        },
+        {
+          "languageCode": "gaa",
+          "languageName": "Ga"
+        },
+        {
+          "languageCode": "gl",
+          "languageName": "Galician"
+        },
+        {
+          "languageCode": "lg",
+          "languageName": "Ganda"
+        },
+        {
+          "languageCode": "ka",
+          "languageName": "Georgian"
+        },
+        {
+          "languageCode": "de",
+          "languageName": "German"
+        },
+        {
+          "languageCode": "el",
+          "languageName": "Greek"
+        },
+        {
+          "languageCode": "gn",
+          "languageName": "Guarani"
+        },
+        {
+          "languageCode": "gu",
+          "languageName": "Gujarati"
+        },
+        {
+          "languageCode": "ht",
+          "languageName": "Haitian Creole"
+        },
+        {
+          "languageCode": "ha",
+          "languageName": "Hausa"
+        },
+        {
+          "languageCode": "haw",
+          "languageName": "Hawaiian"
+        },
+        {
+          "languageCode": "iw",
+          "languageName": "Hebrew"
+        },
+        {
+          "languageCode": "hi",
+          "languageName": "Hindi"
+        },
+        {
+          "languageCode": "hmn",
+          "languageName": "Hmong"
+        },
+        {
+          "languageCode": "hu",
+          "languageName": "Hungarian"
+        },
+        {
+          "languageCode": "is",
+          "languageName": "Icelandic"
+        },
+        {
+          "languageCode": "ig",
+          "languageName": "Igbo"
+        },
+        {
+          "languageCode": "id",
+          "languageName": "Indonesian"
+        },
+        {
+          "languageCode": "iu",
+          "languageName": "Inuktitut"
+        },
+        {
+          "languageCode": "ga",
+          "languageName": "Irish"
+        },
+        {
+          "languageCode": "it",
+          "languageName": "Italian"
+        },
+        {
+          "languageCode": "ja",
+          "languageName": "Japanese"
+        },
+        {
+          "languageCode": "jv",
+          "languageName": "Javanese"
+        },
+        {
+          "languageCode": "kl",
+          "languageName": "Kalaallisut"
+        },
+        {
+          "languageCode": "kn",
+          "languageName": "Kannada"
+        },
+        {
+          "languageCode": "kk",
+          "languageName": "Kazakh"
+        },
+        {
+          "languageCode": "kha",
+          "languageName": "Khasi"
+        },
+        {
+          "languageCode": "km",
+          "languageName": "Khmer"
+        },
+        {
+          "languageCode": "rw",
+          "languageName": "Kinyarwanda"
+        },
+        {
+          "languageCode": "ko",
+          "languageName": "Korean"
+        },
+        {
+          "languageCode": "kri",
+          "languageName": "Krio"
+        },
+        {
+          "languageCode": "ku",
+          "languageName": "Kurdish"
+        },
+        {
+          "languageCode": "ky",
+          "languageName": "Kyrgyz"
+        },
+        {
+          "languageCode": "lo",
+          "languageName": "Lao"
+        },
+        {
+          "languageCode": "la",
+          "languageName": "Latin"
+        },
+        {
+          "languageCode": "lv",
+          "languageName": "Latvian"
+        },
+        {
+          "languageCode": "ln",
+          "languageName": "Lingala"
+        },
+        {
+          "languageCode": "lt",
+          "languageName": "Lithuanian"
+        },
+        {
+          "languageCode": "lua",
+          "languageName": "Luba-Lulua"
+        },
+        {
+          "languageCode": "luo",
+          "languageName": "Luo"
+        },
+        {
+          "languageCode": "lb",
+          "languageName": "Luxembourgish"
+        },
+        {
+          "languageCode": "mk",
+          "languageName": "Macedonian"
+        },
+        {
+          "languageCode": "mg",
+          "languageName": "Malagasy"
+        },
+        {
+          "languageCode": "ms",
+          "languageName": "Malay"
+        },
+        {
+          "languageCode": "ml",
+          "languageName": "Malayalam"
+        },
+        {
+          "languageCode": "mt",
+          "languageName": "Maltese"
+        },
+        {
+          "languageCode": "gv",
+          "languageName": "Manx"
+        },
+        {
+          "languageCode": "mi",
+          "languageName": "Māori"
+        },
+        {
+          "languageCode": "mr",
+          "languageName": "Marathi"
+        },
+        {
+          "languageCode": "mn",
+          "languageName": "Mongolian"
+        },
+        {
+          "languageCode": "mfe",
+          "languageName": "Morisyen"
+        },
+        {
+          "languageCode": "ne",
+          "languageName": "Nepali"
+        },
+        {
+          "languageCode": "new",
+          "languageName": "Newari"
+        },
+        {
+          "languageCode": "nso",
+          "languageName": "Northern Sotho"
+        },
+        {
+          "languageCode": "no",
+          "languageName": "Norwegian"
+        },
+        {
+          "languageCode": "ny",
+          "languageName": "Nyanja"
+        },
+        {
+          "languageCode": "oc",
+          "languageName": "Occitan"
+        },
+        {
+          "languageCode": "or",
+          "languageName": "Odia"
+        },
+        {
+          "languageCode": "om",
+          "languageName": "Oromo"
+        },
+        {
+          "languageCode": "os",
+          "languageName": "Ossetic"
+        },
+        {
+          "languageCode": "pam",
+          "languageName": "Pampanga"
+        },
+        {
+          "languageCode": "ps",
+          "languageName": "Pashto"
+        },
+        {
+          "languageCode": "fa",
+          "languageName": "Persian"
+        },
+        {
+          "languageCode": "pl",
+          "languageName": "Polish"
+        },
+        {
+          "languageCode": "pt",
+          "languageName": "Portuguese"
+        },
+        {
+          "languageCode": "pt-PT",
+          "languageName": "Portuguese (Portugal)"
+        },
+        {
+          "languageCode": "pa",
+          "languageName": "Punjabi"
+        },
+        {
+          "languageCode": "qu",
+          "languageName": "Quechua"
+        },
+        {
+          "languageCode": "ro",
+          "languageName": "Romanian"
+        },
+        {
+          "languageCode": "rn",
+          "languageName": "Rundi"
+        },
+        {
+          "languageCode": "ru",
+          "languageName": "Russian"
+        },
+        {
+          "languageCode": "sm",
+          "languageName": "Samoan"
+        },
+        {
+          "languageCode": "sg",
+          "languageName": "Sango"
+        },
+        {
+          "languageCode": "sa",
+          "languageName": "Sanskrit"
+        },
+        {
+          "languageCode": "gd",
+          "languageName": "Scottish Gaelic"
+        },
+        {
+          "languageCode": "sr",
+          "languageName": "Serbian"
+        },
+        {
+          "languageCode": "crs",
+          "languageName": "Seselwa Creole French"
+        },
+        {
+          "languageCode": "sn",
+          "languageName": "Shona"
+        },
+        {
+          "languageCode": "sd",
+          "languageName": "Sindhi"
+        },
+        {
+          "languageCode": "si",
+          "languageName": "Sinhala"
+        },
+        {
+          "languageCode": "sk",
+          "languageName": "Slovak"
+        },
+        {
+          "languageCode": "sl",
+          "languageName": "Slovenian"
+        },
+        {
+          "languageCode": "so",
+          "languageName": "Somali"
+        },
+        {
+          "languageCode": "st",
+          "languageName": "Southern Sotho"
+        },
+        {
+          "languageCode": "es",
+          "languageName": "Spanish"
+        },
+        {
+          "languageCode": "su",
+          "languageName": "Sundanese"
+        },
+        {
+          "languageCode": "sw",
+          "languageName": "Swahili"
+        },
+        {
+          "languageCode": "ss",
+          "languageName": "Swati"
+        },
+        {
+          "languageCode": "sv",
+          "languageName": "Swedish"
+        },
+        {
+          "languageCode": "tg",
+          "languageName": "Tajik"
+        },
+        {
+          "languageCode": "ta",
+          "languageName": "Tamil"
+        },
+        {
+          "languageCode": "tt",
+          "languageName": "Tatar"
+        },
+        {
+          "languageCode": "te",
+          "languageName": "Telugu"
+        },
+        {
+          "languageCode": "th",
+          "languageName": "Thai"
+        },
+        {
+          "languageCode": "bo",
+          "languageName": "Tibetan"
+        },
+        {
+          "languageCode": "ti",
+          "languageName": "Tigrinya"
+        },
+        {
+          "languageCode": "to",
+          "languageName": "Tongan"
+        },
+        {
+          "languageCode": "ts",
+          "languageName": "Tsonga"
+        },
+        {
+          "languageCode": "tn",
+          "languageName": "Tswana"
+        },
+        {
+          "languageCode": "tum",
+          "languageName": "Tumbuka"
+        },
+        {
+          "languageCode": "tr",
+          "languageName": "Turkish"
+        },
+        {
+          "languageCode": "tk",
+          "languageName": "Turkmen"
+        },
+        {
+          "languageCode": "uk",
+          "languageName": "Ukrainian"
+        },
+        {
+          "languageCode": "ur",
+          "languageName": "Urdu"
+        },
+        {
+          "languageCode": "ug",
+          "languageName": "Uyghur"
+        },
+        {
+          "languageCode": "uz",
+          "languageName": "Uzbek"
+        },
+        {
+          "languageCode": "ve",
+          "languageName": "Venda"
+        },
+        {
+          "languageCode": "vi",
+          "languageName": "Vietnamese"
+        },
+        {
+          "languageCode": "war",
+          "languageName": "Waray"
+        },
+        {
+          "languageCode": "cy",
+          "languageName": "Welsh"
+        },
+        {
+          "languageCode": "fy",
+          "languageName": "Western Frisian"
+        },
+        {
+          "languageCode": "wo",
+          "languageName": "Wolof"
+        },
+        {
+          "languageCode": "xh",
+          "languageName": "Xhosa"
+        },
+        {
+          "languageCode": "yi",
+          "languageName": "Yiddish"
+        },
+        {
+          "languageCode": "yo",
+          "languageName": "Yoruba"
+        },
+        {
+          "languageCode": "zu",
+          "languageName": "Zulu"
+        }
+      ]
+    },
+    "namespaces": [
+      "captions"
+    ]
+  },
+  "videoTitle": "Rick Astley - Never Gonna Give You Up (Official Video) (4K Remaster)",
+  "wakeUpControls": {}
+}
+1. Bob joined. media: youtube https://www.youtube.com/watch?v=dQw4w9WgXcQ | paused: true | host is browser: true
+   waiting for host play (triggering via ytPlayer.playVideo)…
+2. HOST PLAY received: time= 0.10
+   (host pauses after 2.5s)
+3. HOST PAUSE received: time= 2.65
+   (host seeks to 42s)
+4. HOST SEEK received: time= 42.00
+5. chat echoed back to Bob: Bob: Bob says hi!
+
+ALL RUN-A MEMBER CHECKS PASSED (host loop + chat verified)

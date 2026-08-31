@@ -7,41 +7,22 @@
           <video>.currentSrc  ->  <video>.src
           -> the player <iframe>'s src
           -> window.location.href as a last resort
-     2) Attempt WatchParty "autostart" URLs IN THIS ORDER
-        (all attempts kept — none removed):
-          a) https://www.watchparty.me/create?url=ENCODED_URL
-          b) https://www.watchparty.me/?url=ENCODED_URL
-          c) https://www.watchparty.me/#url=ENCODED_URL
-        Each is opened in a new tab (keeps ZEUS playback running;
-        same behavior as before). The first URL that opens wins —
-        normally (a). If the browser blocks the popup, (b) and
-        (c) are tried the same way before giving up.
-     3) Cross-site limitation: a page can never READ a cross-origin
-        WatchParty room, so autostart cannot be confirmed from ZEUS
-        (and no cross-origin DOM injection is attempted — it is
-        impossible and forbidden). Therefore the clipboard safety
-        net ALWAYS runs:
-          - copy the video URL to the clipboard automatically
-          - show "Video link copied. Paste it into WatchParty."
-          - redirect to https://www.watchparty.me/
-        When a WatchParty tab DID open, that tab already IS the
-        redirect target (the link is carried in its URL), so the
-        ZEUS player tab stays put — playback is never broken.
-        When every open attempt was blocked, the message shows
-        first and the current tab redirects to WatchParty.
+     2) Resolve the current title (#watch-title, falling back to
+        #watch-info-title, then document.title).
+     3) Open the ZEUS party room (party.html) in a NEW TAB:
+          party.html?url=ENCODED_CURRENT_URL&title=ENCODED_TITLE
+        The party page auto-creates a room on the party server
+        (party-server/), auto-fills the URL and — for YouTube links
+        and direct .mp4 files — syncs playback for everyone. Other
+        sources show a "can't be synced" notice while the room +
+        chat still work.
+     4) If the browser blocks the popup: copy the party link to
+        the clipboard, show a notice, and redirect this tab to the
+        party page instead.
    Loaded on watch.html only.
    ============================================================ */
 
 'use strict';
-
-const WATCHPARTY_HOME = 'https://www.watchparty.me/';
-
-/* WatchParty URL attempts, tried in this exact order. */
-const WATCHPARTY_ATTEMPT_URLS = [
-  (encoded) => 'https://www.watchparty.me/create?url=' + encoded, /* 1st */
-  (encoded) => 'https://www.watchparty.me/?url=' + encoded,        /* 2nd */
-  (encoded) => 'https://www.watchparty.me/#url=' + encoded         /* 3rd */
-];
 
 /**
  * Resolve the URL of whatever is currently playing:
@@ -60,6 +41,22 @@ function watchpartyResolveVideoUrl() {
                 document.querySelector('iframe[src]');
   if (frame && frame.src) return frame.src;
   return window.location.href;
+}
+
+/**
+ * Resolve the current title for the party page:
+ *   1) the chrome header title (#watch-title — "Fight Club (1999)")
+ *   2) the info card title (#watch-info-title)
+ *   3) document.title as a last resort
+ */
+function watchpartyResolveTitle() {
+  const chromeTitle = document.getElementById('watch-title');
+  let t = chromeTitle ? chromeTitle.textContent.trim() : '';
+  if (!t || t === 'Loading title…') {
+    const infoTitle = document.getElementById('watch-info-title');
+    t = infoTitle ? infoTitle.textContent.trim() : '';
+  }
+  return t || document.title;
 }
 
 /** Copy text to the clipboard, with a legacy execCommand fallback. */
@@ -126,42 +123,35 @@ function watchpartyOpenAttempt(url) {
 }
 
 /**
- * Launch Watch Party:
- *   1) Resolve the playing video URL.
- *   2) Walk the attempt URL list in order until one opens in a
- *      new tab (create?url= -> ?url= -> #url=).
- *   3) Autostart can never be confirmed cross-origin, so always:
- *      copy the URL to the clipboard + show the notice
- *      "Video link copied. Paste it into WatchParty."
- *      - tab opened  -> that tab is the redirect (player keeps
- *                       playing here; nothing breaks)
- *      - all blocked -> show the message first, then redirect
- *                       this tab to https://www.watchparty.me/
+ * Launch the ZEUS Watch Party room:
+ *   1) Resolve the playing video URL + the current title.
+ *   2) Open party.html?url=...&title=... in a new tab (ZEUS
+ *      playback keeps running here).
+ *   3) If the popup was blocked: copy the party link, show a
+ *      notice, then redirect this tab to the party page.
  */
 async function watchpartyLaunch() {
   const videoUrl = watchpartyResolveVideoUrl();
-  const encoded = encodeURIComponent(videoUrl);
+  const title = watchpartyResolveTitle();
+  const partyUrl = 'party.html?url=' + encodeURIComponent(videoUrl) +
+                   '&title=' + encodeURIComponent(title);
 
-  /* ---- Step 2: the ordered autostart attempts ---- */
-  let opened = null;
-  for (let i = 0; i < WATCHPARTY_ATTEMPT_URLS.length; i++) {
-    opened = watchpartyOpenAttempt(WATCHPARTY_ATTEMPT_URLS[i](encoded));
-    if (opened) break; /* this attempt opened — WatchParty has the URL */
+  /* ---- Step 2: open the party room in a new tab ---- */
+  const opened = watchpartyOpenAttempt(partyUrl);
+  if (opened) {
+    watchpartyNotice('Opening your party room…', 'info');
+    return;
   }
 
-  /* ---- Step 3: clipboard safety net (autostart unverifiable) ---- */
-  const copied = await watchpartyCopyToClipboard(videoUrl);
+  /* ---- Step 3: popup blocked — copy the link, redirect here ---- */
+  const absolute = new URL(partyUrl, window.location.href).href;
+  const copied = await watchpartyCopyToClipboard(absolute);
   if (copied) {
-    watchpartyNotice('Video link copied. Paste it into WatchParty.', 'info');
+    watchpartyNotice('Party link copied — opening the party…', 'info');
   } else {
-    watchpartyNotice('Video link (copy manually): ' + videoUrl, 'info');
+    watchpartyNotice('Party link (copy manually): ' + absolute, 'info');
   }
-
-  /* No WatchParty tab could be opened at all (popup blocked):
-     after the message, send this tab to WatchParty instead. */
-  if (!opened) {
-    setTimeout(() => { window.location.href = WATCHPARTY_HOME; }, 2600);
-  }
+  setTimeout(() => { window.location.href = partyUrl; }, 2000);
 }
 
 /** Add the Watch Party button next to the Servers picker (idempotent). */
@@ -174,7 +164,7 @@ function watchpartyInjectButton() {
   button.type = 'button';
   button.className = 'chrome-btn chrome-btn--watchparty';
   button.id = 'watch-party-btn';
-  button.title = 'Watch this together with friends on WatchParty';
+  button.title = 'Watch this together with friends — ZEUS Party';
   button.innerHTML =
     '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5s-3 1.34-3 3 1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>' +
     '<span>Watch Party</span>';

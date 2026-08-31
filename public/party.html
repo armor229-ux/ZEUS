@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Watch Party - ZEUS</title>
+
+  <meta name="description" content="Watch videos together in perfect sync with friends — ZEUS Watch Party rooms with synced playback and live chat.">
+  <meta name="robots" content="noindex, follow">
+  <meta name="theme-color" content="#000000">
+
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="ZEUS">
+  <meta property="og:title" content="Watch Party - ZEUS">
+  <meta property="og:description" content="Watch videos together in sync with live chat.">
+
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="favicon.svg">
+
+  <!-- Inter typography (same as the rest of ZEUS) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap">
+
+  <!-- Styles -->
+  <link rel="stylesheet" href="party.css?v=1.0">
+</head>
+<body>
+
+  <!-- ============ HEADER ============ -->
+  <header class="party-header">
+    <a class="party-brand" href="index.html" aria-label="Back to ZEUS homepage">
+      <img src="logo.svg" alt="ZEUS">
+      <span class="party-word">ZEUS <em>Party</em></span>
+    </a>
+
+    <span class="party-header-spacer"></span>
+
+    <span class="room-code" id="room-code-badge" aria-label="Room code">
+      <span class="dot" aria-hidden="true"></span>
+      <span id="room-code-text">------</span>
+    </span>
+
+    <span class="conn-pill" id="conn-pill" role="status" aria-live="polite">
+      <span class="led" aria-hidden="true"></span>
+      <span id="conn-label">Connecting…</span>
+    </span>
+  </header>
+
+  <!-- ============ MAIN ============ -->
+  <main class="party-main">
+    <div class="party-layout">
+
+      <!-- ============ LEFT: PLAYER ============ -->
+      <section class="party-left" aria-label="Video player">
+
+        <div class="media-card">
+          <div class="media-head">
+            <div class="media-title-wrap">
+              <p class="media-eyebrow" id="media-eyebrow">Now watching</p>
+              <h1 class="media-title" id="media-title">No video yet</h1>
+            </div>
+            <span class="type-badge" id="type-badge" hidden>—</span>
+            <span class="sync-pill" id="sync-pill">
+              <span class="led" aria-hidden="true"></span>
+              <span id="sync-label">Waiting…</span>
+            </span>
+          </div>
+
+          <!-- Player stage: YouTube iframe target / MP4 <video> / empty / notice -->
+          <div class="player-stage" id="player-stage">
+            <div id="yt-player" aria-label="YouTube player"></div>
+            <video id="mp4-player" controls playsinline preload="auto" aria-label="Video player"></video>
+
+            <div class="stage-empty" id="stage-empty">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5s-3 1.34-3 3 1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
+              <h2>Your party room is ready</h2>
+              <p>Paste a YouTube link or a direct MP4 link below and press <strong>Set Video</strong> to start watching together in sync.</p>
+            </div>
+
+            <div class="stage-notice" id="stage-notice" role="alert">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/></svg>
+              <h2>This source can&rsquo;t be synced automatically</h2>
+              <p>This source can&rsquo;t be synced automatically due to browser restrictions. Use YouTube or a direct MP4 link.</p>
+              <p class="notice-url" id="notice-url"></p>
+            </div>
+
+            <button class="tap-overlay" id="tap-overlay" type="button" aria-label="Resume playback">
+              <span class="tap-inner">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
+                Tap to start playback
+              </span>
+            </button>
+          </div>
+
+          <!-- Set video -->
+          <form class="media-controls" id="media-form">
+            <label class="visually-hidden" for="media-url-input">Video URL</label>
+            <input type="text" id="media-url-input" placeholder="Paste a YouTube link or direct .mp4 link…" autocomplete="off" spellcheck="false" inputmode="url">
+            <button class="btn btn-primary" id="set-video-btn" type="submit">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 16.5l6-4.5-6-4.5v9zM12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/></svg>
+              Set Video
+            </button>
+            <p class="host-hint" id="host-hint">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l-2.4 7.2H2l6.2 4.5L5.8 21 12 16.6 18.2 21l-2.4-7.3L22 9.2h-7.6z"/></svg>
+              <span id="host-hint-text">Connecting…</span>
+            </p>
+          </form>
+        </div>
+
+        <!-- Invite -->
+        <div class="invite-card">
+          <h3>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5s-3 1.34-3 3 1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
+            Invite your friends
+          </h3>
+          <div class="invite-row">
+            <span class="invite-code" id="invite-code" aria-label="Room code">------</span>
+            <div class="invite-link-box">
+              <label class="visually-hidden" for="invite-link">Invite link</label>
+              <input type="text" id="invite-link" readonly aria-readonly="true" value="">
+              <button class="btn" id="copy-invite-btn" type="button">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 1H4a2 2 0 0 0-2 2v14h2V3h12V1zm3 4H8a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2zm0 16H8V7h11v14z"/></svg>
+                Copy
+              </button>
+            </div>
+          </div>
+          <p class="invite-note">Anyone who opens this link joins the room, sees the same video and stays in sync automatically.</p>
+        </div>
+
+      </section>
+
+      <!-- ============ RIGHT: CHAT ============ -->
+      <section class="chat-card" aria-label="Party chat">
+        <div class="chat-head">
+          <h3>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 2H4a2 2 0 0 0-2 2v18l4-4h14a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2z"/></svg>
+            Party chat
+          </h3>
+          <div class="members-row" id="members-row"></div>
+        </div>
+
+        <div class="chat-messages" id="chat-messages" role="log" aria-live="polite" aria-label="Chat messages">
+          <div class="chat-empty" id="chat-empty">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 2H4a2 2 0 0 0-2 2v18l4-4h14a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2z"/></svg>
+            No messages yet.<br>Say hi to your party! 👋
+          </div>
+        </div>
+
+        <form class="chat-entry" id="chat-form">
+          <label class="visually-hidden" for="chat-input">Message</label>
+          <input type="text" id="chat-input" placeholder="Type a message…" autocomplete="off" maxlength="500">
+          <button class="btn btn-primary" id="chat-send-btn" type="submit" aria-label="Send message">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2.01 21 23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+            Send
+          </button>
+        </form>
+      </section>
+
+    </div>
+  </main>
+
+  <!-- ============ FOOTER ============ -->
+  <footer class="party-footer">
+    <span><span class="accent">ZEUS Party</span> — watch together, stay in sync. Videos play directly from YouTube or their original source.</span>
+  </footer>
+
+  <!-- ============ JOIN OVERLAY (display name) ============ -->
+  <div class="join-overlay" id="join-overlay" role="dialog" aria-modal="true" aria-labelledby="join-title">
+    <div class="join-card">
+      <img src="logo.svg" alt="ZEUS">
+      <h1 id="join-title">ZEUS <em>Party</em></h1>
+      <p class="join-sub">Watch together in perfect sync — synced playback + live chat.</p>
+
+      <label for="name-input">Your display name</label>
+      <input type="text" id="name-input" maxlength="24" autocomplete="nickname" spellcheck="false">
+
+      <p class="join-error" id="join-error" role="alert"></p>
+
+      <button class="btn btn-primary" id="join-btn" type="button">Join the Party</button>
+      <p class="join-meta" id="join-meta"></p>
+    </div>
+  </div>
+
+  <!-- Toasts -->
+  <div id="toast-container" aria-live="polite"></div>
+
+  <script>
+    /* Party server connection — configurable.
+       Empty PARTY_SERVER_URL = use this site's own origin and route to the
+       party server through the gateway via the ?XTransformPort=5050 query
+       parameter (default for this deployment).
+       For a local setup you can set: window.PARTY_SERVER_URL = "http://localhost:5050" */
+    window.PARTY_SERVER_URL = "";
+    window.PARTY_PORT = "5050";
+  </script>
+  <script src="party.js?v=1.0" defer></script>
+</body>
+</html>
