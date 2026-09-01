@@ -175,6 +175,15 @@
       <label for="name-input">Your display name</label>
       <input type="text" id="name-input" maxlength="24" autocomplete="nickname" spellcheck="false">
 
+      <!-- Party server URL — configurable so the room works on any deployment
+           (localhost defaults to http://localhost:5050; elsewhere enter the
+           deployed https:// URL and press Save — stored per browser). -->
+      <label for="server-url-input" style="margin-top:16px;">Party Server URL</label>
+      <div style="display:flex;gap:10px;">
+        <input type="text" id="server-url-input" placeholder="https://your-party-server…" autocomplete="off" spellcheck="false" inputmode="url" style="flex:1;min-width:0;">
+        <button class="btn" id="save-server-btn" type="button">Save</button>
+      </div>
+
       <p class="join-error" id="join-error" role="alert"></p>
 
       <button class="btn btn-primary" id="join-btn" type="button">Join the Party</button>
@@ -185,15 +194,6 @@
   <!-- Toasts -->
   <div id="toast-container" aria-live="polite"></div>
 
-  <script>
-    /* Party server connection — configurable.
-       Empty PARTY_SERVER_URL = use this site's own origin and route to the
-       party server through the gateway via the ?XTransformPort=5050 query
-       parameter (default for this deployment).
-       For a local setup you can set: window.PARTY_SERVER_URL = "http://localhost:5050" */
-    window.PARTY_SERVER_URL = "";
-    window.PARTY_PORT = "5050";
-  </script>
-  <script src="party.js?v=1.0" defer></script>
+  <script src="party.js?v=1.1" defer></script>
 </body>
 </html>

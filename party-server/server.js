@@ -5,6 +5,7 @@
    REST API:
      POST /api/rooms            -> { roomId }          (create a room)
      GET  /api/rooms/:roomId    -> room snapshot / 404 (validate invite links)
+     GET  /health               -> { ok: true }        (liveness probe)
      GET  /api/health           -> { ok, rooms }
 
    Socket.IO events:
@@ -43,10 +44,12 @@
    port 3000, but serving ../public is easy, so this server can also
    run standalone (open http://localhost:5050/party.html directly).
 
-   Gateway note: the public site is behind a gateway that routes by the
-   ?XTransformPort= query parameter, so browser clients connect with
-   io("/?XTransformPort=5050") — the engine.io endpoint stays on the
-   default /socket.io path, which this server uses (do not change it).
+   Client note: browsers connect directly to the party server URL they
+   configured on the party.html join screen — io("http://localhost:5050")
+   in local dev, or the deployed https:// URL (an https page can never
+   reach an http:// server, so deployments must serve https). The
+   engine.io endpoint stays on the default /socket.io path, which this
+   server uses (do not change it).
 ============================================================ */
 
 'use strict';
@@ -166,6 +169,11 @@ app.get('/api/rooms/:roomId', (req, res) => {
   res.json(publicRoom(room));
 });
 
+/* Liveness probe — always { ok: true } while the server is up. */
+app.get('/health', (req, res) => {
+  res.json({ ok: true });
+});
+
 app.get('/api/health', (req, res) => {
   res.json({ ok: true, rooms: rooms.size });
 });
@@ -181,9 +189,9 @@ const httpServer = app.listen(PORT, () => {
 });
 
 const io = new Server(httpServer, {
-  /* Default engine path (/socket.io) — the browser client uses
-     io("/?XTransformPort=<PORT>") and the gateway routes by that
-     query param on every polling/websocket request. */
+  /* Default engine path (/socket.io) — matches io("<party-server-url>")
+     clients. CORS is env-configurable via PARTY_CORS_ORIGIN ("*" by
+     default, so any deployed ZEUS front-end can connect). */
   cors: {
     origin: PARTY_CORS_ORIGIN === '*'
       ? '*'

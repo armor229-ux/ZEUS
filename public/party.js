@@ -3,6 +3,11 @@
    Client for the ZEUS Watch Party room (party.html).
 
    - Creates/joins a room on the party server (party-server/)
+   - Party server URL is configurable: saved to localStorage
+     ("zeus_party_server_url", via the Save button on the join screen)
+     or the http://localhost:5050 default when ZEUS itself runs on
+     localhost; an https page rejects http:// party servers (mixed
+     content) before any connection is attempted
    - Synced playback for YouTube (IFrame API) and direct MP4
    - Live chat + member list + invite link
    - Host rules: the host drives playback (play/pause/seek) and is
@@ -20,15 +25,29 @@
 
   /* ================= configuration ================= */
 
-  /* Socket server URL — configurable.
-     "" (default) = this site's own origin, routed to the party server
-     through the gateway via the ?XTransformPort=<PARTY_PORT> query.
-     Local dev: window.PARTY_SERVER_URL = "http://localhost:5050" */
-  const PARTY_SERVER_URL = window.PARTY_SERVER_URL || '';
-  const PARTY_PORT = String(window.PARTY_PORT || '5050');
+  /* Party server URL — configurable & HTTPS-safe.
+     Precedence:
+       1. localStorage "zeus_party_server_url" (Save button on the
+          join screen — party.html)
+       2. http://localhost:5050 when ZEUS itself is served from
+          localhost / 127.0.0.1
+       3. "" — no server: "Join the Party" stays disabled with a
+          clear error until a URL is entered and saved
+     An https:// page can never reach an http:// server (mixed
+     content), so that combination is rejected up front. */
+  const isLocalhost = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+  const DEFAULT_LOCAL_SERVER = 'http://localhost:5050';
+
+  function normalizeServerUrl(url) {
+    return String(url || '').trim().replace(/\/+$/, '');
+  }
+  function savedServerUrl() {
+    try { return normalizeServerUrl(localStorage.getItem('zeus_party_server_url')); } catch (err) { return ''; }
+  }
+  let PARTY_SERVER_URL = savedServerUrl() || (isLocalhost ? DEFAULT_LOCAL_SERVER : '');
 
   const DRIFT_TOLERANCE = 1.2;   /* seconds — seek when further off */
-const SYNC_INTERVAL = 1500;     /* ms   — drift check cadence     */
+  const SYNC_INTERVAL = 1500;    /* ms   — drift check cadence     */
 
   /* ================= dom ================= */
 
@@ -64,6 +83,8 @@ const SYNC_INTERVAL = 1500;     /* ms   — drift check cadence     */
     chatInput: $('chat-input'),
     joinOverlay: $('join-overlay'),
     nameInput: $('name-input'),
+    serverUrlInput: $('server-url-input'),
+    saveServerBtn: $('save-server-btn'),
     joinBtn: $('join-btn'),
     joinError: $('join-error'),
     joinMeta: $('join-meta'),
@@ -137,7 +158,9 @@ const SYNC_INTERVAL = 1500;     /* ms   — drift check cadence     */
   }
 
   function apiUrl(path) {
-    return PARTY_SERVER_URL + path + (path.indexOf('?') === -1 ? '?' : '&') + 'XTransformPort=' + PARTY_PORT;
+    /* Absolute URL to the configured party server (REST endpoints
+       and the socket.io client bundle). */
+    return PARTY_SERVER_URL + path;
   }
 
   function loadScriptOnce(src) {
@@ -237,10 +260,15 @@ const SYNC_INTERVAL = 1500;     /* ms   — drift check cadence     */
   }
 
   function connectSocket() {
-    /* Gateway-safe connection: relative URL + XTransformPort query
-       (when PARTY_SERVER_URL is set, it becomes an absolute URL). */
-    const socketUrl = PARTY_SERVER_URL + '/?XTransformPort=' + PARTY_PORT;
-    const socket = io(socketUrl, {
+    /* Direct connection to the configured party server — always an
+       absolute URL (http://localhost:5050 locally, or the deployed
+       https:// URL saved from the join screen). */
+    if (!PARTY_SERVER_URL) {
+      setConn('error', "Can't reach server");
+      showJoinError('No Party Server URL set — enter it above and press Save.');
+      return;
+    }
+    const socket = io(PARTY_SERVER_URL, {
       transports: ['websocket', 'polling'],
       forceNew: true,
       reconnection: true,
@@ -815,8 +843,60 @@ const SYNC_INTERVAL = 1500;     /* ms   — drift check cadence     */
   }
   function hideJoinError() { els.joinError.classList.remove('is-visible'); }
 
+  /* ---- party server URL: validation + save (join screen) ---- */
+
+  function validateServerUrl(url) {
+    if (!url) {
+      return isLocalhost
+        ? 'Party Server URL is missing — enter it and press Save.'
+        : 'Enter your deployed Party Server URL (https://...) and press Save.';
+    }
+    if (location.protocol === 'https:' && url.indexOf('http://') === 0) {
+      return "HTTPS page can't connect to HTTP server. Use an https Party Server URL.";
+    }
+    if (!/^(https?|wss?):\/\//i.test(url)) {
+      return 'Party Server URL must start with http:// or https://';
+    }
+    return null;
+  }
+
+  /* "Join the Party" is only clickable with a valid server URL. */
+  function refreshJoinAvailability() {
+    const candidate = normalizeServerUrl(els.serverUrlInput.value) || PARTY_SERVER_URL;
+    const err = validateServerUrl(candidate);
+    if (err) {
+      els.joinBtn.disabled = true;
+      showJoinError(err);
+    } else {
+      els.joinBtn.disabled = false;
+      hideJoinError();
+    }
+  }
+
+  function saveServerUrl() {
+    const value = normalizeServerUrl(els.serverUrlInput.value);
+    els.serverUrlInput.value = value;
+    try { localStorage.setItem('zeus_party_server_url', value); } catch (err) {}
+    PARTY_SERVER_URL = value || (isLocalhost ? DEFAULT_LOCAL_SERVER : '');
+    refreshJoinAvailability();
+    if (!validateServerUrl(PARTY_SERVER_URL)) toast('Party Server URL saved.', 'success');
+  }
+
+  els.saveServerBtn.addEventListener('click', saveServerUrl);
+  els.serverUrlInput.addEventListener('input', refreshJoinAvailability);
+  els.serverUrlInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); saveServerUrl(); }
+  });
+
   async function startParty() {
     if (state.joined) return;
+    const urlError = validateServerUrl(PARTY_SERVER_URL);
+    if (urlError) {
+      els.joinBtn.disabled = true;
+      showJoinError(urlError);
+      els.serverUrlInput.focus();
+      return;
+    }
     const name = (els.nameInput.value || '').trim().slice(0, 24) || randomGuestName();
     try { localStorage.setItem('zeus_party_name', name); } catch (err) {}
 
@@ -838,7 +918,10 @@ const SYNC_INTERVAL = 1500;     /* ms   — drift check cadence     */
       appendChatMessage({ system: true, message: 'Welcome to the party! Invite friends with the link below the player.' });
     } catch (err) {
       state.roomId = paramRoom || null;
-      showJoinError("Can't reach the party server. Start it with: node party-server/server.js (port " + PARTY_PORT + ").");
+      showJoinError(
+        "Can't reach the Party Server at " + (PARTY_SERVER_URL || '(no URL set)') +
+        '. Check the URL above and make sure the server is running (node party-server/server.js).'
+      );
       els.joinBtn.disabled = false;
       els.joinBtn.textContent = 'Join the Party';
       setConn('error', "Can't reach server");
@@ -856,6 +939,7 @@ const SYNC_INTERVAL = 1500;     /* ms   — drift check cadence     */
     let saved = '';
     try { saved = localStorage.getItem('zeus_party_name') || ''; } catch (err) {}
     els.nameInput.value = saved || randomGuestName();
+    els.serverUrlInput.value = PARTY_SERVER_URL; /* saved URL, localhost default, or '' */
     els.joinMeta.innerHTML = paramRoom
       ? 'Joining room <strong>' + paramRoom + '</strong>'
       : 'A new room will be created for you.';
@@ -863,7 +947,10 @@ const SYNC_INTERVAL = 1500;     /* ms   — drift check cadence     */
     renderRoomBadges();
     setConn('connecting', 'Connecting…');
     refreshHostUI();
-    setTimeout(() => els.nameInput.focus(), 150);
+    refreshJoinAvailability();
+    setTimeout(() => {
+      (els.joinBtn.disabled ? els.serverUrlInput : els.nameInput).focus();
+    }, 150);
   })();
 
   /* Debug/testing handle (harmless in production) */
@@ -876,6 +963,8 @@ const SYNC_INTERVAL = 1500;     /* ms   — drift check cadence     */
     sync: syncPlayback,
     detectMediaType,
     parseYouTubeId,
+    validateServerUrl,
+    saveServerUrl,
   };
 
 })();
