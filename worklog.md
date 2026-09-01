@@ -228,3 +228,17 @@ Work Log:
 
 Stage Summary:
 - ZEUS-public.zip is now genuinely downloadable at /ZEUS-public.zip via the Preview Panel (byte-verified), plus GitHub raw URL path given as the permanent option.
+
+---
+Task ID: 10
+Agent: Z.ai Code (main agent)
+Task: Deliver ZEUS-public.zip IN CHAT as base64 (user asked to "show the zip file here in the chat"; attachments unsupported, links not usable for them).
+
+Work Log:
+- Created download/ZEUS-public.zip.b64 (base64 -w 76 of the 205,047-byte zip: 3,598 lines, 276,994 chars, SHA256 of zip unchanged 399c6df7...4db152).
+- Split into 12 chunks of 24,000 chars: download/zpub-part-00.txt .. zpub-part-11.txt (last one 12,994 chars). One chunk per chat message; user replies "next" for the following chunk. RESUMABLE: to (re)send chunk N, Read download/zpub-part-NN.txt — always in two halves (offset 1 limit ~160, then offset 161) because a full 24,000-char Read can truncate at the display layer mid-last-line (happened on chunk 00: displayed tail ...2oQ was mangled; true line 312 = ...2oKru4jUUhAZZIgHGWfJBEABoiIWsp0W4, confirmed by small offset Read).
+- Assembly instructions given to user: concatenate the 12 blocks in order into ZEUS-public.zip.b64, then Linux/macOS: tr -d '\n\r' < ZEUS-public.zip.b64 | base64 -d > ZEUS-public.zip (old macOS: base64 -D); Windows PowerShell: [IO.File]::WriteAllBytes("ZEUS-public.zip",[Convert]::FromBase64String((Get-Content ZEUS-public.zip.b64 -Raw) -replace "\s","")). Verify SHA256 = 399c6df739a0da45841dddc5bac19689e3e154e6b44f75a1cbc110199f4db152 (sha256sum / shasum -a 256 / certutil -hashfile).
+- The 1-click alternative remains active: preview -> /ZEUS-public.zip (byte-identical, verified).
+
+Stage Summary:
+- In-chat base64 delivery started: chunk 1/12 sent this turn (zpub-part-00.txt, 312 lines). 11 chunks remain; resume via the zpub-part-*.txt files.
