@@ -194,3 +194,22 @@ Stage Summary:
 - Re-verified end-to-end live: 20/20 protocol tests + full browser E2E (create/join/chat/YouTube real playback sync/pause/seek/host migration/MP4/auto set_media/exact notice text) with no page errors.
 - Deploy path for production: cd party-worker && npx wrangler deploy → paste the workers.dev URL once into the party page's "Party backend URL" field (localStorage) or edit DEFAULT_BACKEND.
 - wrangler dev (8787) and Next dev (3000) both left running; awaiting explicit user instructions.
+
+---
+Task ID: 8
+Agent: Z.ai Code (main agent)
+Task: Cloudflare Pages public-only deployment packaging — make public/ the complete deployable site (all pages/assets, relative references only), add VERSION.txt + DEPLOYMENT.txt with exact Pages settings, and deliver ZEUS-public.zip containing ONLY the public/ folder. Ongoing rule: every future update ships ZEUS-public.zip as the main deliverable.
+
+Work Log:
+- Read worklog (Tasks 1-7 + party-spec verification) + full repo audit: the entire site already lives in public/ (13 HTML, 16 JS, 4 CSS, logo.svg, favicon.svg, robots.txt); repo root has NO stray site files to move (root = Next.js shell: src/, prisma/, package.json etc.); public/ is the newest version (includes the Task-6 party system).
+- Grep audits across public/: ZERO "/public/..." paths; ZERO absolute href="/..." / src="/..." in any HTML; ZERO localhost/127.0.0.1/ws:// references (only SVG-xmlns and data-URI http://www.w3.org identifiers, not network calls); all pages/scripts/styles referenced relatively (style.css?v=, config.js, favicon.svg, href="index.html", ...); no internal /api fetches; party.js room rewrite is location.pathname-based (deploy-path agnostic).
+- Fixed the ONLY non-relative reference in the codebase: watchparty.js partyUrl '/party.html?url=' -> 'party.html?url=' (plus its header comment), so the Watch-Party hand-off works from any deploy path; bumped watch.html cache-buster watchparty.js?v=3.1 -> ?v=3.2 (project's own convention so CDNs won't serve the stale script).
+- Created public/VERSION.txt (build stamp 2026-09-01 17:23 Europe/Paris / 15:23 UTC + full build description + change list) and public/DEPLOYMENT.txt (EXACT Cloudflare Pages settings: Framework preset None, Build command empty, Root directory empty, Build output directory public; Git + direct-upload how-tos; party-worker deploy note).
+- Browser E2E on dev :3000 (serves public/ at the root, exactly like Pages will): index.html loads with title "ZEUS - Watch Movies & TV Shows Online Free HD", style.css applied (stylesheets list + body bg rgb(0,0,0) + nav logo), zero page errors; party.html renders the join overlay (display name, #backend-input placeholder https://zeus-party.YOUR_WORKERS_SUBDOMAIN.workers.dev, Save/Join); party.html?url=<yt>&title=... loads pre-join state; Join click -> the designed "Can't reach backend" deploy hint (expected: placeholder subdomain, worker not yet deployed), overlay stays usable, zero errors; watch.html?type=movie&id=550: #watch-party-btn present, watchpartyLaunch source uses 'party.html?url=' (no leading-slash variant), real button click opened a NEW TAB at party.html?url=https%3A%2F%2Fvidcore.org%2Fembed%2Fmovie%2F550&title=Fight%20Club%20(1999) — relative hand-off verified end-to-end; VERSION.txt / DEPLOYMENT.txt served via curl.
+- Created the deliverable: download/ZEUS-public.zip via `zip -r -X download/ZEUS-public.zip public` — 39 entries (public/ dir + 38 files, 713,902 bytes raw / 205,047 zipped); listing verified: contains ONLY public/** — no node_modules, .git, db, tests, tool-results, upload zips, or temp files.
+- bun run lint clean; dev server healthy (next-server v16.1.3 PID 1074 on :3000; the EADDRINUSE in dev.log is only a harmless duplicate-launch attempt).
+
+Stage Summary:
+- public/ IS the complete, self-contained ZEUS site and the single deploy artifact: ZEUS-public.zip (download/ZEUS-public.zip) — public-only, per the ongoing delivery rule.
+- Total changes: watchparty.js (relative partyUrl), watch.html (cache-buster v3.2), VERSION.txt + DEPLOYMENT.txt (new). Nothing else touched.
+- Deploy: Cloudflare Pages with Framework None / empty build command / empty root / output directory "public" (or direct-upload the extracted public folder); party rooms additionally need `cd party-worker && npx wrangler deploy` once, then paste the workers.dev URL into the party page's backend field (localStorage "zeus_party_backend").

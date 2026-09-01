@@ -9,8 +9,9 @@
           -> window.location.href as a last resort
      2) Resolve the current title (#watch-title, falling back to
         #watch-info-title, then document.title).
-     3) Open the ZEUS party room (party.html) in a NEW TAB:
-          /party.html?url=ENCODED_CURRENT_URL&title=ENCODED_TITLE
+     3) Open the ZEUS party room (party.html) in a NEW TAB
+        (relative path, so it works from any deploy path):
+          party.html?url=ENCODED_CURRENT_URL&title=ENCODED_TITLE
         The party page auto-creates a room on the party backend
         (your deployed Cloudflare Worker — party-worker/), auto-fills
         the URL and — for YouTube links and direct .mp4 files —
@@ -133,7 +134,7 @@ function watchpartyOpenAttempt(url) {
 async function watchpartyLaunch() {
   const videoUrl = watchpartyResolveVideoUrl();
   const title = watchpartyResolveTitle();
-  const partyUrl = '/party.html?url=' + encodeURIComponent(videoUrl) +
+  const partyUrl = 'party.html?url=' + encodeURIComponent(videoUrl) +
                    '&title=' + encodeURIComponent(title);
 
   /* ---- Step 2: open the party room in a new tab ---- */
