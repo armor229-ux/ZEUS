@@ -1,0 +1,971 @@
+     1→     1→/* ============================================================
+     2→     2→   ZEUS — party.js
+     3→     3→   Client for the ZEUS Watch Party room (party.html).
+     4→     4→
+     5→     5→   - Creates/joins a room on the party server (party-server/)
+     6→     6→   - Party server URL is configurable: saved to localStorage
+     7→     7→     ("zeus_party_server_url", via the Save button on the join screen)
+     8→     8→     or the http://localhost:5050 default when ZEUS itself runs on
+     9→     9→     localhost; an https page rejects http:// party servers (mixed
+    10→    10→     content) before any connection is attempted
+    11→    11→   - Synced playback for YouTube (IFrame API) and direct MP4
+    12→    12→   - Live chat + member list + invite link
+    13→    13→   - Host rules: the host drives playback (play/pause/seek) and is
+    14→    14→     the only one who can set the room video; non-hosts can still
+    15→    15→     paste a URL locally (it does NOT change the room media)
+    16→    16→   - Drift correction: non-hosts compare their player time with the
+    17→    17→     room target time; a difference > 1.2s triggers a local seek
+    18→    18→   - Sources that are neither YouTube nor direct .mp4 can't be
+    19→    19→     synced — the room still works (chat + manual link paste)
+    20→    20→============================================================ */
+    21→    21→
+    22→    22→'use strict';
+    23→    23→
+    24→    24→(function () {
+    25→    25→
+    26→    26→  /* ================= configuration ================= */
+    27→    27→
+    28→    28→  /* Party server URL — configurable & HTTPS-safe.
+    29→    29→     Precedence:
+    30→    30→       1. localStorage "zeus_party_server_url" (Save button on the
+    31→    31→          join screen — party.html)
+    32→    32→       2. http://localhost:5050 when ZEUS itself is served from
+    33→    33→          localhost / 127.0.0.1
+    34→    34→       3. "" — no server: "Join the Party" stays disabled with a
+    35→    35→          clear error until a URL is entered and saved
+    36→    36→     An https:// page can never reach an http:// server (mixed
+    37→    37→     content), so that combination is rejected up front. */
+    38→    38→  const isLocalhost = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+    39→    39→  const DEFAULT_LOCAL_SERVER = 'http://localhost:5050';
+    40→    40→
+    41→    41→  function normalizeServerUrl(url) {
+    42→    42→    return String(url || '').trim().replace(/\/+$/, '');
+    43→    43→  }
+    44→    44→  function savedServerUrl() {
+    45→    45→    try { return normalizeServerUrl(localStorage.getItem('zeus_party_server_url')); } catch (err) { return ''; }
+    46→    46→  }
+    47→    47→  let PARTY_SERVER_URL = savedServerUrl() || (isLocalhost ? DEFAULT_LOCAL_SERVER : '');
+    48→    48→
+    49→    49→  const DRIFT_TOLERANCE = 1.2;   /* seconds — seek when further off */
+    50→    50→  const SYNC_INTERVAL = 1500;    /* ms   — drift check cadence     */
+    51→    51→
+    52→    52→  /* ================= dom ================= */
+    53→    53→
+    54→    54→  const $ = (id) => document.getElementById(id);
+    55→    55→  const els = {
+    56→    56→    roomCodeBadge: $('room-code-badge'),
+    57→    57→    roomCodeText: $('room-code-text'),
+    58→    58→    connPill: $('conn-pill'),
+    59→    59→    connLabel: $('conn-label'),
+    60→    60→    mediaEyebrow: $('media-eyebrow'),
+    61→    61→    mediaTitle: $('media-title'),
+    62→    62→    typeBadge: $('type-badge'),
+    63→    63→    syncPill: $('sync-pill'),
+    64→    64→    syncLabel: $('sync-label'),
+    65→    65→    stage: $('player-stage'),
+    66→    66→    yt: $('yt-player'),
+    67→    67→    mp4: $('mp4-player'),
+    68→    68→    stageEmpty: $('stage-empty'),
+    69→    69→    stageNotice: $('stage-notice'),
+    70→    70→    noticeUrl: $('notice-url'),
+    71→    71→    tapOverlay: $('tap-overlay'),
+    72→    72→    mediaForm: $('media-form'),
+    73→    73→    mediaInput: $('media-url-input'),
+    74→    74→    setVideoBtn: $('set-video-btn'),
+    75→    75→    hostHint: $('host-hint-text'),
+    76→    76→    inviteCode: $('invite-code'),
+    77→    77→    inviteLink: $('invite-link'),
+    78→    78→    copyInviteBtn: $('copy-invite-btn'),
+    79→    79→    membersRow: $('members-row'),
+    80→    80→    chatMessages: $('chat-messages'),
+    81→    81→    chatEmpty: $('chat-empty'),
+    82→    82→    chatForm: $('chat-form'),
+    83→    83→    chatInput: $('chat-input'),
+    84→    84→    joinOverlay: $('join-overlay'),
+    85→    85→    nameInput: $('name-input'),
+    86→    86→    serverUrlInput: $('server-url-input'),
+    87→    87→    saveServerBtn: $('save-server-btn'),
+    88→    88→    joinBtn: $('join-btn'),
+    89→    89→    joinError: $('join-error'),
+    90→    90→    joinMeta: $('join-meta'),
+    91→    91→    toasts: $('toast-container'),
+    92→    92→  };
+    93→    93→
+    94→    94→  /* ================= state ================= */
+    95→    95→
+    96→    96→  const qs = new URLSearchParams(location.search);
+    97→    97→  const paramRoom = (qs.get('room') || '').trim().toUpperCase();
+    98→    98→  const paramUrl = qs.get('url') || '';
+    99→    99→  const paramTitle = qs.get('title') || '';
+   100→   100→
+   101→   101→  const state = {
+   102→   102→    roomId: paramRoom || null,
+   103→   103→    displayName: '',
+   104→   104→    socket: null,
+   105→   105→    isHost: false,
+   106→   106→    hostSocketId: null,
+   107→   107→    roomMediaUrl: null,   /* media set on the room (host)      */
+   108→   108→    currentMedia: null,   /* media loaded locally right now    */
+   109→   109→    localOverride: false, /* non-host watching a local URL     */
+   110→   110→    lastState: null,      /* last room snapshot + local clock  */
+   111→   111→    autoSetDone: false,   /* one-shot auto "Set Video" from ?url= */
+   112→   112→  };
+   113→   113→
+   114→   114→  /* ================= utilities ================= */
+   115→   115→
+   116→   116→  function toast(message, type) {
+   117→   117→    const t = document.createElement('div');
+   118→   118→    t.className = 'toast';
+   119→   119→    const icon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+   120→   120→    icon.setAttribute('viewBox', '0 0 24 24');
+   121→   121→    icon.innerHTML = type === 'error'
+   122→   122→      ? '<path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/>'
+   123→   123→      : '<path d="M9 16.2 4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z"/>';
+   124→   124→    const span = document.createElement('span');
+   125→   125→    span.textContent = message;
+   126→   126→    t.append(icon, span);
+   127→   127→    els.toasts.appendChild(t);
+   128→   128→    setTimeout(() => t.classList.add('removing'), 2600);
+   129→   129→    setTimeout(() => t.remove(), 3100);
+   130→   130→  }
+   131→   131→
+   132→   132→  async function copyText(text) {
+   133→   133→    try {
+   134→   134→      await navigator.clipboard.writeText(text);
+   135→   135→      return true;
+   136→   136→    } catch (err) { /* legacy fallback below */ }
+   137→   137→    try {
+   138→   138→      const helper = document.createElement('textarea');
+   139→   139→      helper.value = text;
+   140→   140→      helper.setAttribute('readonly', '');
+   141→   141→      helper.style.cssText = 'position:fixed;top:-9999px;left:-9999px;opacity:0;';
+   142→   142→      document.body.appendChild(helper);
+   143→   143→      helper.select();
+   144→   144→      helper.setSelectionRange(0, text.length);
+   145→   145→      const ok = document.execCommand('copy');
+   146→   146→      helper.remove();
+   147→   147→      return ok;
+   148→   148→    } catch (err) {
+   149→   149→      return false;
+   150→   150→    }
+   151→   151→  }
+   152→   152→
+   153→   153→  function fmtClock(sec) {
+   154→   154→    sec = Math.max(0, Math.floor(sec || 0));
+   155→   155→    const m = Math.floor(sec / 60);
+   156→   156→    const s = sec % 60;
+   157→   157→    return m + ':' + String(s).padStart(2, '0');
+   158→   158→  }
+   159→   159→
+   160→   160→  function apiUrl(path) {
+   161→   161→    /* Absolute URL to the configured party server (REST endpoints
+   162→   162→       and the socket.io client bundle). */
+   163→   163→    return PARTY_SERVER_URL + path;
+   164→   164→  }
+   165→   165→
+   166→   166→  function loadScriptOnce(src) {
+   167→   167→    return new Promise((resolve, reject) => {
+   168→   168→      const s = document.createElement('script');
+   169→   169→      s.src = src;
+   170→   170→      s.async = true;
+   171→   171→      s.onload = () => resolve();
+   172→   172→      s.onerror = () => { s.remove(); reject(new Error('failed to load ' + src)); };
+   173→   173→      document.head.appendChild(s);
+   174→   174→    });
+   175→   175→  }
+   176→   176→
+   177→   177→  function randomGuestName() {
+   178→   178→    const tail = Math.random().toString(36).slice(2, 6);
+   179→   179→    return 'Guest-' + tail.toUpperCase();
+   180→   180→  }
+   181→   181→
+   182→   182→  /* ================= media detection ================= */
+   183→   183→
+   184→   184→  function parseYouTubeId(url) {
+   185→   185→    if (typeof url !== 'string') return null;
+   186→   186→    const patterns = [
+   187→   187→      /youtu\.be\/([\w-]{11})(?:[?&#]|$)/,
+   188→   188→      /[?&]v=([\w-]{11})(?:[&]|$)/,
+   189→   189→      /youtube\.com\/embed\/([\w-]{11})(?:[?&#]|$)/,
+   190→   190→      /youtube\.com\/shorts\/([\w-]{11})(?:[?&#]|$)/,
+   191→   191→    ];
+   192→   192→    for (const p of patterns) {
+   193→   193→      const m = url.match(p);
+   194→   194→      if (m) return m[1];
+   195→   195→    }
+   196→   196→    return null;
+   197→   197→  }
+   198→   198→
+   199→   199→  function detectMediaType(url) {
+   200→   200→    const u = (url || '').trim();
+   201→   201→    if (!u) return 'unknown';
+   202→   202→    if (parseYouTubeId(u)) return 'youtube';
+   203→   203→    if (/\.mp4([?#]|$)/i.test(u)) return 'mp4';
+   204→   204→    return 'unknown';
+   205→   205→  }
+   206→   206→
+   207→   207→  function mediaTitleFor(media) {
+   208→   208→    if (media.title && media.title.trim()) return media.title.trim();
+   209→   209→    if (media.type === 'youtube') return 'YouTube video';
+   210→   210→    if (media.type === 'mp4') {
+   211→   211→      try { return decodeURIComponent(media.url.split('/').pop().split('?')[0]) || 'MP4 video'; }
+   212→   212→      catch (err) { return 'MP4 video'; }
+   213→   213→    }
+   214→   214→    return 'Custom source';
+   215→   215→  }
+   216→   216→
+   217→   217→  /* ================= room / server plumbing ================= */
+   218→   218→
+   219→   219→  async function createRoom() {
+   220→   220→    const res = await fetch(apiUrl('/api/rooms'), { method: 'POST' });
+   221→   221→    if (!res.ok) throw new Error('room create failed (' + res.status + ')');
+   222→   222→    const data = await res.json();
+   223→   223→    return String(data.roomId);
+   224→   224→  }
+   225→   225→
+   226→   226→  function updateUrlWithRoom() {
+   227→   227→    try {
+   228→   228→      const params = new URLSearchParams();
+   229→   229→      params.set('room', state.roomId);
+   230→   230→      if (paramUrl) params.set('url', paramUrl);
+   231→   231→      if (paramTitle) params.set('title', paramTitle);
+   232→   232→      history.replaceState(null, '', location.pathname + '?' + params.toString());
+   233→   233→    } catch (err) { /* non-fatal */ }
+   234→   234→  }
+   235→   235→
+   236→   236→  function renderRoomBadges() {
+   237→   237→    els.roomCodeText.textContent = state.roomId || '------';
+   238→   238→    els.inviteCode.textContent = state.roomId || '------';
+   239→   239→    els.roomCodeBadge.classList.toggle('is-visible', !!state.roomId);
+   240→   240→    if (state.roomId) {
+   241→   241→      els.inviteLink.value = location.origin + location.pathname + '?room=' + state.roomId;
+   242→   242→    }
+   243→   243→  }
+   244→   244→
+   245→   245→  /* ---- socket.io client bundle (served by the party server) ---- */
+   246→   246→
+   247→   247→  let socketIoLoaded = false;
+   248→   248→  async function loadSocketIo() {
+   249→   249→    if (socketIoLoaded || (window.io && typeof window.io === 'function')) { socketIoLoaded = true; return; }
+   250→   250→    const sources = [
+   251→   251→      apiUrl('/socket.io/socket.io.js'),
+   252→   252→      'https://cdn.socket.io/4.8.3/socket.io.min.js', /* fallback */
+   253→   253→    ];
+   254→   254→    let lastErr = null;
+   255→   255→    for (const src of sources) {
+   256→   256→      try { await loadScriptOnce(src); socketIoLoaded = true; return; }
+   257→   257→      catch (err) { lastErr = err; }
+   258→   258→    }
+   259→   259→    throw lastErr || new Error('socket.io client unavailable');
+   260→   260→  }
+   261→   261→
+   262→   262→  function connectSocket() {
+   263→   263→    /* Direct connection to the configured party server — always an
+   264→   264→       absolute URL (http://localhost:5050 locally, or the deployed
+   265→   265→       https:// URL saved from the join screen). */
+   266→   266→    if (!PARTY_SERVER_URL) {
+   267→   267→      setConn('error', "Can't reach server");
+   268→   268→      showJoinError('No Party Server URL set — enter it above and press Save.');
+   269→   269→      return;
+   270→   270→    }
+   271→   271→    const socket = io(PARTY_SERVER_URL, {
+   272→   272→      transports: ['websocket', 'polling'],
+   273→   273→      forceNew: true,
+   274→   274→      reconnection: true,
+   275→   275→      reconnectionDelay: 1000,
+   276→   276→      reconnectionDelayMax: 5000,
+   277→   277→      timeout: 10000,
+   278→   278→    });
+   279→   279→    state.socket = socket;
+   280→   280→
+   281→   281→    socket.on('connect', () => {
+   282→   282→      setConn('connected', 'Connected');
+   283→   283→      hideJoinError();
+   284→   284→      /* (re)join — the server re-sends the full room snapshot */
+   285→   285→      socket.emit('join', { roomId: state.roomId, displayName: state.displayName });
+   286→   286→    });
+   287→   287→
+   288→   288→    socket.on('disconnect', () => setConn('reconnecting', 'Reconnecting…'));
+   289→   289→    socket.on('connect_error', () => setConn('error', "Can't reach server"));
+   290→   290→
+   291→   291→    socket.on('state', onState);
+   292→   292→    socket.on('host', onHost);
+   293→   293→    socket.on('members', onMembers);
+   294→   294→    socket.on('set_media', onSetMedia);
+   295→   295→    socket.on('play', (d) => onPlaybackEvent('play', d));
+   296→   296→    socket.on('pause', (d) => onPlaybackEvent('pause', d));
+   297→   297→    socket.on('seek', (d) => onPlaybackEvent('seek', d));
+   298→   298→    socket.on('chat', onChat);
+   299→   299→    socket.on('party-error', (d) => toast(d && d.message ? d.message : 'Party error', 'error'));
+   300→   300→  }
+   301→   301→
+   302→   302→  function setConn(kind, label) {
+   303→   303→    els.connPill.classList.toggle('is-connected', kind === 'connected');
+   304→   304→    els.connPill.classList.toggle('is-error', kind === 'error');
+   305→   305→    els.connLabel.textContent = label;
+   306→   306→  }
+   307→   307→
+   308→   308→  /* ================= server -> client handlers ================= */
+   309→   309→
+   310→   310→  function onState(room) {
+   311→   311→    state.lastState = {
+   312→   312→      roomId: room.roomId,
+   313→   313→      hostSocketId: room.hostSocketId,
+   314→   314→      media: room.media,
+   315→   315→      paused: !!room.paused,
+   316→   316→      time: Number(room.time) || 0,
+   317→   317→      receivedAt: performance.now(),
+   318→   318→    };
+   319→   319→    state.hostSocketId = room.hostSocketId;
+   320→   320→    state.isHost = !!room.hostSocketId && state.socket && room.hostSocketId === state.socket.id;
+   321→   321→    refreshHostUI();
+   322→   322→
+   323→   323→    maybeAutoSetFromUrlParam(room);
+   324→   324→
+   325→   325→    if (room.media && room.media.url) {
+   326→   326→      const roomChanged = state.roomMediaUrl !== room.media.url;
+   327→   327→      if (roomChanged) {
+   328→   328→        state.roomMediaUrl = room.media.url;
+   329→   329→        state.localOverride = false;
+   330→   330→        applyMedia(room.media, { time: state.lastState.time, paused: state.lastState.paused, force: true });
+   331→   331→      } else if (!state.localOverride && !state.isHost) {
+   332→   332→        syncPlayback(); /* drift correction */
+   333→   333→      }
+   334→   334→    } else if (state.roomMediaUrl || state.currentMedia) {
+   335→   335→      state.roomMediaUrl = null;
+   336→   336→      state.localOverride = false;
+   337→   337→      resetStage();
+   338→   338→    }
+   339→   339→    updateSyncPill();
+   340→   340→  }
+   341→   341→
+   342→   342→  function onHost(d) {
+   343→   343→    const wasHost = state.isHost;
+   344→   344→    state.hostSocketId = d && d.hostSocketId ? d.hostSocketId : null;
+   345→   345→    state.isHost = !!(state.socket && state.hostSocketId === state.socket.id);
+   346→   346→    refreshHostUI();
+   347→   347→    updateSyncPill();
+   348→   348→    if (state.isHost && !wasHost && state.joined) {
+   349→   349→      toast("You're now the host — you control playback.");
+   350→   350→    }
+   351→   351→  }
+   352→   352→
+   353→   353→  function onMembers(d) {
+   354→   354→    renderMembers((d && d.members) || []);
+   355→   355→  }
+   356→   356→
+   357→   357→  function onSetMedia(d) {
+   358→   358→    const media = d && d.media;
+   359→   359→    if (!media || !media.url) return;
+   360→   360→    state.roomMediaUrl = media.url;
+   361→   361→    state.localOverride = false;
+   362→   362→    applyMedia(media, {
+   363→   363→      time: state.lastState ? state.lastState.time : 0,
+   364→   364→      paused: state.lastState ? state.lastState.paused : true,
+   365→   365→      force: true,
+   366→   366→    });
+   367→   367→  }
+   368→   368→
+   369→   369→  function onPlaybackEvent(kind, d) {
+   370→   370→    if (state.lastState) {
+   371→   371→      state.lastState.receivedAt = performance.now();
+   372→   372→      state.lastState.time = Number(d && d.time) || 0;
+   373→   373→      if (kind === 'play') state.lastState.paused = false;
+   374→   374→      if (kind === 'pause') state.lastState.paused = true;
+   375→   375→    }
+   376→   376→    if (state.isHost) { updateSyncPill(); return; } /* host drives, never follows */
+   377→   377→    if (state.localOverride) return;
+   378→   378→    if (kind === 'seek') { hardSeek(Number(d && d.time) || 0); }
+   379→   379→    else { syncPlayback(); }
+   380→   380→    updateSyncPill();
+   381→   381→  }
+   382→   382→
+   383→   383→  function onChat(msg) {
+   384→   384→    appendChatMessage(msg);
+   385→   385→  }
+   386→   386→
+   387→   387→  /* ---- one-shot: auto "Set Video" from ?url= (host only) ---- */
+   388→   388→
+   389→   389→  function maybeAutoSetFromUrlParam(room) {
+   390→   390→    if (state.autoSetDone || !paramUrl || !state.isHost) return;
+   391→   391→    state.autoSetDone = true;
+   392→   392→    if (room.media && room.media.url) return; /* room already has a video */
+   393→   393→    els.mediaInput.value = paramUrl;
+   394→   394→    hostSetVideo(paramUrl, paramTitle);
+   395→   395→    toast(detectMediaType(paramUrl) === 'unknown'
+   396→   396→      ? "This source can't be synced automatically."
+   397→   397→      : 'Video loaded from your watch page.');
+   398→   398→  }
+   399→   399→
+   400→   400→  /* ================= player: stage management ================= */
+   401→   401→
+   402→   402→  function resetStage() {
+   403→   403→    state.currentMedia = null;
+   404→   404→    els.stageEmpty.classList.remove('is-hidden');
+   405→   405→    els.stageNotice.classList.remove('is-visible');
+   406→   406→    els.yt.classList.remove('is-active');
+   407→   407→    els.mp4.classList.remove('is-active');
+   408→   408→    els.tapOverlay.classList.remove('is-visible');
+   409→   409→    els.typeBadge.hidden = true;
+   410→   410→    els.mediaEyebrow.textContent = 'Now watching';
+   411→   411→    els.mediaTitle.textContent = 'No video yet';
+   412→   412→    updateSyncPill();
+   413→   413→  }
+   414→   414→
+   415→   415→  function applyMedia(media, opts) {
+   416→   416→    opts = opts || {};
+   417→   417→    const time = Math.max(0, Number(opts.time) || 0);
+   418→   418→    const paused = opts.paused !== false;
+   419→   419→    state.currentMedia = media;
+   420→   420→
+   421→   421→    els.stageEmpty.classList.add('is-hidden');
+   422→   422→    els.stageNotice.classList.remove('is-visible');
+   423→   423→    els.tapOverlay.classList.remove('is-visible');
+   424→   424→    els.yt.classList.toggle('is-active', media.type === 'youtube');
+   425→   425→    els.mp4.classList.toggle('is-active', media.type === 'mp4');
+   426→   426→
+   427→   427→    els.typeBadge.hidden = false;
+   428→   428→    els.typeBadge.textContent = media.type === 'youtube' ? 'YouTube' : media.type === 'mp4' ? 'MP4' : 'Link';
+   429→   429→    els.typeBadge.className = 'type-badge' + (media.type === 'youtube' ? ' youtube' : media.type === 'mp4' ? ' mp4' : '');
+   430→   430→    els.mediaEyebrow.textContent = state.localOverride ? 'Watching locally' : 'Now watching';
+   431→   431→    els.mediaTitle.textContent = mediaTitleFor(media);
+   432→   432→
+   433→   433→    if (media.type === 'youtube') {
+   434→   434→      loadYouTube(media, { time, paused });
+   435→   435→    } else if (media.type === 'mp4') {
+   436→   436→      loadMP4(media, { time, paused });
+   437→   437→    } else {
+   438→   438→      /* Not YouTube / not direct MP4: can't be synced. The room stays
+   439→   439→         alive — chat works and the host can paste a proper link. */
+   440→   440→      els.noticeUrl.textContent = media.url || '';
+   441→   441→      els.stageNotice.classList.add('is-visible');
+   442→   442→      stopLocalPlayers();
+   443→   443→    }
+   444→   444→    updateSyncPill();
+   445→   445→  }
+   446→   446→
+   447→   447→  function stopLocalPlayers() {
+   448→   448→    try { if (!els.mp4.paused) els.mp4.pause(); els.mp4.removeAttribute('src'); els.mp4.load(); } catch (err) {}
+   449→   449→    try { if (ytPlayer && ytPlayer.stopVideo) ytPlayer.stopVideo(); } catch (err) {}
+   450→   450→    hideTapOverlay();
+   451→   451→  }
+   452→   452→
+   453→   453→  /* ================= player: MP4 ================= */
+   454→   454→
+   455→   455→  function loadMP4(media, opts) {
+   456→   456→    const v = els.mp4;
+   457→   457→    const url = media.url;
+   458→   458→    let resolved = url;
+   459→   459→    try { resolved = new URL(url, location.href).href; } catch (err) { /* keep as-is */ }
+   460→   460→
+   461→   461→    if (v.src !== resolved) {
+   462→   462→      v.src = url;
+   463→   463→      const onMeta = () => {
+   464→   464→        v.removeEventListener('loadedmetadata', onMeta);
+   465→   465→        try { if (opts.time > 0.3) v.currentTime = opts.time; } catch (err) {}
+   466→   466→        if (!opts.paused) { v.play().catch(showTapOverlay); }
+   467→   467→      };
+   468→   468→      v.addEventListener('loadedmetadata', onMeta);
+   469→   469→      v.load();
+   470→   470→    } else {
+   471→   471→      try { if (Math.abs(v.currentTime - opts.time) > DRIFT_TOLERANCE) v.currentTime = opts.time; } catch (err) {}
+   472→   472→      if (!opts.paused && v.paused) { v.play().catch(showTapOverlay); }
+   473→   473→      if (opts.paused && !v.paused) v.pause();
+   474→   474→    }
+   475→   475→  }
+   476→   476→
+   477→   477→  els.mp4.addEventListener('play', () => {
+   478→   478→    hideTapOverlay();
+   479→   479→    if (state.isHost) emitHostPlayback('play', els.mp4.currentTime);
+   480→   480→  });
+   481→   481→  els.mp4.addEventListener('pause', () => {
+   482→   482→    if (state.isHost) emitHostPlayback('pause', els.mp4.currentTime);
+   483→   483→  });
+   484→   484→  els.mp4.addEventListener('seeked', () => {
+   485→   485→    if (state.isHost) emitHostPlayback('seek', els.mp4.currentTime);
+   486→   486→  });
+   487→   487→  els.mp4.addEventListener('error', () => {
+   488→   488→    if (state.currentMedia && state.currentMedia.type === 'mp4') {
+   489→   489→      toast("Couldn't load this MP4 file.", 'error');
+   490→   490→    }
+   491→   491→  });
+   492→   492→
+   493→   493→  /* ================= player: YouTube ================= */
+   494→   494→
+   495→   495→  let ytApiPromise = null;
+   496→   496→  let ytPlayer = null;
+   497→   497→  let ytPendingApply = null;
+   498→   498→
+   499→   499→  function ensureYouTubeAPI() {
+   500→   500→    if (ytApiPromise) return ytApiPromise;
+   501→   501→    ytApiPromise = new Promise((resolve, reject) => {
+   502→   502→      if (window.YT && window.YT.Player) { resolve(); return; }
+   503→   503→      const prev = window.onYouTubeIframeAPIReady;
+   504→   504→      window.onYouTubeIframeAPIReady = () => {
+   505→   505→        if (typeof prev === 'function') { try { prev(); } catch (err) {} }
+   506→   506→        resolve();
+   507→   507→      };
+   508→   508→      const s = document.createElement('script');
+   509→   509→      s.src = 'https://www.youtube.com/iframe_api';
+   510→   510→      s.async = true;
+   511→   511→      s.onerror = () => { ytApiPromise = null; reject(new Error('YouTube API failed to load')); };
+   512→   512→      document.head.appendChild(s);
+   513→   513→      setTimeout(() => {
+   514→   514→        if (!(window.YT && window.YT.Player)) { ytApiPromise = null; reject(new Error('YouTube API timeout')); }
+   515→   515→      }, 12000);
+   516→   516→    });
+   517→   517→    return ytApiPromise;
+   518→   518→  }
+   519→   519→
+   520→   520→  async function loadYouTube(media, opts) {
+   521→   521→    const videoId = parseYouTubeId(media.url);
+   522→   522→    if (!videoId) {
+   523→   523→      /* safety net if the server type disagrees with the URL */
+   524→   524→      applyMedia({ type: 'unknown', url: media.url, title: media.title }, opts);
+   525→   525→      return;
+   526→   526→    }
+   527→   527→    try {
+   528→   528→      await ensureYouTubeAPI();
+   529→   529→    } catch (err) {
+   530→   530→      toast("Couldn't load the YouTube player.", 'error');
+   531→   531→      return;
+   532→   532→    }
+   533→   533→    if (!ytPlayer) {
+   534→   534→      ytPendingApply = { videoId, opts };
+   535→   535→      ytPlayer = new YT.Player('yt-player', {
+   536→   536→        width: '100%',
+   537→   537→        height: '100%',
+   538→   538→        videoId,
+   539→   539→        playerVars: {
+   540→   540→          controls: 1,
+   541→   541→          rel: 0,
+   542→   542→          modestbranding: 1,
+   543→   543→          playsinline: 1,
+   544→   544→        },
+   545→   545→        events: {
+   546→   546→          onReady: () => {
+   547→   547→            const pending = ytPendingApply;
+   548→   548→            ytPendingApply = null;
+   549→   549→            if (pending) applyYouTubeVideo(pending.videoId, pending.opts);
+   550→   550→          },
+   551→   551→          onStateChange: onYouTubeStateChange,
+   552→   552→          onError: () => toast("Couldn't load this YouTube video.", 'error'),
+   553→   553→        },
+   554→   554→      });
+   555→   555→    } else {
+   556→   556→      applyYouTubeVideo(videoId, opts);
+   557→   557→    }
+   558→   558→  }
+   559→   559→
+   560→   560→  function applyYouTubeVideo(videoId, opts) {
+   561→   561→    if (!ytPlayer) return;
+   562→   562→    const t = Math.max(0, Number(opts.time) || 0);
+   563→   563→    let currentVideoId = null;
+   564→   564→    try { currentVideoId = ytPlayer.getVideoData() && ytPlayer.getVideoData().video_id; } catch (err) {}
+   565→   565→
+   566→   566→    if (currentVideoId !== videoId) {
+   567→   567→      /* per spec: paused -> cueVideoById, playing -> loadVideoById */
+   568→   568→      if (opts.paused) {
+   569→   569→        try { ytPlayer.cueVideoById({ videoId, startSeconds: t }); } catch (err) {}
+   570→   570→      } else {
+   571→   571→        try { ytPlayer.loadVideoById({ videoId, startSeconds: t }); } catch (err) {}
+   572→   572→      }
+   573→   573→    } else {
+   574→   574→      try {
+   575→   575→        const cur = ytPlayer.getCurrentTime() || 0;
+   576→   576→        if (Math.abs(cur - t) > DRIFT_TOLERANCE) ytPlayer.seekTo(t, true);
+   577→   577→      } catch (err) {}
+   578→   578→    }
+   579→   579→    /* then apply pause/play accordingly */
+   580→   580→    try { if (opts.paused) ytPlayer.pauseVideo(); else ytPlayer.playVideo(); } catch (err) {}
+   581→   581→  }
+   582→   582→
+   583→   583→  function onYouTubeStateChange(e) {
+   584→   584→    const S = window.YT.PlayerState;
+   585→   585→    if (e.data === S.PLAYING) {
+   586→   586→      hideTapOverlay();
+   587→   587→      if (state.isHost) emitHostPlayback('play', ytPlayer.getCurrentTime());
+   588→   588→    } else if (e.data === S.PAUSED) {
+   589→   589→      if (state.isHost) emitHostPlayback('pause', ytPlayer.getCurrentTime());
+   590→   590→    } else if (e.data === S.ENDED) {
+   591→   591→      if (state.isHost) emitHostPlayback('pause', ytPlayer.getDuration());
+   592→   592→    }
+   593→   593→  }
+   594→   594→
+   595→   595→  /* ================= sync engine ================= */
+   596→   596→
+   597→   597→  function targetTime() {
+   598→   598→    const ls = state.lastState;
+   599→   599→    if (!ls) return 0;
+   600→   600→    if (ls.paused) return ls.time;
+   601→   601→    return ls.time + (performance.now() - ls.receivedAt) / 1000;
+   602→   602→  }
+   603→   603→
+   604→   604→  /* Non-hosts follow the room: pause/play + seek when drifting. */
+   605→   605→  function syncPlayback() {
+   606→   606→    if (state.isHost || state.localOverride || !state.currentMedia || !state.lastState) return;
+   607→   607→    const paused = state.lastState.paused;
+   608→   608→    const target = targetTime();
+   609→   609→
+   610→   610→    if (state.currentMedia.type === 'mp4') {
+   611→   611→      const v = els.mp4;
+   612→   612→      try { if (Math.abs(v.currentTime - target) > DRIFT_TOLERANCE) v.currentTime = target; } catch (err) {}
+   613→   613→      if (paused && !v.paused) v.pause();
+   614→   614→      if (!paused && v.paused) v.play().catch(showTapOverlay);
+   615→   615→    } else if (state.currentMedia.type === 'youtube' && ytPlayer) {
+   616→   616→      try {
+   617→   617→        const cur = ytPlayer.getCurrentTime() || 0;
+   618→   618→        if (Math.abs(cur - target) > DRIFT_TOLERANCE) ytPlayer.seekTo(target, true);
+   619→   619→        if (paused) ytPlayer.pauseVideo(); else ytPlayer.playVideo();
+   620→   620→      } catch (err) {}
+   621→   621→    }
+   622→   622→  }
+   623→   623→
+   624→   624→  function hardSeek(time) {
+   625→   625→    if (state.localOverride || !state.currentMedia) return;
+   626→   626→    const t = Math.max(0, Number(time) || 0);
+   627→   627→    if (state.currentMedia.type === 'mp4') {
+   628→   628→      try { els.mp4.currentTime = t; } catch (err) {}
+   629→   629→    } else if (state.currentMedia.type === 'youtube' && ytPlayer) {
+   630→   630→      try { ytPlayer.seekTo(t, true); } catch (err) {}
+   631→   631→    }
+   632→   632→  }
+   633→   633→
+   634→   634→  /* Host -> server playback updates */
+   635→   635→  function emitHostPlayback(kind, time) {
+   636→   636→    if (!state.socket || !state.socket.connected || !state.isHost || !state.roomId) return;
+   637→   637→    state.socket.emit(kind, { roomId: state.roomId, time: Math.max(0, Number(time) || 0) });
+   638→   638→  }
+   639→   639→
+   640→   640→  /* periodic drift correction + host YouTube seek detection */
+   641→   641→  let lastHostYtTime = null;
+   642→   642→  setInterval(() => {
+   643→   643→    /* host: YouTube has no "seeked" event — detect time jumps
+   644→   644→       (both while playing AND while paused) */
+   645→   645→    if (state.isHost && state.currentMedia && state.currentMedia.type === 'youtube' && ytPlayer) {
+   646→   646→      try {
+   647→   647→        const cur = ytPlayer.getCurrentTime();
+   648→   648→        const st = ytPlayer.getPlayerState();
+   649→   649→        if (cur != null && st !== window.YT.PlayerState.UNSTARTED) {
+   650→   650→          if (lastHostYtTime != null && Math.abs(cur - lastHostYtTime) > 1.8) {
+   651→   651→            emitHostPlayback('seek', cur);
+   652→   652→          }
+   653→   653→          lastHostYtTime = cur;
+   654→   654→        } else {
+   655→   655→          lastHostYtTime = null;
+   656→   656→        }
+   657→   657→      } catch (err) { lastHostYtTime = null; }
+   658→   658→    } else {
+   659→   659→      lastHostYtTime = null;
+   660→   660→    }
+   661→   661→
+   662→   662→    /* non-host: follow the room */
+   663→   663→    if (!state.isHost) syncPlayback();
+   664→   664→    updateSyncPill();
+   665→   665→  }, SYNC_INTERVAL);
+   666→   666→
+   667→   667→  function updateSyncPill() {
+   668→   668→    if (!state.roomId) { setSync('waiting', 'Waiting…'); return; }
+   669→   669→    if (state.isHost) { setSync('host', 'You control playback'); return; }
+   670→   670→    if (!state.currentMedia) { setSync('waiting', 'Waiting for video…'); return; }
+   671→   671→    if (state.localOverride) { setSync('local', 'Local (not synced)'); return; }
+   672→   672→    const ls = state.lastState;
+   673→   673→    if (!ls) { setSync('waiting', 'Syncing…'); return; }
+   674→   674→
+   675→   675→    let localTime = null;
+   676→   676→    let localPaused = true;
+   677→   677→    if (state.currentMedia.type === 'mp4') {
+   678→   678→      localTime = els.mp4.currentTime || 0;
+   679→   679→      localPaused = els.mp4.paused;
+   680→   680→    } else if (state.currentMedia.type === 'youtube' && ytPlayer) {
+   681→   681→      try { localTime = ytPlayer.getCurrentTime() || 0; localPaused = ytPlayer.getPlayerState() !== window.YT.PlayerState.PLAYING; } catch (err) {}
+   682→   682→    }
+   683→   683→    if (localTime == null) { setSync('waiting', 'Syncing…'); return; }
+   684→   684→
+   685→   685→    const drift = Math.abs(localTime - targetTime());
+   686→   686→    const pausedMatch = !!ls.paused === !!localPaused;
+   687→   687→    if (pausedMatch && drift <= DRIFT_TOLERANCE) {
+   688→   688→      setSync('synced', ls.paused ? 'Paused · in sync (' + fmtClock(localTime) + ')' : 'In sync · ' + fmtClock(localTime));
+   689→   689→    } else {
+   690→   690→      setSync('syncing', 'Syncing… ' + fmtClock(localTime));
+   691→   691→    }
+   692→   692→  }
+   693→   693→
+   694→   694→  function setSync(kind, label) {
+   695→   695→    els.syncPill.classList.toggle('is-synced', kind === 'synced');
+   696→   696→    els.syncPill.classList.toggle('is-host', kind === 'host');
+   697→   697→    els.syncLabel.textContent = label;
+   698→   698→  }
+   699→   699→
+   700→   700→  /* autoplay blocked -> "tap to start" overlay */
+   701→   701→  function showTapOverlay() { els.tapOverlay.classList.add('is-visible'); }
+   702→   702→  function hideTapOverlay() { els.tapOverlay.classList.remove('is-visible'); }
+   703→   703→  els.tapOverlay.addEventListener('click', () => {
+   704→   704→    hideTapOverlay();
+   705→   705→    try {
+   706→   706→      if (state.currentMedia && state.currentMedia.type === 'mp4') { els.mp4.muted = false; els.mp4.play().catch(() => {}); }
+   707→   707→      else if (ytPlayer) { ytPlayer.playVideo(); }
+   708→   708→    } catch (err) {}
+   709→   709→  });
+   710→   710→
+   711→   711→  /* ================= set video (host) / local paste (non-host) ================= */
+   712→   712→
+   713→   713→  function hostSetVideo(url, title) {
+   714→   714→    if (!state.socket || !state.socket.connected) { toast('Not connected yet…', 'error'); return; }
+   715→   715→    const clean = String(url || '').trim();
+   716→   716→    if (!clean) return;
+   717→   717→    state.socket.emit('set_media', {
+   718→   718→      roomId: state.roomId,
+   719→   719→      media: { type: detectMediaType(clean), url: clean, title: String(title || '').slice(0, 120) },
+   720→   720→    });
+   721→   721→  }
+   722→   722→
+   723→   723→  function localSetVideo(url) {
+   724→   724→    /* Non-host: pasting a URL is LOCAL ONLY — it never changes the
+   725→   725→       room media (the server rejects non-host set_media anyway). */
+   726→   726→    const clean = String(url || '').trim();
+   727→   727→    if (!clean) return;
+   728→   728→    state.localOverride = true;
+   729→   729→    applyMedia({ type: detectMediaType(clean), url: clean, title: '' }, { time: 0, paused: true, force: true });
+   730→   730→    toast('Playing locally — only the host sets the video for everyone.');
+   731→   731→    refreshHostUI();
+   732→   732→  }
+   733→   733→
+   734→   734→  els.mediaForm.addEventListener('submit', (e) => {
+   735→   735→    e.preventDefault();
+   736→   736→    const url = els.mediaInput.value.trim();
+   737→   737→    if (!url) { els.mediaInput.focus(); return; }
+   738→   738→    if (state.isHost) hostSetVideo(url, '');
+   739→   739→    else localSetVideo(url);
+   740→   740→  });
+   741→   741→
+   742→   742→  function refreshHostUI() {
+   743→   743→    if (state.isHost) {
+   744→   744→      els.setVideoBtn.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 16.5l6-4.5-6-4.5v9zM12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/></svg> Set Video';
+   745→   745→      els.hostHint.textContent = 'You are the host — your play, pause and seek control everyone. Paste a YouTube or direct MP4 link.';
+   746→   746→      els.setVideoBtn.classList.add('btn-primary');
+   747→   747→    } else {
+   748→   748→      els.setVideoBtn.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 16.5l6-4.5-6-4.5v9zM12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/></svg> Play locally';
+   749→   749→      els.hostHint.textContent = state.hostSocketId
+   750→   750→        ? 'Only the host can set the room video. Pasting a link here plays it locally for you only.'
+   751→   751→        : 'Waiting for the host… only the host can set the room video.';
+   752→   752→      els.setVideoBtn.classList.add('btn-primary');
+   753→   753→    }
+   754→   754→  }
+   755→   755→
+   756→   756→  /* ================= members ================= */
+   757→   757→
+   758→   758→  function renderMembers(members) {
+   759→   759→    els.membersRow.textContent = '';
+   760→   760→    (members || []).forEach((m) => {
+   761→   761→      const chip = document.createElement('span');
+   762→   762→      chip.className = 'member-chip' + (m.socketId === state.hostSocketId ? ' is-host' : '');
+   763→   763→      const avatar = document.createElement('span');
+   764→   764→      avatar.className = 'avatar';
+   765→   765→      avatar.textContent = (m.displayName || 'G').charAt(0).toUpperCase();
+   766→   766→      chip.appendChild(avatar);
+   767→   767→      if (m.socketId === state.hostSocketId) {
+   768→   768→        const crown = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+   769→   769→        crown.setAttribute('viewBox', '0 0 24 24');
+   770→   770→        crown.setAttribute('class', 'crown');
+   771→   771→        crown.setAttribute('aria-hidden', 'true');
+   772→   772→        crown.innerHTML = '<path d="M5 16 3 5l5.5 5L12 3l3.5 7L21 5l-2 11zM4.5 19h15v2h-15z"/>';
+   773→   773→        chip.appendChild(crown);
+   774→   774→      }
+   775→   775→      const name = document.createElement('span');
+   776→   776→      name.textContent = m.displayName || 'Guest';
+   777→   777→      chip.appendChild(name);
+   778→   778→      if (state.socket && m.socketId === state.socket.id) {
+   779→   779→        const you = document.createElement('span');
+   780→   780→        you.className = 'you-tag';
+   781→   781→        you.textContent = 'you';
+   782→   782→        chip.appendChild(you);
+   783→   783→      }
+   784→   784→      els.membersRow.appendChild(chip);
+   785→   785→    });
+   786→   786→  }
+   787→   787→
+   788→   788→  /* ================= chat ================= */
+   789→   789→
+   790→   790→  function appendChatMessage(msg) {
+   791→   791→    if (els.chatEmpty && els.chatEmpty.parentNode) els.chatEmpty.remove();
+   792→   792→    const wrap = document.createElement('div');
+   793→   793→    const isSystem = !!(msg && msg.system);
+   794→   794→    const mine = msg && msg.displayName === state.displayName && !isSystem;
+   795→   795→    wrap.className = 'msg' + (isSystem ? ' is-system' : '') + (mine ? ' is-you' : '');
+   796→   796→
+   797→   797→    if (!isSystem) {
+   798→   798→      const head = document.createElement('div');
+   799→   799→      head.className = 'msg-head';
+   800→   800→      const name = document.createElement('span');
+   801→   801→      name.className = 'msg-name';
+   802→   802→      name.textContent = msg.displayName || 'Guest';
+   803→   803→      const time = document.createElement('span');
+   804→   804→      time.className = 'msg-time';
+   805→   805→      time.textContent = new Date(msg.ts || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+   806→   806→      head.append(name, time);
+   807→   807→      wrap.appendChild(head);
+   808→   808→    }
+   809→   809→    const text = document.createElement('p');
+   810→   810→    text.className = 'msg-text';
+   811→   811→    text.textContent = msg.message || '';
+   812→   812→    wrap.appendChild(text);
+   813→   813→
+   814→   814→    els.chatMessages.appendChild(wrap);
+   815→   815→    while (els.chatMessages.children.length > 200) els.chatMessages.firstChild.remove();
+   816→   816→    els.chatMessages.scrollTop = els.chatMessages.scrollHeight;
+   817→   817→  }
+   818→   818→
+   819→   819→  els.chatForm.addEventListener('submit', (e) => {
+   820→   820→    e.preventDefault();
+   821→   821→    const text = els.chatInput.value.trim().slice(0, 500);
+   822→   822→    if (!text) return;
+   823→   823→    if (!state.socket || !state.socket.connected) { toast('Not connected yet…', 'error'); return; }
+   824→   824→    state.socket.emit('chat', { roomId: state.roomId, message: text });
+   825→   825→    els.chatInput.value = '';
+   826→   826→    els.chatInput.focus();
+   827→   827→  });
+   828→   828→
+   829→   829→  /* ================= invite ================= */
+   830→   830→
+   831→   831→  els.copyInviteBtn.addEventListener('click', async () => {
+   832→   832→    const link = els.inviteLink.value;
+   833→   833→    if (!link) return;
+   834→   834→    const ok = await copyText(link);
+   835→   835→    toast(ok ? 'Invite link copied!' : 'Copy failed — select the link manually.', ok ? 'success' : 'error');
+   836→   836→  });
+   837→   837→
+   838→   838→  /* ================= join flow ================= */
+   839→   839→
+   840→   840→  function showJoinError(message) {
+   841→   841→    els.joinError.textContent = message;
+   842→   842→    els.joinError.classList.add('is-visible');
+   843→   843→  }
+   844→   844→  function hideJoinError() { els.joinError.classList.remove('is-visible'); }
+   845→   845→
+   846→   846→  /* ---- party server URL: validation + save (join screen) ---- */
+   847→   847→
+   848→   848→  function validateServerUrl(url) {
+   849→   849→    if (!url) {
+   850→   850→      return isLocalhost
+   851→   851→        ? 'Party Server URL is missing — enter it and press Save.'
+   852→   852→        : 'Enter your deployed Party Server URL (https://...) and press Save.';
+   853→   853→    }
+   854→   854→    if (location.protocol === 'https:' && url.indexOf('http://') === 0) {
+   855→   855→      return "HTTPS page can't connect to HTTP server. Use an https Party Server URL.";
+   856→   856→    }
+   857→   857→    if (!/^(https?|wss?):\/\//i.test(url)) {
+   858→   858→      return 'Party Server URL must start with http:// or https://';
+   859→   859→    }
+   860→   860→    return null;
+   861→   861→  }
+   862→   862→
+   863→   863→  /* "Join the Party" is only clickable with a valid server URL. */
+   864→   864→  function refreshJoinAvailability() {
+   865→   865→    const candidate = normalizeServerUrl(els.serverUrlInput.value) || PARTY_SERVER_URL;
+   866→   866→    const err = validateServerUrl(candidate);
+   867→   867→    if (err) {
+   868→   868→      els.joinBtn.disabled = true;
+   869→   869→      showJoinError(err);
+   870→   870→    } else {
+   871→   871→      els.joinBtn.disabled = false;
+   872→   872→      hideJoinError();
+   873→   873→    }
+   874→   874→  }
+   875→   875→
+   876→   876→  function saveServerUrl() {
+   877→   877→    const value = normalizeServerUrl(els.serverUrlInput.value);
+   878→   878→    els.serverUrlInput.value = value;
+   879→   879→    try { localStorage.setItem('zeus_party_server_url', value); } catch (err) {}
+   880→   880→    PARTY_SERVER_URL = value || (isLocalhost ? DEFAULT_LOCAL_SERVER : '');
+   881→   881→    refreshJoinAvailability();
+   882→   882→    if (!validateServerUrl(PARTY_SERVER_URL)) toast('Party Server URL saved.', 'success');
+   883→   883→  }
+   884→   884→
+   885→   885→  els.saveServerBtn.addEventListener('click', saveServerUrl);
+   886→   886→  els.serverUrlInput.addEventListener('input', refreshJoinAvailability);
+   887→   887→  els.serverUrlInput.addEventListener('keydown', (e) => {
+   888→   888→    if (e.key === 'Enter') { e.preventDefault(); saveServerUrl(); }
+   889→   889→  });
+   890→   890→
+   891→   891→  async function startParty() {
+   892→   892→    if (state.joined) return;
+   893→   893→    const urlError = validateServerUrl(PARTY_SERVER_URL);
+   894→   894→    if (urlError) {
+   895→   895→      els.joinBtn.disabled = true;
+   896→   896→      showJoinError(urlError);
+   897→   897→      els.serverUrlInput.focus();
+   898→   898→      return;
+   899→   899→    }
+   900→   900→    const name = (els.nameInput.value || '').trim().slice(0, 24) || randomGuestName();
+   901→   901→    try { localStorage.setItem('zeus_party_name', name); } catch (err) {}
+   902→   902→
+   903→   903→    els.joinBtn.disabled = true;
+   904→   904→    els.joinBtn.textContent = 'Connecting…';
+   905→   905→    hideJoinError();
+   906→   906→
+   907→   907→    try {
+   908→   908→      if (!state.roomId) {
+   909→   909→        state.roomId = await createRoom();
+   910→   910→        updateUrlWithRoom();
+   911→   911→      }
+   912→   912→      state.displayName = name;
+   913→   913→      renderRoomBadges();
+   914→   914→      await loadSocketIo();
+   915→   915→      connectSocket();
+   916→   916→      state.joined = true;
+   917→   917→      els.joinOverlay.classList.add('is-hidden');
+   918→   918→      appendChatMessage({ system: true, message: 'Welcome to the party! Invite friends with the link below the player.' });
+   919→   919→    } catch (err) {
+   920→   920→      state.roomId = paramRoom || null;
+   921→   921→      showJoinError(
+   922→   922→        "Can't reach the Party Server at " + (PARTY_SERVER_URL || '(no URL set)') +
+   923→   923→        '. Check the URL above and make sure the server is running (node party-server/server.js).'
+   924→   924→      );
+   925→   925→      els.joinBtn.disabled = false;
+   926→   926→      els.joinBtn.textContent = 'Join the Party';
+   927→   927→      setConn('error', "Can't reach server");
+   928→   928→    }
+   929→   929→  }
+   930→   930→
+   931→   931→  els.joinBtn.addEventListener('click', startParty);
+   932→   932→  els.nameInput.addEventListener('keydown', (e) => {
+   933→   933→    if (e.key === 'Enter') { e.preventDefault(); startParty(); }
+   934→   934→  });
+   935→   935→
+   936→   936→  /* ================= boot ================= */
+   937→   937→
+   938→   938→  (function boot() {
+   939→   939→    let saved = '';
+   940→   940→    try { saved = localStorage.getItem('zeus_party_name') || ''; } catch (err) {}
+   941→   941→    els.nameInput.value = saved || randomGuestName();
+   942→   942→    els.serverUrlInput.value = PARTY_SERVER_URL; /* saved URL, localhost default, or '' */
+   943→   943→    els.joinMeta.innerHTML = paramRoom
+   944→   944→      ? 'Joining room <strong>' + paramRoom + '</strong>'
+   945→   945→      : 'A new room will be created for you.';
+   946→   946→    resetStage();
+   947→   947→    renderRoomBadges();
+   948→   948→    setConn('connecting', 'Connecting…');
+   949→   949→    refreshHostUI();
+   950→   950→    refreshJoinAvailability();
+   951→   951→    setTimeout(() => {
+   952→   952→      (els.joinBtn.disabled ? els.serverUrlInput : els.nameInput).focus();
+   953→   953→    }, 150);
+   954→   954→  })();
+   955→   955→
+   956→   956→  /* Debug/testing handle (harmless in production) */
+   957→   957→  window.ZEUSParty = {
+   958→   958→    state,
+   959→   959→    get socket() { return state.socket; },
+   960→   960→    get ytPlayer() { return ytPlayer; },
+   961→   961→    mp4: els.mp4,
+   962→   962→    setMedia: hostSetVideo,
+   963→   963→    sync: syncPlayback,
+   964→   964→    detectMediaType,
+   965→   965→    parseYouTubeId,
+   966→   966→    validateServerUrl,
+   967→   967→    saveServerUrl,
+   968→   968→  };
+   969→   969→
+   970→   970→})();
+   971→   971→

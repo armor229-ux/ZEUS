@@ -1,22 +1,37 @@
 /* ============================================================
    ZEUS — party.js
-   Client for the ZEUS Watch Party room (party.html).
+   Client for the ZEUS Watch Party room (party.html), talking to the
+   Cloudflare Worker + Durable Object backend (party-worker/).
 
-   - Creates/joins a room on the party server (party-server/)
-   - Party server URL is configurable: saved to localStorage
-     ("zeus_party_server_url", via the Save button on the join screen)
-     or the http://localhost:5050 default when ZEUS itself runs on
-     localhost; an https page rejects http:// party servers (mixed
-     content) before any connection is attempted
+   - Backend URL is configurable:
+       1. localStorage "zeus_party_backend" (Save button on the join
+          screen — paste YOUR deployed worker URL once)
+       2. DEFAULT_BACKEND below (the zeus-party worker on
+          workers.dev — replace YOUR_WORKERS_SUBDOMAIN after
+          `wrangler deploy`)
+     Works from BOTH Cloudflare Pages and Vercel deployments — no
+     localhost is used anywhere.
+   - Rooms: no ?room= -> POST {BACKEND}/api/rooms, then the URL is
+     rewritten to party.html?room=ID (url/title params preserved for
+     the auto "Set Video")
+   - WebSocket: {BACKEND}/ws?room=ID&name=ENCODED_NAME  (https -> wss)
+   - Message protocol (JSON over the WebSocket):
+       -> { type:"join", name }                 (confirm display name)
+       -> { type:"set_media", media:{type,url,title} }   (host only)
+       -> { type:"play"|"pause"|"seek", time }
+       -> { type:"chat", message, ts }
+       <- { type:"state", state, you, serverNow }  (join + every update)
+       <- { type:"members", members } / { type:"host", hostId }
+       <- { type:"chat", name, message, ts }   / { type:"error", message }
    - Synced playback for YouTube (IFrame API) and direct MP4
    - Live chat + member list + invite link
-   - Host rules: the host drives playback (play/pause/seek) and is
-     the only one who can set the room video; non-hosts can still
-     paste a URL locally (it does NOT change the room media)
+   - Host rules: the host drives playback (play/pause/seek) and is the
+     only one who can set the room video; non-hosts can still paste a
+     URL locally (it does NOT change the room media)
    - Drift correction: non-hosts compare their player time with the
      room target time; a difference > 1.2s triggers a local seek
-   - Sources that are neither YouTube nor direct .mp4 can't be
-     synced — the room still works (chat + manual link paste)
+   - Sources that are neither YouTube nor direct .mp4 can't be synced —
+     the room still works (chat + manual link paste)
 ============================================================ */
 
 'use strict';
@@ -25,29 +40,26 @@
 
   /* ================= configuration ================= */
 
-  /* Party server URL — configurable & HTTPS-safe.
-     Precedence:
-       1. localStorage "zeus_party_server_url" (Save button on the
-          join screen — party.html)
-       2. http://localhost:5050 when ZEUS itself is served from
-          localhost / 127.0.0.1
-       3. "" — no server: "Join the Party" stays disabled with a
-          clear error until a URL is entered and saved
-     An https:// page can never reach an http:// server (mixed
-     content), so that combination is rejected up front. */
-  const isLocalhost = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
-  const DEFAULT_LOCAL_SERVER = 'http://localhost:5050';
+  /* Deploy the worker (cd party-worker && npx wrangler deploy), then
+     either replace YOUR_WORKERS_SUBDOMAIN here or just paste the URL
+     once into the "Party backend URL" field on the join screen — it is
+     saved per browser under the key below. */
+  const DEFAULT_BACKEND = 'https://zeus-party.YOUR_WORKERS_SUBDOMAIN.workers.dev';
+  const BACKEND_STORAGE_KEY = 'zeus_party_backend';
 
-  function normalizeServerUrl(url) {
+  function normalizeBackend(url) {
     return String(url || '').trim().replace(/\/+$/, '');
   }
-  function savedServerUrl() {
-    try { return normalizeServerUrl(localStorage.getItem('zeus_party_server_url')); } catch (err) { return ''; }
+  function savedBackend() {
+    try { return normalizeBackend(localStorage.getItem(BACKEND_STORAGE_KEY)); } catch (err) { return ''; }
   }
-  let PARTY_SERVER_URL = savedServerUrl() || (isLocalhost ? DEFAULT_LOCAL_SERVER : '');
+  let BACKEND = savedBackend() || DEFAULT_BACKEND;
 
-  const DRIFT_TOLERANCE = 1.2;   /* seconds — seek when further off */
-  const SYNC_INTERVAL = 1500;    /* ms   — drift check cadence     */
+  const DRIFT_TOLERANCE = 1.2;   /* seconds — seek when further off   */
+  const SYNC_INTERVAL = 1500;    /* ms     — drift check cadence      */
+  const PING_INTERVAL = 25000;   /* ms     — websocket keep-alive     */
+  const RECONNECT_BASE = 1000;   /* ms     — first reconnect delay    */
+  const RECONNECT_MAX = 8000;    /* ms     — reconnect delay cap      */
 
   /* ================= dom ================= */
 
@@ -83,8 +95,8 @@
     chatInput: $('chat-input'),
     joinOverlay: $('join-overlay'),
     nameInput: $('name-input'),
-    serverUrlInput: $('server-url-input'),
-    saveServerBtn: $('save-server-btn'),
+    backendInput: $('backend-input'),
+    saveBackendBtn: $('save-backend-btn'),
     joinBtn: $('join-btn'),
     joinError: $('join-error'),
     joinMeta: $('join-meta'),
@@ -101,14 +113,22 @@
   const state = {
     roomId: paramRoom || null,
     displayName: '',
-    socket: null,
+    ws: null,
+    wsOpen: false,
+    everConnected: false,   /* at least one successful connection    */
+    reconnectAttempts: 0,
+    reconnectTimer: null,
+    pingTimer: null,
+    myId: null,             /* this client's member id (from "you")  */
+    hostId: null,
     isHost: false,
-    hostSocketId: null,
-    roomMediaUrl: null,   /* media set on the room (host)      */
-    currentMedia: null,   /* media loaded locally right now    */
-    localOverride: false, /* non-host watching a local URL     */
-    lastState: null,      /* last room snapshot + local clock  */
-    autoSetDone: false,   /* one-shot auto "Set Video" from ?url= */
+    roomMediaUrl: null,     /* media set on the room (host)          */
+    currentMedia: null,     /* media loaded locally right now        */
+    localOverride: false,   /* non-host watching a local URL         */
+    lastState: null,        /* last room snapshot (playback)         */
+    clockSkew: 0,           /* serverNow - clientNow, in ms          */
+    autoSetDone: false,     /* one-shot auto "Set Video" from ?url=  */
+    joined: false,
   };
 
   /* ================= utilities ================= */
@@ -157,23 +177,6 @@
     return m + ':' + String(s).padStart(2, '0');
   }
 
-  function apiUrl(path) {
-    /* Absolute URL to the configured party server (REST endpoints
-       and the socket.io client bundle). */
-    return PARTY_SERVER_URL + path;
-  }
-
-  function loadScriptOnce(src) {
-    return new Promise((resolve, reject) => {
-      const s = document.createElement('script');
-      s.src = src;
-      s.async = true;
-      s.onload = () => resolve();
-      s.onerror = () => { s.remove(); reject(new Error('failed to load ' + src)); };
-      document.head.appendChild(s);
-    });
-  }
-
   function randomGuestName() {
     const tail = Math.random().toString(36).slice(2, 6);
     return 'Guest-' + tail.toUpperCase();
@@ -214,10 +217,28 @@
     return 'Custom source';
   }
 
-  /* ================= room / server plumbing ================= */
+  /* ================= room / backend plumbing ================= */
+
+  /* https://... -> wss://...   (and http -> ws, ws(s) stays as-is) */
+  function wsBase(url) {
+    return url.replace(/^http/i, 'ws');
+  }
+  /* ws://... -> http://...     (for REST calls: /api/rooms, /health) */
+  function httpBase(url) {
+    return url.replace(/^ws/i, 'http');
+  }
+
+  function wsUrl(roomId, name) {
+    return wsBase(BACKEND) + '/ws?room=' + encodeURIComponent(roomId) +
+           '&name=' + encodeURIComponent(name);
+  }
+
+  function wsReady() {
+    return !!(state.ws && state.ws.readyState === 1);
+  }
 
   async function createRoom() {
-    const res = await fetch(apiUrl('/api/rooms'), { method: 'POST' });
+    const res = await fetch(httpBase(BACKEND) + '/api/rooms', { method: 'POST' });
     if (!res.ok) throw new Error('room create failed (' + res.status + ')');
     const data = await res.json();
     return String(data.roomId);
@@ -242,61 +263,103 @@
     }
   }
 
-  /* ---- socket.io client bundle (served by the party server) ---- */
-
-  let socketIoLoaded = false;
-  async function loadSocketIo() {
-    if (socketIoLoaded || (window.io && typeof window.io === 'function')) { socketIoLoaded = true; return; }
-    const sources = [
-      apiUrl('/socket.io/socket.io.js'),
-      'https://cdn.socket.io/4.8.3/socket.io.min.js', /* fallback */
-    ];
-    let lastErr = null;
-    for (const src of sources) {
-      try { await loadScriptOnce(src); socketIoLoaded = true; return; }
-      catch (err) { lastErr = err; }
-    }
-    throw lastErr || new Error('socket.io client unavailable');
-  }
+  /* ---- websocket connection (with resilient rejoin) ---- */
 
   function connectSocket() {
-    /* Direct connection to the configured party server — always an
-       absolute URL (http://localhost:5050 locally, or the deployed
-       https:// URL saved from the join screen). */
-    if (!PARTY_SERVER_URL) {
-      setConn('error', "Can't reach server");
-      showJoinError('No Party Server URL set — enter it above and press Save.');
+    clearTimers();
+    setConn('connecting', 'Connecting…');
+
+    let ws;
+    try {
+      ws = new WebSocket(wsUrl(state.roomId, state.displayName));
+    } catch (err) {
+      scheduleReconnect();
       return;
     }
-    const socket = io(PARTY_SERVER_URL, {
-      transports: ['websocket', 'polling'],
-      forceNew: true,
-      reconnection: true,
-      reconnectionDelay: 1000,
-      reconnectionDelayMax: 5000,
-      timeout: 10000,
-    });
-    state.socket = socket;
+    state.ws = ws;
+    state.wsOpen = false;
 
-    socket.on('connect', () => {
+    ws.onopen = () => {
+      state.wsOpen = true;
+      state.everConnected = true;
+      state.reconnectAttempts = 0;
       setConn('connected', 'Connected');
       hideJoinError();
-      /* (re)join — the server re-sends the full room snapshot */
-      socket.emit('join', { roomId: state.roomId, displayName: state.displayName });
-    });
+      /* protocol: confirm our display name (the server also got it
+         from the ?name= query param on the WS URL) */
+      wsSend({ type: 'join', name: state.displayName });
+      startPing();
+    };
 
-    socket.on('disconnect', () => setConn('reconnecting', 'Reconnecting…'));
-    socket.on('connect_error', () => setConn('error', "Can't reach server"));
+    ws.onmessage = (ev) => {
+      let msg;
+      try { msg = JSON.parse(String(ev.data)); } catch (err) { return; }
+      if (!msg || typeof msg.type !== 'string') return;
+      handleMessage(msg);
+    };
 
-    socket.on('state', onState);
-    socket.on('host', onHost);
-    socket.on('members', onMembers);
-    socket.on('set_media', onSetMedia);
-    socket.on('play', (d) => onPlaybackEvent('play', d));
-    socket.on('pause', (d) => onPlaybackEvent('pause', d));
-    socket.on('seek', (d) => onPlaybackEvent('seek', d));
-    socket.on('chat', onChat);
-    socket.on('party-error', (d) => toast(d && d.message ? d.message : 'Party error', 'error'));
+    ws.onclose = () => {
+      state.wsOpen = false;
+      stopPing();
+      scheduleReconnect();
+    };
+
+    ws.onerror = () => { /* onclose follows */ };
+  }
+
+  function wsSend(obj) {
+    if (!wsReady()) return false;
+    try { state.ws.send(JSON.stringify(obj)); return true; } catch (err) { return false; }
+  }
+
+  function scheduleReconnect() {
+    if (state.reconnectTimer) return;
+    const delay = Math.min(RECONNECT_BASE * Math.pow(2, state.reconnectAttempts), RECONNECT_MAX);
+    state.reconnectAttempts += 1;
+
+    /* Never connected on this join? After a few quick attempts, stop
+       and let the user fix the backend URL on the join screen. */
+    if (!state.everConnected && state.reconnectAttempts > 2) {
+      setConn('error', "Can't reach backend");
+      rejoinOverlay(
+        "Can't reach the party backend at " + BACKEND + '. ' +
+        'Check the URL above (your deployed worker, e.g. https://zeus-party.YOUR_SUBDOMAIN.workers.dev) and press Save, then Join again.'
+      );
+      return;
+    }
+
+    setConn('reconnecting', 'Reconnecting…');
+    state.reconnectTimer = setTimeout(() => {
+      state.reconnectTimer = null;
+      connectSocket();
+    }, delay);
+  }
+
+  function startPing() {
+    stopPing();
+    state.pingTimer = setInterval(() => {
+      wsSend({ type: 'ping' });
+    }, PING_INTERVAL);
+  }
+  function stopPing() {
+    if (state.pingTimer) { clearInterval(state.pingTimer); state.pingTimer = null; }
+  }
+  function clearTimers() {
+    stopPing();
+    if (state.reconnectTimer) { clearTimeout(state.reconnectTimer); state.reconnectTimer = null; }
+  }
+
+  /* Bring the join overlay back (fatal first-join error) so the
+     backend URL can be corrected. */
+  function rejoinOverlay(message) {
+    clearTimers();
+    state.joined = false;
+    state.ws = null;
+    state.wsOpen = false;
+    els.joinOverlay.classList.remove('is-hidden');
+    els.joinBtn.disabled = false;
+    els.joinBtn.textContent = 'Join the Party';
+    showJoinError(message);
   }
 
   function setConn(kind, label) {
@@ -307,27 +370,43 @@
 
   /* ================= server -> client handlers ================= */
 
-  function onState(room) {
+  function handleMessage(msg) {
+    switch (msg.type) {
+      case 'state':   onState(msg); break;
+      case 'members': onMembers(msg.members); break;
+      case 'host':    onHost(msg.hostId); break;
+      case 'chat':    onChat(msg); break;
+      case 'error':   toast(msg.message || 'Party error', 'error'); break;
+      case 'pong':    break; /* keep-alive reply */
+      default:        break;
+    }
+  }
+
+  function onState(msg) {
+    const s = msg.state || {};
+    if (msg.you) state.myId = msg.you;
+    if (typeof msg.serverNow === 'number') state.clockSkew = msg.serverNow - Date.now();
+
+    state.hostId = s.hostId || null;
+    state.isHost = !!(state.myId && state.hostId === state.myId);
+
     state.lastState = {
-      roomId: room.roomId,
-      hostSocketId: room.hostSocketId,
-      media: room.media,
-      paused: !!room.paused,
-      time: Number(room.time) || 0,
+      paused: !!s.paused,
+      time: Number(s.time) || 0,
+      updatedAt: Number(s.updatedAt) || 0,
       receivedAt: performance.now(),
     };
-    state.hostSocketId = room.hostSocketId;
-    state.isHost = !!room.hostSocketId && state.socket && room.hostSocketId === state.socket.id;
+
     refreshHostUI();
+    if (Array.isArray(s.members)) renderMembers(s.members);
+    maybeAutoSetFromUrlParam(s);
 
-    maybeAutoSetFromUrlParam(room);
-
-    if (room.media && room.media.url) {
-      const roomChanged = state.roomMediaUrl !== room.media.url;
+    if (s.media && s.media.url) {
+      const roomChanged = state.roomMediaUrl !== s.media.url;
       if (roomChanged) {
-        state.roomMediaUrl = room.media.url;
+        state.roomMediaUrl = s.media.url;
         state.localOverride = false;
-        applyMedia(room.media, { time: state.lastState.time, paused: state.lastState.paused, force: true });
+        applyMedia(s.media, { time: state.lastState.time, paused: state.lastState.paused, force: true });
       } else if (!state.localOverride && !state.isHost) {
         syncPlayback(); /* drift correction */
       }
@@ -339,10 +418,10 @@
     updateSyncPill();
   }
 
-  function onHost(d) {
+  function onHost(hostId) {
     const wasHost = state.isHost;
-    state.hostSocketId = d && d.hostSocketId ? d.hostSocketId : null;
-    state.isHost = !!(state.socket && state.hostSocketId === state.socket.id);
+    state.hostId = hostId || null;
+    state.isHost = !!(state.myId && state.hostId === state.myId);
     refreshHostUI();
     updateSyncPill();
     if (state.isHost && !wasHost && state.joined) {
@@ -350,34 +429,8 @@
     }
   }
 
-  function onMembers(d) {
-    renderMembers((d && d.members) || []);
-  }
-
-  function onSetMedia(d) {
-    const media = d && d.media;
-    if (!media || !media.url) return;
-    state.roomMediaUrl = media.url;
-    state.localOverride = false;
-    applyMedia(media, {
-      time: state.lastState ? state.lastState.time : 0,
-      paused: state.lastState ? state.lastState.paused : true,
-      force: true,
-    });
-  }
-
-  function onPlaybackEvent(kind, d) {
-    if (state.lastState) {
-      state.lastState.receivedAt = performance.now();
-      state.lastState.time = Number(d && d.time) || 0;
-      if (kind === 'play') state.lastState.paused = false;
-      if (kind === 'pause') state.lastState.paused = true;
-    }
-    if (state.isHost) { updateSyncPill(); return; } /* host drives, never follows */
-    if (state.localOverride) return;
-    if (kind === 'seek') { hardSeek(Number(d && d.time) || 0); }
-    else { syncPlayback(); }
-    updateSyncPill();
+  function onMembers(members) {
+    renderMembers(members || []);
   }
 
   function onChat(msg) {
@@ -386,10 +439,10 @@
 
   /* ---- one-shot: auto "Set Video" from ?url= (host only) ---- */
 
-  function maybeAutoSetFromUrlParam(room) {
+  function maybeAutoSetFromUrlParam(roomSnapshot) {
     if (state.autoSetDone || !paramUrl || !state.isHost) return;
     state.autoSetDone = true;
-    if (room.media && room.media.url) return; /* room already has a video */
+    if (roomSnapshot && roomSnapshot.media && roomSnapshot.media.url) return; /* room already has a video */
     els.mediaInput.value = paramUrl;
     hostSetVideo(paramUrl, paramTitle);
     toast(detectMediaType(paramUrl) === 'unknown'
@@ -594,11 +647,13 @@
 
   /* ================= sync engine ================= */
 
+  /* Room target position, extrapolated on the SERVER clock (skew
+     corrected) so every client computes the same target. */
   function targetTime() {
     const ls = state.lastState;
     if (!ls) return 0;
     if (ls.paused) return ls.time;
-    return ls.time + (performance.now() - ls.receivedAt) / 1000;
+    return ls.time + (Date.now() + state.clockSkew - ls.updatedAt) / 1000;
   }
 
   /* Non-hosts follow the room: pause/play + seek when drifting. */
@@ -621,20 +676,10 @@
     }
   }
 
-  function hardSeek(time) {
-    if (state.localOverride || !state.currentMedia) return;
-    const t = Math.max(0, Number(time) || 0);
-    if (state.currentMedia.type === 'mp4') {
-      try { els.mp4.currentTime = t; } catch (err) {}
-    } else if (state.currentMedia.type === 'youtube' && ytPlayer) {
-      try { ytPlayer.seekTo(t, true); } catch (err) {}
-    }
-  }
-
   /* Host -> server playback updates */
   function emitHostPlayback(kind, time) {
-    if (!state.socket || !state.socket.connected || !state.isHost || !state.roomId) return;
-    state.socket.emit(kind, { roomId: state.roomId, time: Math.max(0, Number(time) || 0) });
+    if (!wsReady() || !state.isHost || !state.roomId) return;
+    wsSend({ type: kind, time: Math.max(0, Number(time) || 0) });
   }
 
   /* periodic drift correction + host YouTube seek detection */
@@ -711,11 +756,11 @@
   /* ================= set video (host) / local paste (non-host) ================= */
 
   function hostSetVideo(url, title) {
-    if (!state.socket || !state.socket.connected) { toast('Not connected yet…', 'error'); return; }
+    if (!wsReady()) { toast('Not connected yet…', 'error'); return; }
     const clean = String(url || '').trim();
     if (!clean) return;
-    state.socket.emit('set_media', {
-      roomId: state.roomId,
+    wsSend({
+      type: 'set_media',
       media: { type: detectMediaType(clean), url: clean, title: String(title || '').slice(0, 120) },
     });
   }
@@ -746,7 +791,7 @@
       els.setVideoBtn.classList.add('btn-primary');
     } else {
       els.setVideoBtn.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 16.5l6-4.5-6-4.5v9zM12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/></svg> Play locally';
-      els.hostHint.textContent = state.hostSocketId
+      els.hostHint.textContent = state.hostId
         ? 'Only the host can set the room video. Pasting a link here plays it locally for you only.'
         : 'Waiting for the host… only the host can set the room video.';
       els.setVideoBtn.classList.add('btn-primary');
@@ -759,12 +804,12 @@
     els.membersRow.textContent = '';
     (members || []).forEach((m) => {
       const chip = document.createElement('span');
-      chip.className = 'member-chip' + (m.socketId === state.hostSocketId ? ' is-host' : '');
+      chip.className = 'member-chip' + (m.id === state.hostId ? ' is-host' : '');
       const avatar = document.createElement('span');
       avatar.className = 'avatar';
-      avatar.textContent = (m.displayName || 'G').charAt(0).toUpperCase();
+      avatar.textContent = (m.name || 'G').charAt(0).toUpperCase();
       chip.appendChild(avatar);
-      if (m.socketId === state.hostSocketId) {
+      if (m.id === state.hostId) {
         const crown = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
         crown.setAttribute('viewBox', '0 0 24 24');
         crown.setAttribute('class', 'crown');
@@ -773,9 +818,9 @@
         chip.appendChild(crown);
       }
       const name = document.createElement('span');
-      name.textContent = m.displayName || 'Guest';
+      name.textContent = m.name || 'Guest';
       chip.appendChild(name);
-      if (state.socket && m.socketId === state.socket.id) {
+      if (m.id === state.myId) {
         const you = document.createElement('span');
         you.className = 'you-tag';
         you.textContent = 'you';
@@ -790,8 +835,11 @@
   function appendChatMessage(msg) {
     if (els.chatEmpty && els.chatEmpty.parentNode) els.chatEmpty.remove();
     const wrap = document.createElement('div');
-    const isSystem = !!(msg && msg.system);
-    const mine = msg && msg.displayName === state.displayName && !isSystem;
+    /* System lines come from the worker as { name:"System", … } (and
+       from this page as { system:true, … }) — render them without a
+       message head. */
+    const isSystem = !!(msg && (msg.system === true || msg.name === 'System'));
+    const mine = !!(msg && msg.name === state.displayName && !isSystem);
     wrap.className = 'msg' + (isSystem ? ' is-system' : '') + (mine ? ' is-you' : '');
 
     if (!isSystem) {
@@ -799,16 +847,16 @@
       head.className = 'msg-head';
       const name = document.createElement('span');
       name.className = 'msg-name';
-      name.textContent = msg.displayName || 'Guest';
+      name.textContent = (msg && msg.name) || 'Guest';
       const time = document.createElement('span');
       time.className = 'msg-time';
-      time.textContent = new Date(msg.ts || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      time.textContent = new Date((msg && msg.ts) || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
       head.append(name, time);
       wrap.appendChild(head);
     }
     const text = document.createElement('p');
     text.className = 'msg-text';
-    text.textContent = msg.message || '';
+    text.textContent = (msg && msg.message) || '';
     wrap.appendChild(text);
 
     els.chatMessages.appendChild(wrap);
@@ -820,8 +868,8 @@
     e.preventDefault();
     const text = els.chatInput.value.trim().slice(0, 500);
     if (!text) return;
-    if (!state.socket || !state.socket.connected) { toast('Not connected yet…', 'error'); return; }
-    state.socket.emit('chat', { roomId: state.roomId, message: text });
+    if (!wsReady()) { toast('Not connected yet…', 'error'); return; }
+    wsSend({ type: 'chat', message: text, ts: Date.now() });
     els.chatInput.value = '';
     els.chatInput.focus();
   });
@@ -843,27 +891,25 @@
   }
   function hideJoinError() { els.joinError.classList.remove('is-visible'); }
 
-  /* ---- party server URL: validation + save (join screen) ---- */
+  /* ---- party backend URL: validation + save (join screen) ---- */
 
-  function validateServerUrl(url) {
+  function validateBackend(url) {
     if (!url) {
-      return isLocalhost
-        ? 'Party Server URL is missing — enter it and press Save.'
-        : 'Enter your deployed Party Server URL (https://...) and press Save.';
+      return 'Enter your Party Backend URL (https://…workers.dev) and press Save.';
     }
     if (location.protocol === 'https:' && url.indexOf('http://') === 0) {
-      return "HTTPS page can't connect to HTTP server. Use an https Party Server URL.";
+      return "HTTPS page can't connect to HTTP server. Use an https Party Backend URL.";
     }
     if (!/^(https?|wss?):\/\//i.test(url)) {
-      return 'Party Server URL must start with http:// or https://';
+      return 'Party Backend URL must start with https:// (or wss://).';
     }
     return null;
   }
 
-  /* "Join the Party" is only clickable with a valid server URL. */
+  /* "Join the Party" is only clickable with a valid backend URL. */
   function refreshJoinAvailability() {
-    const candidate = normalizeServerUrl(els.serverUrlInput.value) || PARTY_SERVER_URL;
-    const err = validateServerUrl(candidate);
+    const candidate = normalizeBackend(els.backendInput.value) || BACKEND;
+    const err = validateBackend(candidate);
     if (err) {
       els.joinBtn.disabled = true;
       showJoinError(err);
@@ -873,28 +919,45 @@
     }
   }
 
-  function saveServerUrl() {
-    const value = normalizeServerUrl(els.serverUrlInput.value);
-    els.serverUrlInput.value = value;
-    try { localStorage.setItem('zeus_party_server_url', value); } catch (err) {}
-    PARTY_SERVER_URL = value || (isLocalhost ? DEFAULT_LOCAL_SERVER : '');
+  function saveBackendUrl() {
+    const value = normalizeBackend(els.backendInput.value);
+    els.backendInput.value = value;
+    try { localStorage.setItem(BACKEND_STORAGE_KEY, value); } catch (err) {}
+    BACKEND = value || DEFAULT_BACKEND;
     refreshJoinAvailability();
-    if (!validateServerUrl(PARTY_SERVER_URL)) toast('Party Server URL saved.', 'success');
+    if (!validateBackend(BACKEND)) {
+      toast('Party backend URL saved.', 'success');
+      /* optional liveness probe — purely informational */
+      checkBackendHealth(BACKEND);
+    }
   }
 
-  els.saveServerBtn.addEventListener('click', saveServerUrl);
-  els.serverUrlInput.addEventListener('input', refreshJoinAvailability);
-  els.serverUrlInput.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') { e.preventDefault(); saveServerUrl(); }
+  async function checkBackendHealth(base) {
+    try {
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), 5000);
+      const res = await fetch(httpBase(base) + '/health', { signal: ctrl.signal });
+      clearTimeout(timer);
+      if (!res.ok) throw new Error('bad status');
+      toast('Backend reachable — ready to join.', 'success');
+    } catch (err) {
+      toast("Saved, but the backend didn't respond at " + base + ' — is your worker deployed?', 'error');
+    }
+  }
+
+  els.saveBackendBtn.addEventListener('click', saveBackendUrl);
+  els.backendInput.addEventListener('input', refreshJoinAvailability);
+  els.backendInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); saveBackendUrl(); }
   });
 
   async function startParty() {
     if (state.joined) return;
-    const urlError = validateServerUrl(PARTY_SERVER_URL);
-    if (urlError) {
+    const backendError = validateBackend(BACKEND);
+    if (backendError) {
       els.joinBtn.disabled = true;
-      showJoinError(urlError);
-      els.serverUrlInput.focus();
+      showJoinError(backendError);
+      els.backendInput.focus();
       return;
     }
     const name = (els.nameInput.value || '').trim().slice(0, 24) || randomGuestName();
@@ -906,25 +969,26 @@
 
     try {
       if (!state.roomId) {
-        state.roomId = await createRoom();
+        state.roomId = await createRoom();  /* also validates the backend early */
         updateUrlWithRoom();
       }
       state.displayName = name;
+      state.everConnected = false;
+      state.reconnectAttempts = 0;
       renderRoomBadges();
-      await loadSocketIo();
       connectSocket();
       state.joined = true;
       els.joinOverlay.classList.add('is-hidden');
-      appendChatMessage({ system: true, message: 'Welcome to the party! Invite friends with the link below the player.' });
+      appendChatMessage({ system: true, name: 'System', message: 'Welcome to the party! Invite friends with the link below the player.' });
     } catch (err) {
       state.roomId = paramRoom || null;
       showJoinError(
-        "Can't reach the Party Server at " + (PARTY_SERVER_URL || '(no URL set)') +
-        '. Check the URL above and make sure the server is running (node party-server/server.js).'
+        "Can't reach the party backend at " + BACKEND + '. ' +
+        'Check the URL above and make sure your worker is deployed (cd party-worker && npx wrangler deploy).'
       );
       els.joinBtn.disabled = false;
       els.joinBtn.textContent = 'Join the Party';
-      setConn('error', "Can't reach server");
+      setConn('error', "Can't reach backend");
     }
   }
 
@@ -939,7 +1003,7 @@
     let saved = '';
     try { saved = localStorage.getItem('zeus_party_name') || ''; } catch (err) {}
     els.nameInput.value = saved || randomGuestName();
-    els.serverUrlInput.value = PARTY_SERVER_URL; /* saved URL, localhost default, or '' */
+    els.backendInput.value = BACKEND; /* saved backend URL or the default worker URL */
     els.joinMeta.innerHTML = paramRoom
       ? 'Joining room <strong>' + paramRoom + '</strong>'
       : 'A new room will be created for you.';
@@ -949,22 +1013,23 @@
     refreshHostUI();
     refreshJoinAvailability();
     setTimeout(() => {
-      (els.joinBtn.disabled ? els.serverUrlInput : els.nameInput).focus();
+      (els.joinBtn.disabled ? els.backendInput : els.nameInput).focus();
     }, 150);
   })();
 
   /* Debug/testing handle (harmless in production) */
   window.ZEUSParty = {
     state,
-    get socket() { return state.socket; },
+    get ws() { return state.ws; },
     get ytPlayer() { return ytPlayer; },
     mp4: els.mp4,
     setMedia: hostSetVideo,
     sync: syncPlayback,
     detectMediaType,
     parseYouTubeId,
-    validateServerUrl,
-    saveServerUrl,
+    get backend() { return BACKEND; },
+    validateBackend,
+    saveBackendUrl,
   };
 
 })();

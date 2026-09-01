@@ -1,0 +1,26 @@
+# ============================================================
+# ZEUS — zeus-party worker (Cloudflare Workers + Durable Objects)
+#
+# Deploy:            cd party-worker && npx wrangler deploy
+# Local development: cd party-worker && npx wrangler dev --port 8787
+#
+# The frontend talks to this worker over plain WebSockets:
+#   POST /api/rooms          -> { roomId }
+#   GET  /health             -> { ok: true }
+#   GET  /ws?room=ID&name=X  -> WebSocket upgrade -> PartyRoom DO
+# ============================================================
+
+name = "zeus-party"
+main = "src/worker.js"
+compatibility_date = "2024-10-01"
+
+# One Durable Object instance ("PartyRoom") per party room.
+[[durable_objects.bindings]]
+name = "PARTY_ROOM"
+class_name = "PartyRoom"
+
+# Required by the FIRST `wrangler deploy` so Cloudflare can create the
+# PartyRoom Durable Object namespace (no-op for later deploys).
+[[migrations]]
+tag = "v1"
+new_classes = ["PartyRoom"]

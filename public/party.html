@@ -23,7 +23,7 @@
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap">
 
   <!-- Styles -->
-  <link rel="stylesheet" href="party.css?v=1.0">
+  <link rel="stylesheet" href="party.css?v=2.0">
 </head>
 <body>
 
@@ -81,7 +81,7 @@
             <div class="stage-notice" id="stage-notice" role="alert">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/></svg>
               <h2>This source can&rsquo;t be synced automatically</h2>
-              <p>This source can&rsquo;t be synced automatically due to browser restrictions. Use YouTube or a direct MP4 link.</p>
+              <p>This source can&rsquo;t be synced automatically. Use YouTube or a direct MP4 link.</p>
               <p class="notice-url" id="notice-url"></p>
             </div>
 
@@ -175,14 +175,16 @@
       <label for="name-input">Your display name</label>
       <input type="text" id="name-input" maxlength="24" autocomplete="nickname" spellcheck="false">
 
-      <!-- Party server URL — configurable so the room works on any deployment
-           (localhost defaults to http://localhost:5050; elsewhere enter the
-           deployed https:// URL and press Save — stored per browser). -->
-      <label for="server-url-input" style="margin-top:16px;">Party Server URL</label>
-      <div style="display:flex;gap:10px;">
-        <input type="text" id="server-url-input" placeholder="https://your-party-server…" autocomplete="off" spellcheck="false" inputmode="url" style="flex:1;min-width:0;">
-        <button class="btn" id="save-server-btn" type="button">Save</button>
+      <!-- Party backend URL — the deployed Cloudflare Worker
+           (party-worker/). Paste your URL once and press Save — it is
+           stored per browser (localStorage "zeus_party_backend") so
+           the room works from any deployment (Pages, Vercel, …). -->
+      <label for="backend-input" style="margin-top:16px;">Party backend URL</label>
+      <div class="backend-row">
+        <input type="text" id="backend-input" placeholder="https://zeus-party.YOUR_WORKERS_SUBDOMAIN.workers.dev" autocomplete="off" spellcheck="false" inputmode="url">
+        <button class="btn" id="save-backend-btn" type="button">Save</button>
       </div>
+      <p class="backend-hint">Paste your deployed Worker URL once — it&rsquo;s saved in this browser. Deploy with <code>cd party-worker &amp;&amp; npx wrangler deploy</code>.</p>
 
       <p class="join-error" id="join-error" role="alert"></p>
 
@@ -194,6 +196,6 @@
   <!-- Toasts -->
   <div id="toast-container" aria-live="polite"></div>
 
-  <script src="party.js?v=1.1" defer></script>
+  <script src="party.js?v=2.0" defer></script>
 </body>
 </html>

@@ -10,12 +10,12 @@
      2) Resolve the current title (#watch-title, falling back to
         #watch-info-title, then document.title).
      3) Open the ZEUS party room (party.html) in a NEW TAB:
-          party.html?url=ENCODED_CURRENT_URL&title=ENCODED_TITLE
-        The party page auto-creates a room on the party server
-        (party-server/), auto-fills the URL and — for YouTube links
-        and direct .mp4 files — syncs playback for everyone. Other
-        sources show a "can't be synced" notice while the room +
-        chat still work.
+          /party.html?url=ENCODED_CURRENT_URL&title=ENCODED_TITLE
+        The party page auto-creates a room on the party backend
+        (your deployed Cloudflare Worker — party-worker/), auto-fills
+        the URL and — for YouTube links and direct .mp4 files —
+        syncs playback for everyone. Other sources show a
+        "can't be synced" notice while the room + chat still work.
      4) If the browser blocks the popup: copy the party link to
         the clipboard, show a notice, and redirect this tab to the
         party page instead.
@@ -133,7 +133,7 @@ function watchpartyOpenAttempt(url) {
 async function watchpartyLaunch() {
   const videoUrl = watchpartyResolveVideoUrl();
   const title = watchpartyResolveTitle();
-  const partyUrl = 'party.html?url=' + encodeURIComponent(videoUrl) +
+  const partyUrl = '/party.html?url=' + encodeURIComponent(videoUrl) +
                    '&title=' + encodeURIComponent(title);
 
   /* ---- Step 2: open the party room in a new tab ---- */
