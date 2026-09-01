@@ -213,3 +213,18 @@ Stage Summary:
 - public/ IS the complete, self-contained ZEUS site and the single deploy artifact: ZEUS-public.zip (download/ZEUS-public.zip) — public-only, per the ongoing delivery rule.
 - Total changes: watchparty.js (relative partyUrl), watch.html (cache-buster v3.2), VERSION.txt + DEPLOYMENT.txt (new). Nothing else touched.
 - Deploy: Cloudflare Pages with Framework None / empty build command / empty root / output directory "public" (or direct-upload the extracted public folder); party rooms additionally need `cd party-worker && npx wrangler deploy` once, then paste the workers.dev URL into the party page's backend field (localStorage "zeus_party_backend").
+
+---
+Task ID: 9
+Agent: Z.ai Code (main agent)
+Task: Provide download/ZEUS-public.zip as a real downloadable artifact (user could not download it from the previous chat message).
+
+Work Log:
+- Verified download/ZEUS-public.zip: exists, 205,047 bytes, SHA256 399c6df739a0da45841dddc5bac19689e3e154e6b44f75a1cbc110199f4db152, unzip -t clean.
+- Chat tool has no file-attachment mechanism; full base64 (~274 KB) exceeds single-message output limit (would truncate -> corrupt ZIP), so (A) and (B) are not viable.
+- Served the ZIP over the user-visible preview channel instead: copied it to public/ZEUS-public.zip; curl http://localhost:3000/ZEUS-public.zip -> HTTP 200, application/zip, 205,047 bytes, SHA256 identical, cmp byte-identical. Browser shows a real download at /ZEUS-public.zip.
+- Fallback documented: commit download/ZEUS-public.zip to GitHub -> https://github.com/armor229-ux/ZEUS/raw/main/download/ZEUS-public.zip.
+- NOTE for future zips: public/ZEUS-public.zip is a TEMPORARY download copy — exclude it from future deployment zips (`zip -r download/ZEUS-public.zip public -x "public/ZEUS-public.zip"`) and remove it once the user has downloaded it.
+
+Stage Summary:
+- ZEUS-public.zip is now genuinely downloadable at /ZEUS-public.zip via the Preview Panel (byte-verified), plus GitHub raw URL path given as the permanent option.
