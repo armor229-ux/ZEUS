@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Settings - ZEUS</title>
+
+  <meta name="description" content="ZEUS playback, subtitles, appearance, notifications, privacy and device settings — saved locally in your browser.">
+  <meta name="robots" content="noindex, follow">
+  <meta name="theme-color" content="#000000">
+
+  <!-- Open Graph Tags -->
+  <meta property="og:type" website="website">
+  <meta property="og:site_name" content="ZEUS">
+  <meta property="og:title" content="Settings - ZEUS">
+  <meta property="og:description" content="Playback, subtitles, appearance and privacy preferences, stored locally.">
+
+  <!-- Favicon -->
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="favicon.svg">
+
+  <!-- Apple TV+ typography: Inter (SF Pro fallback ladder in CSS) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap">
+
+  <!-- Styles -->
+  <link rel="stylesheet" href="style.css?v=2.7">
+  <link rel="stylesheet" href="settings.css?v=1.0">
+
+  <!-- Smooth menu transitions: arrived via an in-site nav? hide the black loader from first paint -->
+  <script>try{if(sessionStorage.getItem('zeus_nav_transition')==='1')document.documentElement.classList.add('no-page-loader')}catch(e){}</script>
+
+  <!-- Apply saved appearance settings before first paint (no theme flash) -->
+  <script>try{var __zs=JSON.parse(localStorage.getItem('zeus_settings')||'{}');if(__zs.theme&&__zs.theme!=='dark')document.documentElement.dataset.theme=__zs.theme;if(__zs.accent&&__zs.accent!=='gold')document.documentElement.dataset.accent=__zs.accent;if(__zs.reduceMotion)document.documentElement.dataset.reduceMotion='1';if(__zs.subtitleSize)document.documentElement.style.setProperty('--zeus-sub-size',__zs.subtitleSize/100);}catch(e){}</script>
+</head>
+<body>
+
+  <!-- Ambient lighting — blurred colour glow behind everything,
+       painted with the featured title's backdrop (Apple TV+
+       vibrancy), plus the cinematic vignette overlay on top -->
+  <div class="ambient-bg" id="ambient-bg" aria-hidden="true"></div>
+  <div id="ambient-vignette" aria-hidden="true"></div>
+
+  <!-- Dynamic dark gradient background (frosted glass base layer) -->
+  <div class="zeus-bg-blur" aria-hidden="true"></div>
+
+  <!-- Page Loading Animation -->
+  <div class="page-loader" id="page-loader" role="status" aria-label="Loading">
+    <div class="loader-logo">
+      <div class="loader-bolt" aria-hidden="true">
+        <svg viewBox="0 0 24 24"><path d="M13 2 4.5 13.5h5.2L8.6 22l8.9-11.8h-5.4L13 2z"/></svg>
+      </div>
+      <span class="loader-name">ZEUS</span>
+    </div>
+    <div class="loader-bar"></div>
+  </div>
+
+  <!-- Disclaimer banner (dismissible, remembered in localStorage) -->
+  <div class="disclaimer-banner" id="disclaimer-banner" hidden>
+    <div class="container disclaimer-inner">
+      <p class="disclaimer-text">⚠️ ZEUS does not host any videos. All content is provided by non-affiliated third parties. For informational and educational purposes only.</p>
+      <button class="disclaimer-close" id="disclaimer-close" type="button" aria-label="Dismiss disclaimer">
+        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- ==================== NAV PILL (compact frosted glass) ==================== -->
+  <div class="zeus-navbar-wrap">
+    <nav class="zeus-navpill zeus-glass" aria-label="Main navigation">
+      <a href="index.html" class="zeus-nav-item">Home</a>
+      <a href="browse.html?genre=16" class="zeus-nav-item">Anime</a>
+      <a href="browse.html" class="zeus-nav-item">Discover</a>
+      <a href="watchlist.html" class="zeus-nav-item">Library</a>
+      <a href="search.html" class="zeus-nav-item zeus-nav-search">
+        <svg class="zeus-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="11" cy="11" r="7"></circle>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+        </svg>
+        Search
+      </a>
+    </nav>
+
+    <a href="settings.html" class="zeus-settings-btn zeus-glass" aria-label="Settings">
+      <svg class="zeus-gear-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="12" r="3"></circle>
+        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+      </svg>
+    </a>
+  </div>
+
+  <!-- ==================== SETTINGS PAGE ==================== -->
+  <main class="settings-page">
+    <div class="container">
+
+      <div class="settings-header">
+        <h1><span class="title-bar"></span>Settings</h1>
+        <p class="settings-subtitle">Your preferences are saved to this browser instantly — no account required.</p>
+      </div>
+
+      <div class="settings-grid">
+
+        <!-- ============ ACCOUNT ============ -->
+        <section class="zeus-glass settings-card" aria-labelledby="set-account-title">
+          <header class="settings-card-head">
+            <span class="settings-card-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 3a3.5 3.5 0 1 1 0 7 3.5 3.5 0 0 1 0-7zm0 15.5a8.03 8.03 0 0 1-5.66-2.33c.9-1.62 2.62-2.67 4.56-2.67h2.2c1.94 0 3.66 1.05 4.56 2.67A8.03 8.03 0 0 1 12 20.5z"/></svg>
+            </span>
+            <div>
+              <h2 class="settings-card-title" id="set-account-title">Account</h2>
+              <p class="settings-card-sub" id="account-status">Checking local sign-in…</p>
+            </div>
+          </header>
+          <div class="settings-card-body">
+            <div class="settings-account-row" id="account-row"></div>
+          </div>
+        </section>
+
+        <!-- ============ PLAYBACK ============ -->
+        <section class="zeus-glass settings-card" aria-labelledby="set-playback-title">
+          <header class="settings-card-head">
+            <span class="settings-card-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+            </span>
+            <div>
+              <h2 class="settings-card-title" id="set-playback-title">Playback</h2>
+              <p class="settings-card-sub">Quality and streaming behaviour</p>
+            </div>
+          </header>
+          <div class="settings-card-body">
+            <div class="settings-row">
+              <div class="settings-row-label">
+                <span class="settings-row-name">Default quality</span>
+                <span class="settings-row-hint">Applied when a new stream starts</span>
+              </div>
+              <div class="zeus-segment" role="radiogroup" aria-label="Default quality" data-setting="quality">
+                <label><input type="radio" name="quality" value="auto"><span>Auto</span></label>
+                <label><input type="radio" name="quality" value="1080p"><span>1080p</span></label>
+                <label><input type="radio" name="quality" value="720p"><span>720p</span></label>
+                <label><input type="radio" name="quality" value="480p"><span>480p</span></label>
+              </div>
+            </div>
+
+            <div class="settings-row">
+              <div class="settings-row-label">
+                <span class="settings-row-name">Data saver</span>
+                <span class="settings-row-hint">Prefer lower bitrates on metered connections</span>
+              </div>
+              <label class="zeus-switch">
+                <input type="checkbox" data-setting="dataSaver">
+                <span class="zeus-switch-track" aria-hidden="true"></span>
+              </label>
+            </div>
+
+            <div class="settings-row">
+              <div class="settings-row-label">
+                <span class="settings-row-name">Autoplay next episode</span>
+                <span class="settings-row-hint">Also drives the player's AutoNext switch</span>
+              </div>
+              <label class="zeus-switch">
+                <input type="checkbox" data-setting="autoplayNext">
+                <span class="zeus-switch-track" aria-hidden="true"></span>
+              </label>
+            </div>
+
+            <div class="settings-row">
+              <div class="settings-row-label">
+                <span class="settings-row-name">Autoplay trailers</span>
+                <span class="settings-row-hint">Play trailers when browsing details</span>
+              </div>
+              <label class="zeus-switch">
+                <input type="checkbox" data-setting="autoplayTrailers">
+                <span class="zeus-switch-track" aria-hidden="true"></span>
+              </label>
+            </div>
+
+            <div class="settings-row">
+              <div class="settings-row-label">
+                <span class="settings-row-name">Buffer</span>
+                <span class="settings-row-hint">Higher = smoother playback, slower start</span>
+              </div>
+              <div class="zeus-segment" role="radiogroup" aria-label="Buffer" data-setting="buffer">
+                <label><input type="radio" name="buffer" value="low"><span>Low</span></label>
+                <label><input type="radio" name="buffer" value="medium"><span>Medium</span></label>
+                <label><input type="radio" name="buffer" value="high"><span>High</span></label>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============ SUBTITLES & AUDIO ============ -->
+        <section class="zeus-glass settings-card" aria-labelledby="set-subs-title">
+          <header class="settings-card-head">
+            <span class="settings-card-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M20 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2zM4 12h4v2H4v-2zm6 0h10v2H10v-2zM4 8h9v2H4V8zm11 0h5v2h-5V8z"/></svg>
+            </span>
+            <div>
+              <h2 class="settings-card-title" id="set-subs-title">Subtitles &amp; Audio</h2>
+              <p class="settings-card-sub">Captions and language preferences</p>
+            </div>
+          </header>
+          <div class="settings-card-body">
+            <div class="settings-row">
+              <div class="settings-row-label">
+                <span class="settings-row-name">Subtitles</span>
+                <span class="settings-row-hint">Show captions when available</span>
+              </div>
+              <label class="zeus-switch">
+                <input type="checkbox" data-setting="subtitles">
+                <span class="zeus-switch-track" aria-hidden="true"></span>
+              </label>
+            </div>
+
+            <div class="settings-row">
+              <div class="settings-row-label">
+                <span class="settings-row-name">Subtitle language</span>
+              </div>
+              <select class="zeus-select" data-setting="subtitleLanguage" aria-label="Subtitle language">
+                <option value="english">English</option>
+                <option value="spanish">Spanish</option>
+                <option value="french">French</option>
+                <option value="german">German</option>
+                <option value="arabic">Arabic</option>
+                <option value="japanese">Japanese</option>
+              </select>
+            </div>
+
+            <div class="settings-row settings-row--column">
+              <div class="settings-row-label">
+                <span class="settings-row-name">Subtitle size</span>
+                <span class="settings-row-hint" id="sub-size-label">100%</span>
+              </div>
+              <input type="range" class="zeus-range" min="75" max="175" step="5" value="100"
+                     data-setting="subtitleSize" aria-label="Subtitle size">
+              <div class="sub-preview" aria-hidden="true">
+                <p class="sub-preview-text" id="sub-preview-text">"The storm is coming."</p>
+              </div>
+            </div>
+
+            <div class="settings-row">
+              <div class="settings-row-label">
+                <span class="settings-row-name">Audio track language</span>
+              </div>
+              <select class="zeus-select" data-setting="audioLanguage" aria-label="Audio track language">
+                <option value="original">Original</option>
+                <option value="english">English</option>
+                <option value="spanish">Spanish</option>
+                <option value="french">French</option>
+                <option value="german">German</option>
+                <option value="arabic">Arabic</option>
+                <option value="japanese">Japanese</option>
+              </select>
+            </div>
+
+            <div class="settings-row">
+              <div class="settings-row-label">
+                <span class="settings-row-name">Always original audio</span>
+                <span class="settings-row-hint">Never dub, regardless of language</span>
+              </div>
+              <label class="zeus-switch">
+                <input type="checkbox" data-setting="originalAudio">
+                <span class="zeus-switch-track" aria-hidden="true"></span>
+              </label>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============ APPEARANCE ============ -->
+        <section class="zeus-glass settings-card" aria-labelledby="set-look-title">
+          <header class="settings-card-head">
+            <span class="settings-card-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 9 9c0-.46-.04-.92-.1-1.36a5.39 5.39 0 0 1-4.4 2.26 5.4 5.4 0 0 1-3.14-9.8c-.44-.06-.9-.1-1.36-.1z"/></svg>
+            </span>
+            <div>
+              <h2 class="settings-card-title" id="set-look-title">Appearance</h2>
+              <p class="settings-card-sub">Theme and motion — applies instantly</p>
+            </div>
+          </header>
+          <div class="settings-card-body">
+            <div class="settings-row">
+              <div class="settings-row-label">
+                <span class="settings-row-name">Theme</span>
+              </div>
+              <div class="zeus-segment" role="radiogroup" aria-label="Theme" data-setting="theme">
+                <label><input type="radio" name="theme" value="dark"><span>Dark</span></label>
+                <label><input type="radio" name="theme" value="dim"><span>Dim</span></label>
+                <label><input type="radio" name="theme" value="amoled"><span>AMOLED</span></label>
+              </div>
+            </div>
+
+            <div class="settings-row">
+              <div class="settings-row-label">
+                <span class="settings-row-name">Accent colour</span>
+                <span class="settings-row-hint">Used for highlights and controls</span>
+              </div>
+              <div class="zeus-swatches" role="radiogroup" aria-label="Accent colour" data-setting="accent">
+                <label class="zeus-swatch zeus-swatch--gold" title="Zeus Gold">
+                  <input type="radio" name="accent" value="gold"><span aria-hidden="true"></span>
+                  <span class="sr-only">Zeus Gold</span>
+                </label>
+                <label class="zeus-swatch zeus-swatch--crimson" title="Crimson">
+                  <input type="radio" name="accent" value="crimson"><span aria-hidden="true"></span>
+                  <span class="sr-only">Crimson</span>
+                </label>
+                <label class="zeus-swatch zeus-swatch--emerald" title="Emerald">
+                  <input type="radio" name="accent" value="emerald"><span aria-hidden="true"></span>
+                  <span class="sr-only">Emerald</span>
+                </label>
+                <label class="zeus-swatch zeus-swatch--violet" title="Violet">
+                  <input type="radio" name="accent" value="violet"><span aria-hidden="true"></span>
+                  <span class="sr-only">Violet</span>
+                </label>
+              </div>
+            </div>
+
+            <div class="settings-row">
+              <div class="settings-row-label">
+                <span class="settings-row-name">Reduce motion</span>
+                <span class="settings-row-hint">Minimise animations site-wide</span>
+              </div>
+              <label class="zeus-switch">
+                <input type="checkbox" data-setting="reduceMotion">
+                <span class="zeus-switch-track" aria-hidden="true"></span>
+              </label>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============ NOTIFICATIONS ============ -->
+        <section class="zeus-glass settings-card" aria-labelledby="set-notify-title">
+          <header class="settings-card-head">
+            <span class="settings-card-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M12 22a2.1 2.1 0 0 0 2.1-2h-4.2A2.1 2.1 0 0 0 12 22zm7-5v-5a7 7 0 0 0-5.6-6.8V4.5a1.4 1.4 0 0 0-2.8 0v.7A7 7 0 0 0 5 12v5l-2 2v1h18v-1l-2-2z"/></svg>
+            </span>
+            <div>
+              <h2 class="settings-card-title" id="set-notify-title">Notifications</h2>
+              <p class="settings-card-sub">Reminders ZEUS can surface in this browser</p>
+            </div>
+          </header>
+          <div class="settings-card-body">
+            <div class="settings-row">
+              <div class="settings-row-label">
+                <span class="settings-row-name">New episode alerts</span>
+                <span class="settings-row-hint">Shows you follow get new episodes</span>
+              </div>
+              <label class="zeus-switch">
+                <input type="checkbox" data-setting="notifyNewEpisodes">
+                <span class="zeus-switch-track" aria-hidden="true"></span>
+              </label>
+            </div>
+
+            <div class="settings-row">
+              <div class="settings-row-label">
+                <span class="settings-row-name">Watchlist reminders</span>
+                <span class="settings-row-hint">Nudges for titles saved a while ago</span>
+              </div>
+              <label class="zeus-switch">
+                <input type="checkbox" data-setting="notifyWatchlist">
+                <span class="zeus-switch-track" aria-hidden="true"></span>
+              </label>
+            </div>
+
+            <div class="settings-row">
+              <div class="settings-row-label">
+                <span class="settings-row-name">Watch Party invites</span>
+                <span class="settings-row-hint">Friends starting a synced room</span>
+              </div>
+              <label class="zeus-switch">
+                <input type="checkbox" data-setting="notifyParty">
+                <span class="zeus-switch-track" aria-hidden="true"></span>
+              </label>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============ PRIVACY ============ -->
+        <section class="zeus-glass settings-card" aria-labelledby="set-privacy-title">
+          <header class="settings-card-head">
+            <span class="settings-card-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M18 8h-1V6a5 5 0 0 0-10 0v2H6a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V10a2 2 0 0 0-2-2zm-9-2a3 3 0 0 1 6 0v2H9V6zm3 11a2 2 0 1 1 2-2 2 2 0 0 1-2 2z"/></svg>
+            </span>
+            <div>
+              <h2 class="settings-card-title" id="set-privacy-title">Privacy</h2>
+              <p class="settings-card-sub">Everything is local — nothing leaves this browser</p>
+            </div>
+          </header>
+          <div class="settings-card-body">
+            <div class="settings-row">
+              <div class="settings-row-label">
+                <span class="settings-row-name">Public profile</span>
+                <span class="settings-row-hint">Share your display name on Party invites</span>
+              </div>
+              <label class="zeus-switch">
+                <input type="checkbox" data-setting="publicProfile">
+                <span class="zeus-switch-track" aria-hidden="true"></span>
+              </label>
+            </div>
+
+            <div class="settings-row">
+              <div class="settings-row-label">
+                <span class="settings-row-name">Watch history visible</span>
+                <span class="settings-row-hint">Show "Continue watching" hints</span>
+              </div>
+              <label class="zeus-switch">
+                <input type="checkbox" data-setting="historyVisible">
+                <span class="zeus-switch-track" aria-hidden="true"></span>
+              </label>
+            </div>
+
+            <div class="settings-row">
+              <div class="settings-row-label">
+                <span class="settings-row-name">Watch history</span>
+                <span class="settings-row-hint">Clears tracked watched titles (likes and favourites are kept)</span>
+              </div>
+              <button class="btn btn-outline settings-danger-btn" id="clear-history" type="button">
+                Clear watch history
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============ DEVICES ============ -->
+        <section class="zeus-glass settings-card" aria-labelledby="set-devices-title">
+          <header class="settings-card-head">
+            <span class="settings-card-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M4 6h18V4H4a2 2 0 0 0-2 2v11H0v3h14v-3H4V6zm17 2h-3a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1V9a1 1 0 0 0-1-1z"/></svg>
+            </span>
+            <div>
+              <h2 class="settings-card-title" id="set-devices-title">Devices</h2>
+              <p class="settings-card-sub">Sessions on this local account</p>
+            </div>
+          </header>
+          <div class="settings-card-body">
+            <ul class="device-list" id="device-list"></ul>
+            <div class="settings-row settings-row--last">
+              <div class="settings-row-label">
+                <span class="settings-row-name">Sign out of all devices</span>
+                <span class="settings-row-hint">Ends the local sign-in everywhere</span>
+              </div>
+              <button class="btn btn-outline settings-danger-btn" id="sign-out-all" type="button">
+                Sign out all
+              </button>
+            </div>
+          </div>
+        </section>
+
+      </div>
+    </div>
+  </main>
+
+  <!-- ==================== FOOTER ==================== -->
+  <footer>
+    <div class="footer-container">
+      <div class="footer-grid">
+        <div class="footer-brand">
+          <a href="index.html" class="nav-logo" aria-label="ZEUS homepage"><img src="logo.svg" alt="ZEUS" class="nav-logo-img" loading="lazy" decoding="async"></a>
+          <p class="footer-desc">
+            Your ultimate destination to stream movies and TV shows online for free in HD.
+            Discover trending titles, top-rated classics and the latest episodes — all in one place.
+          </p>
+        </div>
+
+        <div class="footer-col">
+          <h3 class="footer-title">Browse</h3>
+          <ul class="footer-links">
+            <li><a href="index.html">Home</a></li>
+            <li><a href="browse.html?type=movie">Movies</a></li>
+            <li><a href="browse.html?type=tv">TV Shows</a></li>
+            <li><a href="browse.html?type=top">Top IMDB</a></li>
+            <li><a href="browse.html?type=trending">Trending</a></li>
+            <li><a href="watchlist.html">Watchlist</a></li>
+          </ul>
+        </div>
+
+        <div class="footer-col">
+          <h3 class="footer-title">Help</h3>
+          <ul class="footer-links">
+            <li><a href="search.html">Search</a></li>
+            <li><a href="settings.html">Settings</a></li>
+            <li><a href="login.html">Sign in</a></li>
+            <li><a href="dmca.html">DMCA</a></li>
+            <li><a href="terms.html">Terms of Service</a></li>
+            <li><a href="privacy.html">Privacy Policy</a></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <p class="footer-disclaimer">
+      Disclaimer: ZEUS does not host any files on its server. All contents are provided by
+      non-affiliated third parties. This product uses the TMDB API but is not endorsed or certified by TMDB.
+    </p>
+
+    <div class="footer-bottom">
+      <div class="footer-bottom-inner">
+        <span>&copy; <span id="current-year">2026</span> <span class="accent">ZEUS</span>. All rights reserved.</span>
+        <nav class="footer-legal" aria-label="Legal">
+          <a href="dmca.html">DMCA</a>
+          <span class="legal-sep" aria-hidden="true">|</span>
+          <a href="privacy.html">Privacy Policy</a>
+          <span class="legal-sep" aria-hidden="true">|</span>
+          <a href="terms.html">Terms of Service</a>
+        </nav>
+        <span class="tmdb-credit">Powered by
+          <img src="favicon.svg" alt="TMDB" height="14" loading="lazy" decoding="async"> TMDB API
+        </span>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Back to Top -->
+  <button class="back-to-top" id="back-to-top" aria-label="Back to top">
+    <svg viewBox="0 0 24 24"><path d="M7.41 15.41 12 10.83l4.59 4.58L18 14l-6-6-6 6z"/></svg>
+  </button>
+
+  <!-- Scripts -->
+  <script src="config.js?v=2.7"></script>
+  <script src="api.js?v=2.7"></script>
+  <script src="watchlist.js?v=2.7"></script>
+  <script src="auth.js?v=3.1"></script>
+  <script src="settings.js?v=1.0"></script>
+</body>
+</html>

@@ -5629,3 +5629,185 @@ body.server-modal-open { overflow: hidden; }
 @media (max-width: 640px) {
   .source-check-card { padding: 16px 18px; }
 }
+
+/* ============================================================
+   30. ZEUS FROSTED GLASS UI — compact nav pill, settings
+       button, animated dark gradient background
+   ------------------------------------------------------------
+   New elements only; no existing rule above is modified.
+   Positioning note: the pill uses the spec-sanctioned variant
+   "fixed with a small top offset" (Part 1, rule 2) so every
+   existing page keeps its exact geometry — the pill floats
+   over the top of the page exactly where the old fixed navbar
+   lived, instead of pushing content down. It is never full
+   width (width: fit-content) and never vertically centered.
+   ============================================================ */
+:root{
+  --glass-bg: rgba(20, 20, 24, 0.55);
+  --glass-bg-strong: rgba(20, 20, 24, 0.72);
+  --glass-brd: rgba(255, 255, 255, 0.10);
+  --glass-shadow: 0 10px 28px rgba(0, 0, 0, 0.45);
+  --glass-blur: 18px;
+}
+
+.zeus-glass{
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-brd);
+  backdrop-filter: blur(var(--glass-blur)) saturate(1.3);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.3);
+  box-shadow: var(--glass-shadow), inset 0 1px 0 rgba(255,255,255,0.08);
+}
+
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))){
+  .zeus-glass{ background: var(--glass-bg-strong); }
+}
+
+/* Compact floating nav pill + separate circular settings gear.
+   fit-content width; small top offset only (never centered). */
+.zeus-navbar-wrap{
+  position: fixed;                       /* "fixed with a small top offset" (spec rule 2) */
+  top: calc(var(--banner-height, 0px) + 16px);
+  left: 24px;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: fit-content;
+  margin: 0;
+}
+
+.zeus-navpill{
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  border-radius: 999px;
+  padding: 6px;
+}
+
+.zeus-nav-item{
+  padding: 10px 18px;
+  border-radius: 999px;
+  color: #d8d8dc;
+  font-weight: 600;
+  font-size: 14px;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.zeus-nav-item:hover{
+  color: #fff;
+}
+
+.zeus-nav-item.active{
+  background: #ffffff;
+  color: #111111;
+}
+
+.zeus-nav-search{
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #ff4b4b;
+}
+
+.zeus-search-icon{
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+.zeus-settings-btn{
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  color: #e4e4e4;
+}
+.zeus-settings-btn:hover{
+  color: #fff;
+}
+
+.zeus-gear-icon{
+  width: 18px;
+  height: 18px;
+}
+
+/* Keyboard accessibility for the new nav elements */
+.zeus-nav-item:focus-visible,
+.zeus-settings-btn:focus-visible{
+  outline: 2px solid rgba(255, 255, 255, 0.65);
+  outline-offset: 2px;
+}
+
+/* Dynamic dark gradient background — fixed layer; only this
+   background layer itself is blurred. No text, images, cards
+   or any other content is ever blurred by it. Sits above the
+   legacy #ambient-bg paint layer (same z-index, later in the
+   DOM) and below the cinematic vignette and the grain. */
+.zeus-bg-blur{
+  position: fixed;
+  inset: -80px;
+  z-index: -2;
+  pointer-events: none;
+  background:
+    radial-gradient(1100px 650px at 20% 15%, rgba(120, 70, 255, 0.35), transparent 60%),
+    radial-gradient(900px 650px at 80% 10%, rgba(0, 170, 255, 0.22), transparent 55%),
+    radial-gradient(900px 700px at 50% 100%, rgba(255, 60, 120, 0.16), transparent 60%),
+    linear-gradient(180deg, #07070a 0%, #0a0a0f 50%, #050507 100%);
+  background-size: 200% 200%;
+  filter: blur(32px) saturate(1.3) contrast(1.08);
+  transform: scale(1.1);
+  animation: zeusBgShift 22s ease-in-out infinite;
+}
+
+@keyframes zeusBgShift{
+  0%   { background-position: 0% 0%, 100% 0%, 50% 100%, 0% 0%; }
+  50%  { background-position: 30% 20%, 70% 30%, 60% 80%, 0% 0%; }
+  100% { background-position: 0% 0%, 100% 0%, 50% 100%, 0% 0%; }
+}
+
+/* subtle premium grain overlay for extra depth */
+body::after{
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)' opacity='.18'/%3E%3C/svg%3E");
+  opacity: 0.05;
+  mix-blend-mode: overlay;
+}
+
+/* Respect reduced motion preference */
+@media (prefers-reduced-motion: reduce){
+  .zeus-bg-blur{ animation: none; }
+}
+
+/* Mobile: tighter offsets; the pill scrolls horizontally only
+   if a very narrow screen can't fit all five items + gear. */
+@media (max-width: 640px){
+  .zeus-navbar-wrap{
+    left: 12px;
+    max-width: calc(100vw - 24px);
+  }
+  .zeus-navpill{
+    max-width: calc(100vw - 104px); /* keeps room for the 44px gear + gaps */
+    overflow-x: auto;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+  .zeus-navpill::-webkit-scrollbar{ display: none; }
+  .zeus-nav-item{ padding: 8px 12px; font-size: 13px; }
+}
+
+/* Printing: the floating pill and the animated background
+   are screen-only chrome */
+@media print{
+  .zeus-navbar-wrap,
+  .zeus-bg-blur{
+    display: none !important;
+  }
+}

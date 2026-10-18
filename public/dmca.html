@@ -59,6 +59,9 @@
   <div class="ambient-bg" id="ambient-bg" aria-hidden="true"></div>
   <div id="ambient-vignette" aria-hidden="true"></div>
 
+  <!-- Dynamic dark gradient background (frosted glass base layer) -->
+  <div class="zeus-bg-blur" aria-hidden="true"></div>
+
   <!-- Page Loading Animation -->
   <div class="page-loader" id="page-loader" role="status" aria-label="Loading">
     <div class="loader-logo">
@@ -80,60 +83,29 @@
     </div>
   </div>
 
-  <!-- ==================== NAVBAR ==================== -->
-  <header class="navbar" id="navbar">
-    <div class="nav-container">
-      <a href="index.html" class="nav-logo" aria-label="ZEUS homepage"><img src="logo.svg" alt="ZEUS" class="nav-logo-img" decoding="async"></a>
+  <!-- ==================== NAV PILL (compact frosted glass) ==================== -->
+  <div class="zeus-navbar-wrap">
+    <nav class="zeus-navpill zeus-glass" aria-label="Main navigation">
+      <a href="index.html" class="zeus-nav-item">Home</a>
+      <a href="browse.html?genre=16" class="zeus-nav-item">Anime</a>
+      <a href="browse.html" class="zeus-nav-item">Discover</a>
+      <a href="watchlist.html" class="zeus-nav-item">Library</a>
+      <a href="search.html" class="zeus-nav-item zeus-nav-search">
+        <svg class="zeus-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="11" cy="11" r="7"></circle>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+        </svg>
+        Search
+      </a>
+    </nav>
 
-      <nav class="nav-menu" id="nav-menu" aria-label="Main navigation">
-        <ul class="nav-links">
-          <li><a href="index.html" class="nav-link">Home</a></li>
-          <li><a href="browse.html?type=movie" class="nav-link">Movies</a></li>
-          <li><a href="browse.html?type=tv" class="nav-link">TV Shows</a></li>
-          <li class="nav-dropdown">
-            <button class="nav-link dropdown-toggle" type="button" aria-expanded="false" aria-haspopup="true">
-              Genre
-              <svg class="chevron" viewBox="0 0 24 24"><path d="M7 10l5 5 5-5z"/></svg>
-            </button>
-            <ul class="dropdown-menu" role="menu" aria-label="Movie genres">
-              <li role="none"><a role="menuitem" href="browse.html?genre=28">Action</a></li>
-              <li role="none"><a role="menuitem" href="browse.html?genre=12">Adventure</a></li>
-              <li role="none"><a role="menuitem" href="browse.html?genre=16">Animation</a></li>
-              <li role="none"><a role="menuitem" href="browse.html?genre=35">Comedy</a></li>
-              <li role="none"><a role="menuitem" href="browse.html?genre=80">Crime</a></li>
-              <li role="none"><a role="menuitem" href="browse.html?genre=99">Documentary</a></li>
-              <li role="none"><a role="menuitem" href="browse.html?genre=18">Drama</a></li>
-              <li role="none"><a role="menuitem" href="browse.html?genre=10751">Family</a></li>
-              <li role="none"><a role="menuitem" href="browse.html?genre=14">Fantasy</a></li>
-              <li role="none"><a role="menuitem" href="browse.html?genre=36">History</a></li>
-              <li role="none"><a role="menuitem" href="browse.html?genre=27">Horror</a></li>
-              <li role="none"><a role="menuitem" href="browse.html?genre=10402">Music</a></li>
-              <li role="none"><a role="menuitem" href="browse.html?genre=9648">Mystery</a></li>
-              <li role="none"><a role="menuitem" href="browse.html?genre=10749">Romance</a></li>
-              <li role="none"><a role="menuitem" href="browse.html?genre=878">Science Fiction</a></li>
-              <li role="none"><a role="menuitem" href="browse.html?genre=53">Thriller</a></li>
-              <li role="none"><a role="menuitem" href="browse.html?genre=10752">War</a></li>
-              <li role="none"><a role="menuitem" href="browse.html?genre=37">Western</a></li>
-            </ul>
-          </li>
-          <li><a href="browse.html?type=top" class="nav-link">Top IMDB</a></li>
-          <li><a href="watchlist.html" class="nav-link" data-nav="watchlist">Watchlist</a></li>
-        </ul>
-      </nav>
-
-      <div class="nav-actions">
-        <a href="watchlist.html" class="search-toggle watchlist-toggle" aria-label="Your watchlist" title="Your Watchlist">
-          <svg viewBox="0 0 24 24"><path d="M17 3H7a2 2 0 0 0-2 2v16l7-3 7 3V5a2 2 0 0 0-2-2z"/></svg>
-        </a>
-        <a href="search.html" class="search-toggle" aria-label="Search movies and TV shows">
-          <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><line x1="16.5" y1="16.5" x2="21" y2="21"/></svg>
-        </a>
-        <button class="hamburger" id="hamburger" aria-label="Toggle navigation menu" aria-expanded="false">
-          <span></span><span></span><span></span>
-        </button>
-      </div>
-    </div>
-  </header>
+    <a href="settings.html" class="zeus-settings-btn zeus-glass" aria-label="Settings">
+      <svg class="zeus-gear-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="12" r="3"></circle>
+        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+      </svg>
+    </a>
+  </div>
 
   <!-- ==================== DMCA PAGE ==================== -->
   <main class="legal-page">
