@@ -32,7 +32,9 @@
   <script>try{if(sessionStorage.getItem('zeus_nav_transition')==='1')document.documentElement.classList.add('no-page-loader')}catch(e){}</script>
 
   <!-- Apply saved appearance settings before first paint (no theme flash) -->
-  <script>try{var __zs=JSON.parse(localStorage.getItem('zeus_settings')||'{}');if(__zs.theme&&__zs.theme!=='dark')document.documentElement.dataset.theme=__zs.theme;if(__zs.accent&&__zs.accent!=='gold')document.documentElement.dataset.accent=__zs.accent;if(__zs.reduceMotion)document.documentElement.dataset.reduceMotion='1';if(__zs.subtitleSize)document.documentElement.style.setProperty('--zeus-sub-size',__zs.subtitleSize/100);}catch(e){}</script>
+  <script>try{var __zs=JSON.parse(localStorage.getItem('zeus_settings')||'{}');if(__zs.theme&&__zs.theme!=='dark')document.documentElement.dataset.theme=__zs.theme;if(__zs.accent&&__zs.accent!=='gold')document.documentElement.dataset.accent=__zs.accent;if(__zs.reduceMotion)document.documentElement.dataset.reduceMotion='1';if(__zs.subtitleSize)document.documentElement.style.setProperty('--zeus-sub-size',__zs.subtitleSize/100);var __zc=localStorage.getItem('zeus_sub_color');if(__zc)document.documentElement.style.setProperty('--zeus-sub-color',__zc);}catch(e){}</script>
+  <!-- Subtitle colour + timing preferences (saved locally, applied globally) -->
+  <script src="subtitle-prefs.js?v=1.0" defer></script>
 </head>
 <body>
 
@@ -66,8 +68,15 @@
     </div>
   </div>
 
-  <!-- ==================== NAV PILL (compact frosted glass) ==================== -->
-  <div class="zeus-navbar-wrap">
+  <!-- ==================== TOP BAR (centered frosted glass nav pill + settings gear) ==================== -->
+  <div class="zeus-topbar">
+    <a href="settings.html" class="zeus-settings-btn zeus-glass" aria-label="Settings">
+      <svg class="zeus-gear-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="12" r="3"></circle>
+        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+      </svg>
+    </a>
+
     <nav class="zeus-navpill zeus-glass" aria-label="Main navigation">
       <a href="index.html" class="zeus-nav-item">Home</a>
       <a href="browse.html?genre=16" class="zeus-nav-item">Anime</a>
@@ -81,13 +90,6 @@
         Search
       </a>
     </nav>
-
-    <a href="settings.html" class="zeus-settings-btn zeus-glass" aria-label="Settings">
-      <svg class="zeus-gear-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <circle cx="12" cy="12" r="3"></circle>
-        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
-      </svg>
-    </a>
   </div>
 
   <!-- ==================== SETTINGS PAGE ==================== -->
@@ -235,6 +237,51 @@
                      data-setting="subtitleSize" aria-label="Subtitle size">
               <div class="sub-preview" aria-hidden="true">
                 <p class="sub-preview-text" id="sub-preview-text">"The storm is coming."</p>
+              </div>
+            </div>
+
+            <div class="settings-row">
+              <div class="settings-row-label">
+                <span class="settings-row-name">Subtitle colour</span>
+                <span class="settings-row-hint">Applies instantly to video captions</span>
+              </div>
+              <div class="zeus-swatches" role="radiogroup" aria-label="Subtitle colour">
+                <label class="zeus-swatch zeus-swatch--sub-white" title="White">
+                  <input type="radio" name="zeus-sub-color" value="#ffffff"><span aria-hidden="true"></span>
+                  <span class="sr-only">White</span>
+                </label>
+                <label class="zeus-swatch zeus-swatch--sub-yellow" title="Yellow">
+                  <input type="radio" name="zeus-sub-color" value="#ffd54a"><span aria-hidden="true"></span>
+                  <span class="sr-only">Yellow</span>
+                </label>
+                <label class="zeus-swatch zeus-swatch--sub-sky" title="Sky blue">
+                  <input type="radio" name="zeus-sub-color" value="#76e4ff"><span aria-hidden="true"></span>
+                  <span class="sr-only">Sky blue</span>
+                </label>
+                <label class="zeus-swatch zeus-swatch--sub-green" title="Green">
+                  <input type="radio" name="zeus-sub-color" value="#8aff7d"><span aria-hidden="true"></span>
+                  <span class="sr-only">Green</span>
+                </label>
+                <label class="zeus-swatch zeus-swatch--sub-pink" title="Pink">
+                  <input type="radio" name="zeus-sub-color" value="#ff79c6"><span aria-hidden="true"></span>
+                  <span class="sr-only">Pink</span>
+                </label>
+                <label class="zeus-subcolor-custom" title="Custom colour">
+                  <input type="color" id="sub-color-custom" value="#ffffff" aria-label="Custom subtitle colour">
+                </label>
+              </div>
+            </div>
+
+            <div class="settings-row settings-row--column">
+              <div class="settings-row-label">
+                <span class="settings-row-name">Subtitle timing</span>
+                <span class="settings-row-hint"><span id="sub-offset-label">0s</span> · negative shows captions earlier, positive later</span>
+              </div>
+              <div class="sub-offset-controls">
+                <input type="range" class="zeus-range" id="sub-offset-range"
+                       min="-5000" max="5000" step="100" value="0"
+                       aria-label="Subtitle timing offset in milliseconds">
+                <button class="btn btn-outline settings-danger-btn" id="sub-offset-reset" type="button">Reset</button>
               </div>
             </div>
 

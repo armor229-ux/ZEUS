@@ -1,0 +1,226 @@
+/* ============================================================
+   30. ZEUS FROSTED GLASS UI — centered nav pill, settings gear
+       (top-left corner), animated dark gradient background,
+       subtitle colour/timing support, micro-perf hints
+   ------------------------------------------------------------
+   New elements only; no existing rule above is modified.
+   Layout notes:
+   • .zeus-topbar is the full-width top bar that CENTERS the
+     compact nav pill (the pill itself is width: fit-content —
+     never full width) and carries the separate fixed settings
+     gear in the top-left corner.
+   • The bar is pinned at the top with a small, banner-aware
+     offset only (never vertically centered). It stays fixed so
+     every existing page keeps its exact geometry — the pill
+     floats over the space the old fixed navbar occupied
+     instead of pushing content down.
+   ============================================================ */
+:root{
+  --glass-bg: rgba(20, 20, 24, 0.55);
+  --glass-bg-strong: rgba(20, 20, 24, 0.72);
+  --glass-brd: rgba(255, 255, 255, 0.10);
+  --glass-shadow: 0 12px 36px rgba(0, 0, 0, 0.45);
+  --glass-blur: 18px;
+  --accent-red: #ff4b4b;
+
+  /* Subtitle colour (Settings → Subtitles & Audio). Driven
+     live from localStorage by subtitle-prefs.js and consumed
+     by the video::cue rule below. */
+  --zeus-sub-color: #ffffff;
+}
+
+.zeus-glass{
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-brd);
+  backdrop-filter: blur(var(--glass-blur)) saturate(1.25);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.25);
+  box-shadow: var(--glass-shadow), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  will-change: transform, filter; /* GPU-friendly hint — silky smooth */
+  transform: translateZ(0);
+}
+
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))){
+  .zeus-glass{ background: var(--glass-bg-strong); }
+}
+
+/* Top bar wrapper: full width but only to CENTER the nav pill.
+   It is not clickable itself (pointer-events: none) so content
+   underneath keeps receiving clicks; its children opt back in. */
+.zeus-topbar{
+  position: fixed;                        /* pinned at the top, small offset only */
+  top: calc(var(--banner-height, 0px) + 16px);
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  width: 100%;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;   /* center column holds the pill */
+  align-items: center;
+  pointer-events: none;                   /* wrapper is not clickable... */
+}
+.zeus-topbar > *{ pointer-events: auto; } /* ...but children are */
+
+/* Settings button — a separate frosted-glass circle pinned in
+   the top-left corner, fully independent of the pill. */
+.zeus-settings-btn{
+  position: fixed;
+  top: calc(var(--banner-height, 0px) + 16px);
+  left: 16px;
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  color: #e7e7ea;
+}
+.zeus-settings-btn:hover{
+  color: #fff;
+}
+
+.zeus-gear-icon{
+  width: 18px;
+  height: 18px;
+}
+
+/* Centered, compact nav pill — fit-content width, never full
+   width, never vertically centered. */
+.zeus-navpill{
+  grid-column: 1 / -1;      /* spans the bar so the pill is truly page-centered */
+  justify-self: center;     /* centers within .zeus-topbar */
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  border-radius: 999px;
+  padding: 6px;
+  width: fit-content;       /* never full width */
+}
+
+.zeus-nav-item{
+  padding: 10px 18px;
+  border-radius: 999px;
+  color: #d8d8dc;
+  font-weight: 600;
+  font-size: 14px;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background 0.18s ease, color 0.18s ease, opacity 0.18s ease;
+}
+
+.zeus-nav-item:hover{
+  color: #fff;
+}
+
+.zeus-nav-item.active{
+  background: #fff;
+  color: #111;
+}
+
+.zeus-nav-search{
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--accent-red);
+}
+
+.zeus-search-icon{
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+/* Keyboard accessibility for the new nav elements */
+.zeus-nav-item:focus-visible,
+.zeus-settings-btn:focus-visible{
+  outline: 2px solid rgba(255, 255, 255, 0.65);
+  outline-offset: 2px;
+}
+
+/* Subtitle colour — reflects the saved preference on native
+   HTML track cues (::cue where supported). The --zeus-sub-color
+   variable is set live from localStorage by subtitle-prefs.js;
+   any custom caption overlay can reuse the same variable. */
+video::cue{
+  color: var(--zeus-sub-color);
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.55);
+}
+
+/* Micro-perf: smoother scrolling on long pages (structure
+   unchanged). The OS-level reduced-motion preference and the
+   manual settings toggle both fall back to instant scrolling. */
+html{
+  scroll-behavior: smooth;
+}
+
+/* Dynamic dark gradient background — fixed layer; only this
+   background layer itself is blurred. No text, images, cards
+   or any other content is ever blurred by it. Sits above the
+   legacy #ambient-bg paint layer (same z-index, later in the
+   DOM) and below the cinematic vignette and the grain. */
+.zeus-bg-blur{
+  position: fixed;
+  inset: -80px;
+  z-index: -2;
+  pointer-events: none;
+  background:
+    radial-gradient(1100px 650px at 20% 15%, rgba(120, 70, 255, 0.35), transparent 60%),
+    radial-gradient(900px 650px at 80% 10%, rgba(0, 170, 255, 0.22), transparent 55%),
+    radial-gradient(900px 700px at 50% 100%, rgba(255, 60, 120, 0.16), transparent 60%),
+    linear-gradient(180deg, #07070a 0%, #0a0a0f 50%, #050507 100%);
+  background-size: 200% 200%;
+  filter: blur(32px) saturate(1.3) contrast(1.08);
+  transform: scale(1.1);
+  animation: zeusBgShift 22s ease-in-out infinite;
+}
+
+@keyframes zeusBgShift{
+  0%   { background-position: 0% 0%, 100% 0%, 50% 100%, 0% 0%; }
+  50%  { background-position: 30% 20%, 70% 30%, 60% 80%, 0% 0%; }
+  100% { background-position: 0% 0%, 100% 0%, 50% 100%, 0% 0%; }
+}
+
+/* subtle premium grain overlay for extra depth */
+body::after{
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)' opacity='.18'/%3E%3C/svg%3E");
+  opacity: 0.05;
+  mix-blend-mode: overlay;
+}
+
+/* Respect reduced motion preference */
+@media (prefers-reduced-motion: reduce){
+  .zeus-bg-blur{ animation: none; }
+  html{ scroll-behavior: auto; }
+}
+
+/* Mobile: tighter offsets; the pill stays centered and scrolls
+   horizontally only if a narrow screen can't fit all five
+   items. It always keeps clear of the gear at the left. */
+@media (max-width: 640px){
+  .zeus-settings-btn{
+    left: 10px;
+    top: calc(var(--banner-height, 0px) + 10px);
+    width: 40px;
+    height: 40px;
+  }
+  .zeus-navpill{
+    max-width: calc(100vw - 116px); /* clears the 40px gear + margins */
+    overflow-x: auto;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+  .zeus-navpill::-webkit-scrollbar{ display: none; }
+  .zeus-nav-item{ padding: 8px 12px; font-size: 13px; }
+}
+
+/* Printing: the floating top bar (gear + pill) and the
+   animated background are screen-only chrome */
+@media print{
+  .zeus-topbar,
+  .zeus-bg-blur{
+    display: none !important;
+  }
+}

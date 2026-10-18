@@ -182,6 +182,77 @@
     }
   }
 
+  /* ---------------- subtitle colour + timing (window.ZEUS.subtitles) ----------------
+     These two controls persist under their OWN localStorage keys
+     (zeus_sub_color / zeus_sub_offset_ms) and are applied live
+     site-wide by subtitle-prefs.js — not part of zeus_settings. */
+
+  function formatOffset(ms) {
+    if (!ms) return '0s';
+    const seconds = ms / 1000;
+    return (seconds > 0 ? '+' : '') + seconds.toFixed(1) + 's';
+  }
+
+  function bindSubtitlePrefs() {
+    const subs = window.ZEUS && window.ZEUS.subtitles;
+    if (!subs) return; /* subtitle-prefs.js missing/blocked — controls stay inert */
+
+    subs.applyColor();
+    const currentColor = (subs.getColor() || '#ffffff').toLowerCase();
+
+    /* preset colour swatches */
+    const swatches = document.querySelectorAll('input[name="zeus-sub-color"]');
+    swatches.forEach((radio) => {
+      radio.checked = radio.value.toLowerCase() === currentColor;
+      radio.addEventListener('change', () => {
+        if (!radio.checked) return;
+        subs.saveColor(radio.value);
+        const custom = document.getElementById('sub-color-custom');
+        if (custom) custom.value = radio.value;
+      });
+    });
+
+    /* custom colour input */
+    const custom = document.getElementById('sub-color-custom');
+    if (custom) {
+      custom.value = subs.getColor() || '#ffffff';
+      custom.addEventListener('input', () => {
+        subs.saveColor(custom.value);
+        swatches.forEach((radio) => {
+          radio.checked = radio.value.toLowerCase() === custom.value.toLowerCase();
+        });
+      });
+    }
+
+    /* timing offset slider + reset (live label, save/apply instantly) */
+    const offsetRange = document.getElementById('sub-offset-range');
+    const offsetLabel = document.getElementById('sub-offset-label');
+    const offsetReset = document.getElementById('sub-offset-reset');
+
+    function paintOffsetLabel(ms) {
+      if (offsetLabel) offsetLabel.textContent = formatOffset(ms);
+    }
+
+    if (offsetRange) {
+      offsetRange.value = String(subs.getOffset());
+      paintOffsetLabel(subs.getOffset());
+      offsetRange.addEventListener('input', () => {
+        const ms = Number(offsetRange.value) || 0;
+        paintOffsetLabel(ms);
+        subs.saveOffset(ms); /* save + apply to current/future videos instantly */
+      });
+    }
+
+    if (offsetReset) {
+      offsetReset.addEventListener('click', () => {
+        if (offsetRange) offsetRange.value = '0';
+        paintOffsetLabel(0);
+        subs.saveOffset(0);
+        toast('Subtitle timing reset.');
+      });
+    }
+  }
+
   /* ---------------- account card ---------------- */
 
   function esc(text) {
@@ -303,9 +374,17 @@
   /* ---------------- boot ---------------- */
 
   function init() {
+    /* Common UI (page loader, disclaimer banner, back-to-top,
+       footer year, smooth nav) — every ZEUS page script calls
+       this at DOMContentLoaded (same pattern as login.js /
+       account.js / legal.js). Without it the cinematic page
+       loader overlay never initializes and stays on screen. */
+    if (typeof initCommonUI === 'function') initCommonUI();
+
     const settings = loadSettings();
     applySettings(settings);
     bindControls(settings);
+    bindSubtitlePrefs();
     renderAccountCard();
     renderDeviceList();
 

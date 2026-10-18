@@ -313,7 +313,7 @@
   display: inline-block;
   font-size: calc(16px * var(--zeus-sub-size, 1));
   font-weight: 700;
-  color: #fff;
+  color: var(--zeus-sub-color, #fff);
   text-shadow: 0 0 4px rgba(0, 0, 0, 0.9), 0 2px 2px rgba(0, 0, 0, 0.8);
   line-height: 1.3;
 }
@@ -352,6 +352,73 @@
 .zeus-swatch--crimson > span:first-of-type { background: #FF4B4B; }
 .zeus-swatch--emerald > span:first-of-type { background: #34D399; }
 .zeus-swatch--violet > span:first-of-type { background: #A78BFA; }
+
+/* ---------- Subtitle colour swatches (zeus_sub_color) ---------- */
+.zeus-swatch--sub-white > span:first-of-type { background: #ffffff; }
+.zeus-swatch--sub-yellow > span:first-of-type { background: #ffd54a; }
+.zeus-swatch--sub-sky > span:first-of-type { background: #76e4ff; }
+.zeus-swatch--sub-green > span:first-of-type { background: #8aff7d; }
+.zeus-swatch--sub-pink > span:first-of-type { background: #ff79c6; }
+
+/* Custom subtitle colour — a round colour picker that reads as
+   one more swatch (dashed ring = "any colour you like") */
+.zeus-subcolor-custom {
+  position: relative;
+  width: 32px;
+  height: 32px;
+  cursor: pointer;
+}
+
+.zeus-subcolor-custom input[type="color"] {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  margin: 0;
+  border: 2px dashed rgba(255, 255, 255, 0.35);
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.35);
+  cursor: pointer;
+}
+
+.zeus-subcolor-custom input[type="color"]:hover {
+  border-color: rgba(255, 255, 255, 0.7);
+}
+
+.zeus-subcolor-custom input[type="color"]:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.65);
+  outline-offset: 3px;
+}
+
+.zeus-subcolor-custom input[type="color"]::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+
+.zeus-subcolor-custom input[type="color"]::-webkit-color-swatch {
+  border: none;
+  border-radius: 50%;
+}
+
+.zeus-subcolor-custom input[type="color"]::-moz-color-swatch {
+  border: none;
+  border-radius: 50%;
+}
+
+/* ---------- Subtitle timing offset (zeus_sub_offset_ms) ---------- */
+.sub-offset-controls {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.sub-offset-controls .zeus-range {
+  flex: 1;
+}
+
+.sub-offset-controls .settings-danger-btn {
+  flex-shrink: 0;
+}
 
 .zeus-swatch input:checked + span:first-of-type {
   border-color: #fff;
