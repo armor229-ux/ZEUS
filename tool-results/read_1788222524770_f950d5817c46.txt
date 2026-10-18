@@ -1,0 +1,882 @@
+     1→/* ============================================================
+     2→   ZEUS — party.js
+     3→   Client for the ZEUS Watch Party room (party.html).
+     4→
+     5→   - Creates/joins a room on the party server (party-server/)
+     6→   - Synced playback for YouTube (IFrame API) and direct MP4
+     7→   - Live chat + member list + invite link
+     8→   - Host rules: the host drives playback (play/pause/seek) and is
+     9→     the only one who can set the room video; non-hosts can still
+    10→     paste a URL locally (it does NOT change the room media)
+    11→   - Drift correction: non-hosts compare their player time with the
+    12→     room target time; a difference > 1.2s triggers a local seek
+    13→   - Sources that are neither YouTube nor direct .mp4 can't be
+    14→     synced — the room still works (chat + manual link paste)
+    15→============================================================ */
+    16→
+    17→'use strict';
+    18→
+    19→(function () {
+    20→
+    21→  /* ================= configuration ================= */
+    22→
+    23→  /* Socket server URL — configurable.
+    24→     "" (default) = this site's own origin, routed to the party server
+    25→     through the gateway via the ?XTransformPort=<PARTY_PORT> query.
+    26→     Local dev: window.PARTY_SERVER_URL = "http://localhost:5050" */
+    27→  const PARTY_SERVER_URL = window.PARTY_SERVER_URL || '';
+    28→  const PARTY_PORT = String(window.PARTY_PORT || '5050');
+    29→
+    30→  const DRIFT_TOLERANCE = 1.2;   /* seconds — seek when further off */
+    31→const SYNC_INTERVAL = 1500;     /* ms   — drift check cadence     */
+    32→
+    33→  /* ================= dom ================= */
+    34→
+    35→  const $ = (id) => document.getElementById(id);
+    36→  const els = {
+    37→    roomCodeBadge: $('room-code-badge'),
+    38→    roomCodeText: $('room-code-text'),
+    39→    connPill: $('conn-pill'),
+    40→    connLabel: $('conn-label'),
+    41→    mediaEyebrow: $('media-eyebrow'),
+    42→    mediaTitle: $('media-title'),
+    43→    typeBadge: $('type-badge'),
+    44→    syncPill: $('sync-pill'),
+    45→    syncLabel: $('sync-label'),
+    46→    stage: $('player-stage'),
+    47→    yt: $('yt-player'),
+    48→    mp4: $('mp4-player'),
+    49→    stageEmpty: $('stage-empty'),
+    50→    stageNotice: $('stage-notice'),
+    51→    noticeUrl: $('notice-url'),
+    52→    tapOverlay: $('tap-overlay'),
+    53→    mediaForm: $('media-form'),
+    54→    mediaInput: $('media-url-input'),
+    55→    setVideoBtn: $('set-video-btn'),
+    56→    hostHint: $('host-hint-text'),
+    57→    inviteCode: $('invite-code'),
+    58→    inviteLink: $('invite-link'),
+    59→    copyInviteBtn: $('copy-invite-btn'),
+    60→    membersRow: $('members-row'),
+    61→    chatMessages: $('chat-messages'),
+    62→    chatEmpty: $('chat-empty'),
+    63→    chatForm: $('chat-form'),
+    64→    chatInput: $('chat-input'),
+    65→    joinOverlay: $('join-overlay'),
+    66→    nameInput: $('name-input'),
+    67→    joinBtn: $('join-btn'),
+    68→    joinError: $('join-error'),
+    69→    joinMeta: $('join-meta'),
+    70→    toasts: $('toast-container'),
+    71→  };
+    72→
+    73→  /* ================= state ================= */
+    74→
+    75→  const qs = new URLSearchParams(location.search);
+    76→  const paramRoom = (qs.get('room') || '').trim().toUpperCase();
+    77→  const paramUrl = qs.get('url') || '';
+    78→  const paramTitle = qs.get('title') || '';
+    79→
+    80→  const state = {
+    81→    roomId: paramRoom || null,
+    82→    displayName: '',
+    83→    socket: null,
+    84→    isHost: false,
+    85→    hostSocketId: null,
+    86→    roomMediaUrl: null,   /* media set on the room (host)      */
+    87→    currentMedia: null,   /* media loaded locally right now    */
+    88→    localOverride: false, /* non-host watching a local URL     */
+    89→    lastState: null,      /* last room snapshot + local clock  */
+    90→    autoSetDone: false,   /* one-shot auto "Set Video" from ?url= */
+    91→  };
+    92→
+    93→  /* ================= utilities ================= */
+    94→
+    95→  function toast(message, type) {
+    96→    const t = document.createElement('div');
+    97→    t.className = 'toast';
+    98→    const icon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    99→    icon.setAttribute('viewBox', '0 0 24 24');
+   100→    icon.innerHTML = type === 'error'
+   101→      ? '<path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/>'
+   102→      : '<path d="M9 16.2 4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z"/>';
+   103→    const span = document.createElement('span');
+   104→    span.textContent = message;
+   105→    t.append(icon, span);
+   106→    els.toasts.appendChild(t);
+   107→    setTimeout(() => t.classList.add('removing'), 2600);
+   108→    setTimeout(() => t.remove(), 3100);
+   109→  }
+   110→
+   111→  async function copyText(text) {
+   112→    try {
+   113→      await navigator.clipboard.writeText(text);
+   114→      return true;
+   115→    } catch (err) { /* legacy fallback below */ }
+   116→    try {
+   117→      const helper = document.createElement('textarea');
+   118→      helper.value = text;
+   119→      helper.setAttribute('readonly', '');
+   120→      helper.style.cssText = 'position:fixed;top:-9999px;left:-9999px;opacity:0;';
+   121→      document.body.appendChild(helper);
+   122→      helper.select();
+   123→      helper.setSelectionRange(0, text.length);
+   124→      const ok = document.execCommand('copy');
+   125→      helper.remove();
+   126→      return ok;
+   127→    } catch (err) {
+   128→      return false;
+   129→    }
+   130→  }
+   131→
+   132→  function fmtClock(sec) {
+   133→    sec = Math.max(0, Math.floor(sec || 0));
+   134→    const m = Math.floor(sec / 60);
+   135→    const s = sec % 60;
+   136→    return m + ':' + String(s).padStart(2, '0');
+   137→  }
+   138→
+   139→  function apiUrl(path) {
+   140→    return PARTY_SERVER_URL + path + (path.indexOf('?') === -1 ? '?' : '&') + 'XTransformPort=' + PARTY_PORT;
+   141→  }
+   142→
+   143→  function loadScriptOnce(src) {
+   144→    return new Promise((resolve, reject) => {
+   145→      const s = document.createElement('script');
+   146→      s.src = src;
+   147→      s.async = true;
+   148→      s.onload = () => resolve();
+   149→      s.onerror = () => { s.remove(); reject(new Error('failed to load ' + src)); };
+   150→      document.head.appendChild(s);
+   151→    });
+   152→  }
+   153→
+   154→  function randomGuestName() {
+   155→    const tail = Math.random().toString(36).slice(2, 6);
+   156→    return 'Guest-' + tail.toUpperCase();
+   157→  }
+   158→
+   159→  /* ================= media detection ================= */
+   160→
+   161→  function parseYouTubeId(url) {
+   162→    if (typeof url !== 'string') return null;
+   163→    const patterns = [
+   164→      /youtu\.be\/([\w-]{11})(?:[?&#]|$)/,
+   165→      /[?&]v=([\w-]{11})(?:[&]|$)/,
+   166→      /youtube\.com\/embed\/([\w-]{11})(?:[?&#]|$)/,
+   167→      /youtube\.com\/shorts\/([\w-]{11})(?:[?&#]|$)/,
+   168→    ];
+   169→    for (const p of patterns) {
+   170→      const m = url.match(p);
+   171→      if (m) return m[1];
+   172→    }
+   173→    return null;
+   174→  }
+   175→
+   176→  function detectMediaType(url) {
+   177→    const u = (url || '').trim();
+   178→    if (!u) return 'unknown';
+   179→    if (parseYouTubeId(u)) return 'youtube';
+   180→    if (/\.mp4([?#]|$)/i.test(u)) return 'mp4';
+   181→    return 'unknown';
+   182→  }
+   183→
+   184→  function mediaTitleFor(media) {
+   185→    if (media.title && media.title.trim()) return media.title.trim();
+   186→    if (media.type === 'youtube') return 'YouTube video';
+   187→    if (media.type === 'mp4') {
+   188→      try { return decodeURIComponent(media.url.split('/').pop().split('?')[0]) || 'MP4 video'; }
+   189→      catch (err) { return 'MP4 video'; }
+   190→    }
+   191→    return 'Custom source';
+   192→  }
+   193→
+   194→  /* ================= room / server plumbing ================= */
+   195→
+   196→  async function createRoom() {
+   197→    const res = await fetch(apiUrl('/api/rooms'), { method: 'POST' });
+   198→    if (!res.ok) throw new Error('room create failed (' + res.status + ')');
+   199→    const data = await res.json();
+   200→    return String(data.roomId);
+   201→  }
+   202→
+   203→  function updateUrlWithRoom() {
+   204→    try {
+   205→      const params = new URLSearchParams();
+   206→      params.set('room', state.roomId);
+   207→      if (paramUrl) params.set('url', paramUrl);
+   208→      if (paramTitle) params.set('title', paramTitle);
+   209→      history.replaceState(null, '', location.pathname + '?' + params.toString());
+   210→    } catch (err) { /* non-fatal */ }
+   211→  }
+   212→
+   213→  function renderRoomBadges() {
+   214→    els.roomCodeText.textContent = state.roomId || '------';
+   215→    els.inviteCode.textContent = state.roomId || '------';
+   216→    els.roomCodeBadge.classList.toggle('is-visible', !!state.roomId);
+   217→    if (state.roomId) {
+   218→      els.inviteLink.value = location.origin + location.pathname + '?room=' + state.roomId;
+   219→    }
+   220→  }
+   221→
+   222→  /* ---- socket.io client bundle (served by the party server) ---- */
+   223→
+   224→  let socketIoLoaded = false;
+   225→  async function loadSocketIo() {
+   226→    if (socketIoLoaded || (window.io && typeof window.io === 'function')) { socketIoLoaded = true; return; }
+   227→    const sources = [
+   228→      apiUrl('/socket.io/socket.io.js'),
+   229→      'https://cdn.socket.io/4.8.3/socket.io.min.js', /* fallback */
+   230→    ];
+   231→    let lastErr = null;
+   232→    for (const src of sources) {
+   233→      try { await loadScriptOnce(src); socketIoLoaded = true; return; }
+   234→      catch (err) { lastErr = err; }
+   235→    }
+   236→    throw lastErr || new Error('socket.io client unavailable');
+   237→  }
+   238→
+   239→  function connectSocket() {
+   240→    /* Gateway-safe connection: relative URL + XTransformPort query
+   241→       (when PARTY_SERVER_URL is set, it becomes an absolute URL). */
+   242→    const socketUrl = PARTY_SERVER_URL + '/?XTransformPort=' + PARTY_PORT;
+   243→    const socket = io(socketUrl, {
+   244→      transports: ['websocket', 'polling'],
+   245→      forceNew: true,
+   246→      reconnection: true,
+   247→      reconnectionDelay: 1000,
+   248→      reconnectionDelayMax: 5000,
+   249→      timeout: 10000,
+   250→    });
+   251→    state.socket = socket;
+   252→
+   253→    socket.on('connect', () => {
+   254→      setConn('connected', 'Connected');
+   255→      hideJoinError();
+   256→      /* (re)join — the server re-sends the full room snapshot */
+   257→      socket.emit('join', { roomId: state.roomId, displayName: state.displayName });
+   258→    });
+   259→
+   260→    socket.on('disconnect', () => setConn('reconnecting', 'Reconnecting…'));
+   261→    socket.on('connect_error', () => setConn('error', "Can't reach server"));
+   262→
+   263→    socket.on('state', onState);
+   264→    socket.on('host', onHost);
+   265→    socket.on('members', onMembers);
+   266→    socket.on('set_media', onSetMedia);
+   267→    socket.on('play', (d) => onPlaybackEvent('play', d));
+   268→    socket.on('pause', (d) => onPlaybackEvent('pause', d));
+   269→    socket.on('seek', (d) => onPlaybackEvent('seek', d));
+   270→    socket.on('chat', onChat);
+   271→    socket.on('party-error', (d) => toast(d && d.message ? d.message : 'Party error', 'error'));
+   272→  }
+   273→
+   274→  function setConn(kind, label) {
+   275→    els.connPill.classList.toggle('is-connected', kind === 'connected');
+   276→    els.connPill.classList.toggle('is-error', kind === 'error');
+   277→    els.connLabel.textContent = label;
+   278→  }
+   279→
+   280→  /* ================= server -> client handlers ================= */
+   281→
+   282→  function onState(room) {
+   283→    state.lastState = {
+   284→      roomId: room.roomId,
+   285→      hostSocketId: room.hostSocketId,
+   286→      media: room.media,
+   287→      paused: !!room.paused,
+   288→      time: Number(room.time) || 0,
+   289→      receivedAt: performance.now(),
+   290→    };
+   291→    state.hostSocketId = room.hostSocketId;
+   292→    state.isHost = !!room.hostSocketId && state.socket && room.hostSocketId === state.socket.id;
+   293→    refreshHostUI();
+   294→
+   295→    maybeAutoSetFromUrlParam(room);
+   296→
+   297→    if (room.media && room.media.url) {
+   298→      const roomChanged = state.roomMediaUrl !== room.media.url;
+   299→      if (roomChanged) {
+   300→        state.roomMediaUrl = room.media.url;
+   301→        state.localOverride = false;
+   302→        applyMedia(room.media, { time: state.lastState.time, paused: state.lastState.paused, force: true });
+   303→      } else if (!state.localOverride && !state.isHost) {
+   304→        syncPlayback(); /* drift correction */
+   305→      }
+   306→    } else if (state.roomMediaUrl || state.currentMedia) {
+   307→      state.roomMediaUrl = null;
+   308→      state.localOverride = false;
+   309→      resetStage();
+   310→    }
+   311→    updateSyncPill();
+   312→  }
+   313→
+   314→  function onHost(d) {
+   315→    const wasHost = state.isHost;
+   316→    state.hostSocketId = d && d.hostSocketId ? d.hostSocketId : null;
+   317→    state.isHost = !!(state.socket && state.hostSocketId === state.socket.id);
+   318→    refreshHostUI();
+   319→    updateSyncPill();
+   320→    if (state.isHost && !wasHost && state.joined) {
+   321→      toast("You're now the host — you control playback.");
+   322→    }
+   323→  }
+   324→
+   325→  function onMembers(d) {
+   326→    renderMembers((d && d.members) || []);
+   327→  }
+   328→
+   329→  function onSetMedia(d) {
+   330→    const media = d && d.media;
+   331→    if (!media || !media.url) return;
+   332→    state.roomMediaUrl = media.url;
+   333→    state.localOverride = false;
+   334→    applyMedia(media, {
+   335→      time: state.lastState ? state.lastState.time : 0,
+   336→      paused: state.lastState ? state.lastState.paused : true,
+   337→      force: true,
+   338→    });
+   339→  }
+   340→
+   341→  function onPlaybackEvent(kind, d) {
+   342→    if (state.lastState) {
+   343→      state.lastState.receivedAt = performance.now();
+   344→      state.lastState.time = Number(d && d.time) || 0;
+   345→      if (kind === 'play') state.lastState.paused = false;
+   346→      if (kind === 'pause') state.lastState.paused = true;
+   347→    }
+   348→    if (state.isHost) { updateSyncPill(); return; } /* host drives, never follows */
+   349→    if (state.localOverride) return;
+   350→    if (kind === 'seek') { hardSeek(Number(d && d.time) || 0); }
+   351→    else { syncPlayback(); }
+   352→    updateSyncPill();
+   353→  }
+   354→
+   355→  function onChat(msg) {
+   356→    appendChatMessage(msg);
+   357→  }
+   358→
+   359→  /* ---- one-shot: auto "Set Video" from ?url= (host only) ---- */
+   360→
+   361→  function maybeAutoSetFromUrlParam(room) {
+   362→    if (state.autoSetDone || !paramUrl || !state.isHost) return;
+   363→    state.autoSetDone = true;
+   364→    if (room.media && room.media.url) return; /* room already has a video */
+   365→    els.mediaInput.value = paramUrl;
+   366→    hostSetVideo(paramUrl, paramTitle);
+   367→    toast(detectMediaType(paramUrl) === 'unknown'
+   368→      ? "This source can't be synced automatically."
+   369→      : 'Video loaded from your watch page.');
+   370→  }
+   371→
+   372→  /* ================= player: stage management ================= */
+   373→
+   374→  function resetStage() {
+   375→    state.currentMedia = null;
+   376→    els.stageEmpty.classList.remove('is-hidden');
+   377→    els.stageNotice.classList.remove('is-visible');
+   378→    els.yt.classList.remove('is-active');
+   379→    els.mp4.classList.remove('is-active');
+   380→    els.tapOverlay.classList.remove('is-visible');
+   381→    els.typeBadge.hidden = true;
+   382→    els.mediaEyebrow.textContent = 'Now watching';
+   383→    els.mediaTitle.textContent = 'No video yet';
+   384→    updateSyncPill();
+   385→  }
+   386→
+   387→  function applyMedia(media, opts) {
+   388→    opts = opts || {};
+   389→    const time = Math.max(0, Number(opts.time) || 0);
+   390→    const paused = opts.paused !== false;
+   391→    state.currentMedia = media;
+   392→
+   393→    els.stageEmpty.classList.add('is-hidden');
+   394→    els.stageNotice.classList.remove('is-visible');
+   395→    els.tapOverlay.classList.remove('is-visible');
+   396→    els.yt.classList.toggle('is-active', media.type === 'youtube');
+   397→    els.mp4.classList.toggle('is-active', media.type === 'mp4');
+   398→
+   399→    els.typeBadge.hidden = false;
+   400→    els.typeBadge.textContent = media.type === 'youtube' ? 'YouTube' : media.type === 'mp4' ? 'MP4' : 'Link';
+   401→    els.typeBadge.className = 'type-badge' + (media.type === 'youtube' ? ' youtube' : media.type === 'mp4' ? ' mp4' : '');
+   402→    els.mediaEyebrow.textContent = state.localOverride ? 'Watching locally' : 'Now watching';
+   403→    els.mediaTitle.textContent = mediaTitleFor(media);
+   404→
+   405→    if (media.type === 'youtube') {
+   406→      loadYouTube(media, { time, paused });
+   407→    } else if (media.type === 'mp4') {
+   408→      loadMP4(media, { time, paused });
+   409→    } else {
+   410→      /* Not YouTube / not direct MP4: can't be synced. The room stays
+   411→         alive — chat works and the host can paste a proper link. */
+   412→      els.noticeUrl.textContent = media.url || '';
+   413→      els.stageNotice.classList.add('is-visible');
+   414→      stopLocalPlayers();
+   415→    }
+   416→    updateSyncPill();
+   417→  }
+   418→
+   419→  function stopLocalPlayers() {
+   420→    try { if (!els.mp4.paused) els.mp4.pause(); els.mp4.removeAttribute('src'); els.mp4.load(); } catch (err) {}
+   421→    try { if (ytPlayer && ytPlayer.stopVideo) ytPlayer.stopVideo(); } catch (err) {}
+   422→    hideTapOverlay();
+   423→  }
+   424→
+   425→  /* ================= player: MP4 ================= */
+   426→
+   427→  function loadMP4(media, opts) {
+   428→    const v = els.mp4;
+   429→    const url = media.url;
+   430→    let resolved = url;
+   431→    try { resolved = new URL(url, location.href).href; } catch (err) { /* keep as-is */ }
+   432→
+   433→    if (v.src !== resolved) {
+   434→      v.src = url;
+   435→      const onMeta = () => {
+   436→        v.removeEventListener('loadedmetadata', onMeta);
+   437→        try { if (opts.time > 0.3) v.currentTime = opts.time; } catch (err) {}
+   438→        if (!opts.paused) { v.play().catch(showTapOverlay); }
+   439→      };
+   440→      v.addEventListener('loadedmetadata', onMeta);
+   441→      v.load();
+   442→    } else {
+   443→      try { if (Math.abs(v.currentTime - opts.time) > DRIFT_TOLERANCE) v.currentTime = opts.time; } catch (err) {}
+   444→      if (!opts.paused && v.paused) { v.play().catch(showTapOverlay); }
+   445→      if (opts.paused && !v.paused) v.pause();
+   446→    }
+   447→  }
+   448→
+   449→  els.mp4.addEventListener('play', () => {
+   450→    hideTapOverlay();
+   451→    if (state.isHost) emitHostPlayback('play', els.mp4.currentTime);
+   452→  });
+   453→  els.mp4.addEventListener('pause', () => {
+   454→    if (state.isHost) emitHostPlayback('pause', els.mp4.currentTime);
+   455→  });
+   456→  els.mp4.addEventListener('seeked', () => {
+   457→    if (state.isHost) emitHostPlayback('seek', els.mp4.currentTime);
+   458→  });
+   459→  els.mp4.addEventListener('error', () => {
+   460→    if (state.currentMedia && state.currentMedia.type === 'mp4') {
+   461→      toast("Couldn't load this MP4 file.", 'error');
+   462→    }
+   463→  });
+   464→
+   465→  /* ================= player: YouTube ================= */
+   466→
+   467→  let ytApiPromise = null;
+   468→  let ytPlayer = null;
+   469→  let ytPendingApply = null;
+   470→
+   471→  function ensureYouTubeAPI() {
+   472→    if (ytApiPromise) return ytApiPromise;
+   473→    ytApiPromise = new Promise((resolve, reject) => {
+   474→      if (window.YT && window.YT.Player) { resolve(); return; }
+   475→      const prev = window.onYouTubeIframeAPIReady;
+   476→      window.onYouTubeIframeAPIReady = () => {
+   477→        if (typeof prev === 'function') { try { prev(); } catch (err) {} }
+   478→        resolve();
+   479→      };
+   480→      const s = document.createElement('script');
+   481→      s.src = 'https://www.youtube.com/iframe_api';
+   482→      s.async = true;
+   483→      s.onerror = () => { ytApiPromise = null; reject(new Error('YouTube API failed to load')); };
+   484→      document.head.appendChild(s);
+   485→      setTimeout(() => {
+   486→        if (!(window.YT && window.YT.Player)) { ytApiPromise = null; reject(new Error('YouTube API timeout')); }
+   487→      }, 12000);
+   488→    });
+   489→    return ytApiPromise;
+   490→  }
+   491→
+   492→  async function loadYouTube(media, opts) {
+   493→    const videoId = parseYouTubeId(media.url);
+   494→    if (!videoId) {
+   495→      /* safety net if the server type disagrees with the URL */
+   496→      applyMedia({ type: 'unknown', url: media.url, title: media.title }, opts);
+   497→      return;
+   498→    }
+   499→    try {
+   500→      await ensureYouTubeAPI();
+   501→    } catch (err) {
+   502→      toast("Couldn't load the YouTube player.", 'error');
+   503→      return;
+   504→    }
+   505→    if (!ytPlayer) {
+   506→      ytPendingApply = { videoId, opts };
+   507→      ytPlayer = new YT.Player('yt-player', {
+   508→        width: '100%',
+   509→        height: '100%',
+   510→        videoId,
+   511→        playerVars: {
+   512→          controls: 1,
+   513→          rel: 0,
+   514→          modestbranding: 1,
+   515→          playsinline: 1,
+   516→        },
+   517→        events: {
+   518→          onReady: () => {
+   519→            const pending = ytPendingApply;
+   520→            ytPendingApply = null;
+   521→            if (pending) applyYouTubeVideo(pending.videoId, pending.opts);
+   522→          },
+   523→          onStateChange: onYouTubeStateChange,
+   524→          onError: () => toast("Couldn't load this YouTube video.", 'error'),
+   525→        },
+   526→      });
+   527→    } else {
+   528→      applyYouTubeVideo(videoId, opts);
+   529→    }
+   530→  }
+   531→
+   532→  function applyYouTubeVideo(videoId, opts) {
+   533→    if (!ytPlayer) return;
+   534→    const t = Math.max(0, Number(opts.time) || 0);
+   535→    let currentVideoId = null;
+   536→    try { currentVideoId = ytPlayer.getVideoData() && ytPlayer.getVideoData().video_id; } catch (err) {}
+   537→
+   538→    if (currentVideoId !== videoId) {
+   539→      /* per spec: paused -> cueVideoById, playing -> loadVideoById */
+   540→      if (opts.paused) {
+   541→        try { ytPlayer.cueVideoById({ videoId, startSeconds: t }); } catch (err) {}
+   542→      } else {
+   543→        try { ytPlayer.loadVideoById({ videoId, startSeconds: t }); } catch (err) {}
+   544→      }
+   545→    } else {
+   546→      try {
+   547→        const cur = ytPlayer.getCurrentTime() || 0;
+   548→        if (Math.abs(cur - t) > DRIFT_TOLERANCE) ytPlayer.seekTo(t, true);
+   549→      } catch (err) {}
+   550→    }
+   551→    /* then apply pause/play accordingly */
+   552→    try { if (opts.paused) ytPlayer.pauseVideo(); else ytPlayer.playVideo(); } catch (err) {}
+   553→  }
+   554→
+   555→  function onYouTubeStateChange(e) {
+   556→    const S = window.YT.PlayerState;
+   557→    if (e.data === S.PLAYING) {
+   558→      hideTapOverlay();
+   559→      if (state.isHost) emitHostPlayback('play', ytPlayer.getCurrentTime());
+   560→    } else if (e.data === S.PAUSED) {
+   561→      if (state.isHost) emitHostPlayback('pause', ytPlayer.getCurrentTime());
+   562→    } else if (e.data === S.ENDED) {
+   563→      if (state.isHost) emitHostPlayback('pause', ytPlayer.getDuration());
+   564→    }
+   565→  }
+   566→
+   567→  /* ================= sync engine ================= */
+   568→
+   569→  function targetTime() {
+   570→    const ls = state.lastState;
+   571→    if (!ls) return 0;
+   572→    if (ls.paused) return ls.time;
+   573→    return ls.time + (performance.now() - ls.receivedAt) / 1000;
+   574→  }
+   575→
+   576→  /* Non-hosts follow the room: pause/play + seek when drifting. */
+   577→  function syncPlayback() {
+   578→    if (state.isHost || state.localOverride || !state.currentMedia || !state.lastState) return;
+   579→    const paused = state.lastState.paused;
+   580→    const target = targetTime();
+   581→
+   582→    if (state.currentMedia.type === 'mp4') {
+   583→      const v = els.mp4;
+   584→      try { if (Math.abs(v.currentTime - target) > DRIFT_TOLERANCE) v.currentTime = target; } catch (err) {}
+   585→      if (paused && !v.paused) v.pause();
+   586→      if (!paused && v.paused) v.play().catch(showTapOverlay);
+   587→    } else if (state.currentMedia.type === 'youtube' && ytPlayer) {
+   588→      try {
+   589→        const cur = ytPlayer.getCurrentTime() || 0;
+   590→        if (Math.abs(cur - target) > DRIFT_TOLERANCE) ytPlayer.seekTo(target, true);
+   591→        if (paused) ytPlayer.pauseVideo(); else ytPlayer.playVideo();
+   592→      } catch (err) {}
+   593→    }
+   594→  }
+   595→
+   596→  function hardSeek(time) {
+   597→    if (state.localOverride || !state.currentMedia) return;
+   598→    const t = Math.max(0, Number(time) || 0);
+   599→    if (state.currentMedia.type === 'mp4') {
+   600→      try { els.mp4.currentTime = t; } catch (err) {}
+   601→    } else if (state.currentMedia.type === 'youtube' && ytPlayer) {
+   602→      try { ytPlayer.seekTo(t, true); } catch (err) {}
+   603→    }
+   604→  }
+   605→
+   606→  /* Host -> server playback updates */
+   607→  function emitHostPlayback(kind, time) {
+   608→    if (!state.socket || !state.socket.connected || !state.isHost || !state.roomId) return;
+   609→    state.socket.emit(kind, { roomId: state.roomId, time: Math.max(0, Number(time) || 0) });
+   610→  }
+   611→
+   612→  /* periodic drift correction + host YouTube seek detection */
+   613→  let lastHostYtTime = null;
+   614→  setInterval(() => {
+   615→    /* host: YouTube has no "seeked" event — detect time jumps
+   616→       (both while playing AND while paused) */
+   617→    if (state.isHost && state.currentMedia && state.currentMedia.type === 'youtube' && ytPlayer) {
+   618→      try {
+   619→        const cur = ytPlayer.getCurrentTime();
+   620→        const st = ytPlayer.getPlayerState();
+   621→        if (cur != null && st !== window.YT.PlayerState.UNSTARTED) {
+   622→          if (lastHostYtTime != null && Math.abs(cur - lastHostYtTime) > 1.8) {
+   623→            emitHostPlayback('seek', cur);
+   624→          }
+   625→          lastHostYtTime = cur;
+   626→        } else {
+   627→          lastHostYtTime = null;
+   628→        }
+   629→      } catch (err) { lastHostYtTime = null; }
+   630→    } else {
+   631→      lastHostYtTime = null;
+   632→    }
+   633→
+   634→    /* non-host: follow the room */
+   635→    if (!state.isHost) syncPlayback();
+   636→    updateSyncPill();
+   637→  }, SYNC_INTERVAL);
+   638→
+   639→  function updateSyncPill() {
+   640→    if (!state.roomId) { setSync('waiting', 'Waiting…'); return; }
+   641→    if (state.isHost) { setSync('host', 'You control playback'); return; }
+   642→    if (!state.currentMedia) { setSync('waiting', 'Waiting for video…'); return; }
+   643→    if (state.localOverride) { setSync('local', 'Local (not synced)'); return; }
+   644→    const ls = state.lastState;
+   645→    if (!ls) { setSync('waiting', 'Syncing…'); return; }
+   646→
+   647→    let localTime = null;
+   648→    let localPaused = true;
+   649→    if (state.currentMedia.type === 'mp4') {
+   650→      localTime = els.mp4.currentTime || 0;
+   651→      localPaused = els.mp4.paused;
+   652→    } else if (state.currentMedia.type === 'youtube' && ytPlayer) {
+   653→      try { localTime = ytPlayer.getCurrentTime() || 0; localPaused = ytPlayer.getPlayerState() !== window.YT.PlayerState.PLAYING; } catch (err) {}
+   654→    }
+   655→    if (localTime == null) { setSync('waiting', 'Syncing…'); return; }
+   656→
+   657→    const drift = Math.abs(localTime - targetTime());
+   658→    const pausedMatch = !!ls.paused === !!localPaused;
+   659→    if (pausedMatch && drift <= DRIFT_TOLERANCE) {
+   660→      setSync('synced', ls.paused ? 'Paused · in sync (' + fmtClock(localTime) + ')' : 'In sync · ' + fmtClock(localTime));
+   661→    } else {
+   662→      setSync('syncing', 'Syncing… ' + fmtClock(localTime));
+   663→    }
+   664→  }
+   665→
+   666→  function setSync(kind, label) {
+   667→    els.syncPill.classList.toggle('is-synced', kind === 'synced');
+   668→    els.syncPill.classList.toggle('is-host', kind === 'host');
+   669→    els.syncLabel.textContent = label;
+   670→  }
+   671→
+   672→  /* autoplay blocked -> "tap to start" overlay */
+   673→  function showTapOverlay() { els.tapOverlay.classList.add('is-visible'); }
+   674→  function hideTapOverlay() { els.tapOverlay.classList.remove('is-visible'); }
+   675→  els.tapOverlay.addEventListener('click', () => {
+   676→    hideTapOverlay();
+   677→    try {
+   678→      if (state.currentMedia && state.currentMedia.type === 'mp4') { els.mp4.muted = false; els.mp4.play().catch(() => {}); }
+   679→      else if (ytPlayer) { ytPlayer.playVideo(); }
+   680→    } catch (err) {}
+   681→  });
+   682→
+   683→  /* ================= set video (host) / local paste (non-host) ================= */
+   684→
+   685→  function hostSetVideo(url, title) {
+   686→    if (!state.socket || !state.socket.connected) { toast('Not connected yet…', 'error'); return; }
+   687→    const clean = String(url || '').trim();
+   688→    if (!clean) return;
+   689→    state.socket.emit('set_media', {
+   690→      roomId: state.roomId,
+   691→      media: { type: detectMediaType(clean), url: clean, title: String(title || '').slice(0, 120) },
+   692→    });
+   693→  }
+   694→
+   695→  function localSetVideo(url) {
+   696→    /* Non-host: pasting a URL is LOCAL ONLY — it never changes the
+   697→       room media (the server rejects non-host set_media anyway). */
+   698→    const clean = String(url || '').trim();
+   699→    if (!clean) return;
+   700→    state.localOverride = true;
+   701→    applyMedia({ type: detectMediaType(clean), url: clean, title: '' }, { time: 0, paused: true, force: true });
+   702→    toast('Playing locally — only the host sets the video for everyone.');
+   703→    refreshHostUI();
+   704→  }
+   705→
+   706→  els.mediaForm.addEventListener('submit', (e) => {
+   707→    e.preventDefault();
+   708→    const url = els.mediaInput.value.trim();
+   709→    if (!url) { els.mediaInput.focus(); return; }
+   710→    if (state.isHost) hostSetVideo(url, '');
+   711→    else localSetVideo(url);
+   712→  });
+   713→
+   714→  function refreshHostUI() {
+   715→    if (state.isHost) {
+   716→      els.setVideoBtn.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 16.5l6-4.5-6-4.5v9zM12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/></svg> Set Video';
+   717→      els.hostHint.textContent = 'You are the host — your play, pause and seek control everyone. Paste a YouTube or direct MP4 link.';
+   718→      els.setVideoBtn.classList.add('btn-primary');
+   719→    } else {
+   720→      els.setVideoBtn.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 16.5l6-4.5-6-4.5v9zM12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/></svg> Play locally';
+   721→      els.hostHint.textContent = state.hostSocketId
+   722→        ? 'Only the host can set the room video. Pasting a link here plays it locally for you only.'
+   723→        : 'Waiting for the host… only the host can set the room video.';
+   724→      els.setVideoBtn.classList.add('btn-primary');
+   725→    }
+   726→  }
+   727→
+   728→  /* ================= members ================= */
+   729→
+   730→  function renderMembers(members) {
+   731→    els.membersRow.textContent = '';
+   732→    (members || []).forEach((m) => {
+   733→      const chip = document.createElement('span');
+   734→      chip.className = 'member-chip' + (m.socketId === state.hostSocketId ? ' is-host' : '');
+   735→      const avatar = document.createElement('span');
+   736→      avatar.className = 'avatar';
+   737→      avatar.textContent = (m.displayName || 'G').charAt(0).toUpperCase();
+   738→      chip.appendChild(avatar);
+   739→      if (m.socketId === state.hostSocketId) {
+   740→        const crown = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+   741→        crown.setAttribute('viewBox', '0 0 24 24');
+   742→        crown.setAttribute('class', 'crown');
+   743→        crown.setAttribute('aria-hidden', 'true');
+   744→        crown.innerHTML = '<path d="M5 16 3 5l5.5 5L12 3l3.5 7L21 5l-2 11zM4.5 19h15v2h-15z"/>';
+   745→        chip.appendChild(crown);
+   746→      }
+   747→      const name = document.createElement('span');
+   748→      name.textContent = m.displayName || 'Guest';
+   749→      chip.appendChild(name);
+   750→      if (state.socket && m.socketId === state.socket.id) {
+   751→        const you = document.createElement('span');
+   752→        you.className = 'you-tag';
+   753→        you.textContent = 'you';
+   754→        chip.appendChild(you);
+   755→      }
+   756→      els.membersRow.appendChild(chip);
+   757→    });
+   758→  }
+   759→
+   760→  /* ================= chat ================= */
+   761→
+   762→  function appendChatMessage(msg) {
+   763→    if (els.chatEmpty && els.chatEmpty.parentNode) els.chatEmpty.remove();
+   764→    const wrap = document.createElement('div');
+   765→    const isSystem = !!(msg && msg.system);
+   766→    const mine = msg && msg.displayName === state.displayName && !isSystem;
+   767→    wrap.className = 'msg' + (isSystem ? ' is-system' : '') + (mine ? ' is-you' : '');
+   768→
+   769→    if (!isSystem) {
+   770→      const head = document.createElement('div');
+   771→      head.className = 'msg-head';
+   772→      const name = document.createElement('span');
+   773→      name.className = 'msg-name';
+   774→      name.textContent = msg.displayName || 'Guest';
+   775→      const time = document.createElement('span');
+   776→      time.className = 'msg-time';
+   777→      time.textContent = new Date(msg.ts || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+   778→      head.append(name, time);
+   779→      wrap.appendChild(head);
+   780→    }
+   781→    const text = document.createElement('p');
+   782→    text.className = 'msg-text';
+   783→    text.textContent = msg.message || '';
+   784→    wrap.appendChild(text);
+   785→
+   786→    els.chatMessages.appendChild(wrap);
+   787→    while (els.chatMessages.children.length > 200) els.chatMessages.firstChild.remove();
+   788→    els.chatMessages.scrollTop = els.chatMessages.scrollHeight;
+   789→  }
+   790→
+   791→  els.chatForm.addEventListener('submit', (e) => {
+   792→    e.preventDefault();
+   793→    const text = els.chatInput.value.trim().slice(0, 500);
+   794→    if (!text) return;
+   795→    if (!state.socket || !state.socket.connected) { toast('Not connected yet…', 'error'); return; }
+   796→    state.socket.emit('chat', { roomId: state.roomId, message: text });
+   797→    els.chatInput.value = '';
+   798→    els.chatInput.focus();
+   799→  });
+   800→
+   801→  /* ================= invite ================= */
+   802→
+   803→  els.copyInviteBtn.addEventListener('click', async () => {
+   804→    const link = els.inviteLink.value;
+   805→    if (!link) return;
+   806→    const ok = await copyText(link);
+   807→    toast(ok ? 'Invite link copied!' : 'Copy failed — select the link manually.', ok ? 'success' : 'error');
+   808→  });
+   809→
+   810→  /* ================= join flow ================= */
+   811→
+   812→  function showJoinError(message) {
+   813→    els.joinError.textContent = message;
+   814→    els.joinError.classList.add('is-visible');
+   815→  }
+   816→  function hideJoinError() { els.joinError.classList.remove('is-visible'); }
+   817→
+   818→  async function startParty() {
+   819→    if (state.joined) return;
+   820→    const name = (els.nameInput.value || '').trim().slice(0, 24) || randomGuestName();
+   821→    try { localStorage.setItem('zeus_party_name', name); } catch (err) {}
+   822→
+   823→    els.joinBtn.disabled = true;
+   824→    els.joinBtn.textContent = 'Connecting…';
+   825→    hideJoinError();
+   826→
+   827→    try {
+   828→      if (!state.roomId) {
+   829→        state.roomId = await createRoom();
+   830→        updateUrlWithRoom();
+   831→      }
+   832→      state.displayName = name;
+   833→      renderRoomBadges();
+   834→      await loadSocketIo();
+   835→      connectSocket();
+   836→      state.joined = true;
+   837→      els.joinOverlay.classList.add('is-hidden');
+   838→      appendChatMessage({ system: true, message: 'Welcome to the party! Invite friends with the link below the player.' });
+   839→    } catch (err) {
+   840→      state.roomId = paramRoom || null;
+   841→      showJoinError("Can't reach the party server. Start it with: node party-server/server.js (port " + PARTY_PORT + ").");
+   842→      els.joinBtn.disabled = false;
+   843→      els.joinBtn.textContent = 'Join the Party';
+   844→      setConn('error', "Can't reach server");
+   845→    }
+   846→  }
+   847→
+   848→  els.joinBtn.addEventListener('click', startParty);
+   849→  els.nameInput.addEventListener('keydown', (e) => {
+   850→    if (e.key === 'Enter') { e.preventDefault(); startParty(); }
+   851→  });
+   852→
+   853→  /* ================= boot ================= */
+   854→
+   855→  (function boot() {
+   856→    let saved = '';
+   857→    try { saved = localStorage.getItem('zeus_party_name') || ''; } catch (err) {}
+   858→    els.nameInput.value = saved || randomGuestName();
+   859→    els.joinMeta.innerHTML = paramRoom
+   860→      ? 'Joining room <strong>' + paramRoom + '</strong>'
+   861→      : 'A new room will be created for you.';
+   862→    resetStage();
+   863→    renderRoomBadges();
+   864→    setConn('connecting', 'Connecting…');
+   865→    refreshHostUI();
+   866→    setTimeout(() => els.nameInput.focus(), 150);
+   867→  })();
+   868→
+   869→  /* Debug/testing handle (harmless in production) */
+   870→  window.ZEUSParty = {
+   871→    state,
+   872→    get socket() { return state.socket; },
+   873→    get ytPlayer() { return ytPlayer; },
+   874→    mp4: els.mp4,
+   875→    setMedia: hostSetVideo,
+   876→    sync: syncPlayback,
+   877→    detectMediaType,
+   878→    parseYouTubeId,
+   879→  };
+   880→
+   881→})();
+   882→

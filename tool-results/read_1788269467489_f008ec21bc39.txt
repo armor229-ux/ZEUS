@@ -1,0 +1,1036 @@
+     1→/* ============================================================
+     2→   ZEUS — party.js
+     3→   Client for the ZEUS Watch Party room (party.html), talking to the
+     4→   Cloudflare Worker + Durable Object backend (party-worker/).
+     5→
+     6→   - Backend URL is configurable:
+     7→       1. localStorage "zeus_party_backend" (Save button on the join
+     8→          screen — paste YOUR deployed worker URL once)
+     9→       2. DEFAULT_BACKEND below (the zeus-party worker on
+    10→          workers.dev — replace YOUR_WORKERS_SUBDOMAIN after
+    11→          `wrangler deploy`)
+    12→     Works from BOTH Cloudflare Pages and Vercel deployments — no
+    13→     localhost is used anywhere.
+    14→   - Rooms: no ?room= -> POST {BACKEND}/api/rooms, then the URL is
+    15→     rewritten to party.html?room=ID (url/title params preserved for
+    16→     the auto "Set Video")
+    17→   - WebSocket: {BACKEND}/ws?room=ID&name=ENCODED_NAME  (https -> wss)
+    18→   - Message protocol (JSON over the WebSocket):
+    19→       -> { type:"join", name }                 (confirm display name)
+    20→       -> { type:"set_media", media:{type,url,title} }   (host only)
+    21→       -> { type:"play"|"pause"|"seek", time }
+    22→       -> { type:"chat", message, ts }
+    23→       <- { type:"state", state, you, serverNow }  (join + every update)
+    24→       <- { type:"members", members } / { type:"host", hostId }
+    25→       <- { type:"chat", name, message, ts }   / { type:"error", message }
+    26→   - Synced playback for YouTube (IFrame API) and direct MP4
+    27→   - Live chat + member list + invite link
+    28→   - Host rules: the host drives playback (play/pause/seek) and is the
+    29→     only one who can set the room video; non-hosts can still paste a
+    30→     URL locally (it does NOT change the room media)
+    31→   - Drift correction: non-hosts compare their player time with the
+    32→     room target time; a difference > 1.2s triggers a local seek
+    33→   - Sources that are neither YouTube nor direct .mp4 can't be synced —
+    34→     the room still works (chat + manual link paste)
+    35→============================================================ */
+    36→
+    37→'use strict';
+    38→
+    39→(function () {
+    40→
+    41→  /* ================= configuration ================= */
+    42→
+    43→  /* Deploy the worker (cd party-worker && npx wrangler deploy), then
+    44→     either replace YOUR_WORKERS_SUBDOMAIN here or just paste the URL
+    45→     once into the "Party backend URL" field on the join screen — it is
+    46→     saved per browser under the key below. */
+    47→  const DEFAULT_BACKEND = 'https://zeus-party.YOUR_WORKERS_SUBDOMAIN.workers.dev';
+    48→  const BACKEND_STORAGE_KEY = 'zeus_party_backend';
+    49→
+    50→  function normalizeBackend(url) {
+    51→    return String(url || '').trim().replace(/\/+$/, '');
+    52→  }
+    53→  function savedBackend() {
+    54→    try { return normalizeBackend(localStorage.getItem(BACKEND_STORAGE_KEY)); } catch (err) { return ''; }
+    55→  }
+    56→  let BACKEND = savedBackend() || DEFAULT_BACKEND;
+    57→
+    58→  const DRIFT_TOLERANCE = 1.2;   /* seconds — seek when further off   */
+    59→  const SYNC_INTERVAL = 1500;    /* ms     — drift check cadence      */
+    60→  const PING_INTERVAL = 25000;   /* ms     — websocket keep-alive     */
+    61→  const RECONNECT_BASE = 1000;   /* ms     — first reconnect delay    */
+    62→  const RECONNECT_MAX = 8000;    /* ms     — reconnect delay cap      */
+    63→
+    64→  /* ================= dom ================= */
+    65→
+    66→  const $ = (id) => document.getElementById(id);
+    67→  const els = {
+    68→    roomCodeBadge: $('room-code-badge'),
+    69→    roomCodeText: $('room-code-text'),
+    70→    connPill: $('conn-pill'),
+    71→    connLabel: $('conn-label'),
+    72→    mediaEyebrow: $('media-eyebrow'),
+    73→    mediaTitle: $('media-title'),
+    74→    typeBadge: $('type-badge'),
+    75→    syncPill: $('sync-pill'),
+    76→    syncLabel: $('sync-label'),
+    77→    stage: $('player-stage'),
+    78→    yt: $('yt-player'),
+    79→    mp4: $('mp4-player'),
+    80→    stageEmpty: $('stage-empty'),
+    81→    stageNotice: $('stage-notice'),
+    82→    noticeUrl: $('notice-url'),
+    83→    tapOverlay: $('tap-overlay'),
+    84→    mediaForm: $('media-form'),
+    85→    mediaInput: $('media-url-input'),
+    86→    setVideoBtn: $('set-video-btn'),
+    87→    hostHint: $('host-hint-text'),
+    88→    inviteCode: $('invite-code'),
+    89→    inviteLink: $('invite-link'),
+    90→    copyInviteBtn: $('copy-invite-btn'),
+    91→    membersRow: $('members-row'),
+    92→    chatMessages: $('chat-messages'),
+    93→    chatEmpty: $('chat-empty'),
+    94→    chatForm: $('chat-form'),
+    95→    chatInput: $('chat-input'),
+    96→    joinOverlay: $('join-overlay'),
+    97→    nameInput: $('name-input'),
+    98→    backendInput: $('backend-input'),
+    99→    saveBackendBtn: $('save-backend-btn'),
+   100→    joinBtn: $('join-btn'),
+   101→    joinError: $('join-error'),
+   102→    joinMeta: $('join-meta'),
+   103→    toasts: $('toast-container'),
+   104→  };
+   105→
+   106→  /* ================= state ================= */
+   107→
+   108→  const qs = new URLSearchParams(location.search);
+   109→  const paramRoom = (qs.get('room') || '').trim().toUpperCase();
+   110→  const paramUrl = qs.get('url') || '';
+   111→  const paramTitle = qs.get('title') || '';
+   112→
+   113→  const state = {
+   114→    roomId: paramRoom || null,
+   115→    displayName: '',
+   116→    ws: null,
+   117→    wsOpen: false,
+   118→    everConnected: false,   /* at least one successful connection    */
+   119→    reconnectAttempts: 0,
+   120→    reconnectTimer: null,
+   121→    pingTimer: null,
+   122→    myId: null,             /* this client's member id (from "you")  */
+   123→    hostId: null,
+   124→    isHost: false,
+   125→    roomMediaUrl: null,     /* media set on the room (host)          */
+   126→    currentMedia: null,     /* media loaded locally right now        */
+   127→    localOverride: false,   /* non-host watching a local URL         */
+   128→    lastState: null,        /* last room snapshot (playback)         */
+   129→    clockSkew: 0,           /* serverNow - clientNow, in ms          */
+   130→    autoSetDone: false,     /* one-shot auto "Set Video" from ?url=  */
+   131→    joined: false,
+   132→  };
+   133→
+   134→  /* ================= utilities ================= */
+   135→
+   136→  function toast(message, type) {
+   137→    const t = document.createElement('div');
+   138→    t.className = 'toast';
+   139→    const icon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+   140→    icon.setAttribute('viewBox', '0 0 24 24');
+   141→    icon.innerHTML = type === 'error'
+   142→      ? '<path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/>'
+   143→      : '<path d="M9 16.2 4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z"/>';
+   144→    const span = document.createElement('span');
+   145→    span.textContent = message;
+   146→    t.append(icon, span);
+   147→    els.toasts.appendChild(t);
+   148→    setTimeout(() => t.classList.add('removing'), 2600);
+   149→    setTimeout(() => t.remove(), 3100);
+   150→  }
+   151→
+   152→  async function copyText(text) {
+   153→    try {
+   154→      await navigator.clipboard.writeText(text);
+   155→      return true;
+   156→    } catch (err) { /* legacy fallback below */ }
+   157→    try {
+   158→      const helper = document.createElement('textarea');
+   159→      helper.value = text;
+   160→      helper.setAttribute('readonly', '');
+   161→      helper.style.cssText = 'position:fixed;top:-9999px;left:-9999px;opacity:0;';
+   162→      document.body.appendChild(helper);
+   163→      helper.select();
+   164→      helper.setSelectionRange(0, text.length);
+   165→      const ok = document.execCommand('copy');
+   166→      helper.remove();
+   167→      return ok;
+   168→    } catch (err) {
+   169→      return false;
+   170→    }
+   171→  }
+   172→
+   173→  function fmtClock(sec) {
+   174→    sec = Math.max(0, Math.floor(sec || 0));
+   175→    const m = Math.floor(sec / 60);
+   176→    const s = sec % 60;
+   177→    return m + ':' + String(s).padStart(2, '0');
+   178→  }
+   179→
+   180→  function randomGuestName() {
+   181→    const tail = Math.random().toString(36).slice(2, 6);
+   182→    return 'Guest-' + tail.toUpperCase();
+   183→  }
+   184→
+   185→  /* ================= media detection ================= */
+   186→
+   187→  function parseYouTubeId(url) {
+   188→    if (typeof url !== 'string') return null;
+   189→    const patterns = [
+   190→      /youtu\.be\/([\w-]{11})(?:[?&#]|$)/,
+   191→      /[?&]v=([\w-]{11})(?:[&]|$)/,
+   192→      /youtube\.com\/embed\/([\w-]{11})(?:[?&#]|$)/,
+   193→      /youtube\.com\/shorts\/([\w-]{11})(?:[?&#]|$)/,
+   194→    ];
+   195→    for (const p of patterns) {
+   196→      const m = url.match(p);
+   197→      if (m) return m[1];
+   198→    }
+   199→    return null;
+   200→  }
+   201→
+   202→  function detectMediaType(url) {
+   203→    const u = (url || '').trim();
+   204→    if (!u) return 'unknown';
+   205→    if (parseYouTubeId(u)) return 'youtube';
+   206→    if (/\.mp4([?#]|$)/i.test(u)) return 'mp4';
+   207→    return 'unknown';
+   208→  }
+   209→
+   210→  function mediaTitleFor(media) {
+   211→    if (media.title && media.title.trim()) return media.title.trim();
+   212→    if (media.type === 'youtube') return 'YouTube video';
+   213→    if (media.type === 'mp4') {
+   214→      try { return decodeURIComponent(media.url.split('/').pop().split('?')[0]) || 'MP4 video'; }
+   215→      catch (err) { return 'MP4 video'; }
+   216→    }
+   217→    return 'Custom source';
+   218→  }
+   219→
+   220→  /* ================= room / backend plumbing ================= */
+   221→
+   222→  /* https://... -> wss://...   (and http -> ws, ws(s) stays as-is) */
+   223→  function wsBase(url) {
+   224→    return url.replace(/^http/i, 'ws');
+   225→  }
+   226→  /* ws://... -> http://...     (for REST calls: /api/rooms, /health) */
+   227→  function httpBase(url) {
+   228→    return url.replace(/^ws/i, 'http');
+   229→  }
+   230→
+   231→  function wsUrl(roomId, name) {
+   232→    return wsBase(BACKEND) + '/ws?room=' + encodeURIComponent(roomId) +
+   233→           '&name=' + encodeURIComponent(name);
+   234→  }
+   235→
+   236→  function wsReady() {
+   237→    return !!(state.ws && state.ws.readyState === 1);
+   238→  }
+   239→
+   240→  async function createRoom() {
+   241→    const res = await fetch(httpBase(BACKEND) + '/api/rooms', { method: 'POST' });
+   242→    if (!res.ok) throw new Error('room create failed (' + res.status + ')');
+   243→    const data = await res.json();
+   244→    return String(data.roomId);
+   245→  }
+   246→
+   247→  function updateUrlWithRoom() {
+   248→    try {
+   249→      const params = new URLSearchParams();
+   250→      params.set('room', state.roomId);
+   251→      if (paramUrl) params.set('url', paramUrl);
+   252→      if (paramTitle) params.set('title', paramTitle);
+   253→      history.replaceState(null, '', location.pathname + '?' + params.toString());
+   254→    } catch (err) { /* non-fatal */ }
+   255→  }
+   256→
+   257→  function renderRoomBadges() {
+   258→    els.roomCodeText.textContent = state.roomId || '------';
+   259→    els.inviteCode.textContent = state.roomId || '------';
+   260→    els.roomCodeBadge.classList.toggle('is-visible', !!state.roomId);
+   261→    if (state.roomId) {
+   262→      els.inviteLink.value = location.origin + location.pathname + '?room=' + state.roomId;
+   263→    }
+   264→  }
+   265→
+   266→  /* ---- websocket connection (with resilient rejoin) ---- */
+   267→
+   268→  function connectSocket() {
+   269→    clearTimers();
+   270→    setConn('connecting', 'Connecting…');
+   271→
+   272→    let ws;
+   273→    try {
+   274→      ws = new WebSocket(wsUrl(state.roomId, state.displayName));
+   275→    } catch (err) {
+   276→      scheduleReconnect();
+   277→      return;
+   278→    }
+   279→    state.ws = ws;
+   280→    state.wsOpen = false;
+   281→
+   282→    ws.onopen = () => {
+   283→      state.wsOpen = true;
+   284→      state.everConnected = true;
+   285→      state.reconnectAttempts = 0;
+   286→      setConn('connected', 'Connected');
+   287→      hideJoinError();
+   288→      /* protocol: confirm our display name (the server also got it
+   289→         from the ?name= query param on the WS URL) */
+   290→      wsSend({ type: 'join', name: state.displayName });
+   291→      startPing();
+   292→    };
+   293→
+   294→    ws.onmessage = (ev) => {
+   295→      let msg;
+   296→      try { msg = JSON.parse(String(ev.data)); } catch (err) { return; }
+   297→      if (!msg || typeof msg.type !== 'string') return;
+   298→      handleMessage(msg);
+   299→    };
+   300→
+   301→    ws.onclose = () => {
+   302→      state.wsOpen = false;
+   303→      stopPing();
+   304→      scheduleReconnect();
+   305→    };
+   306→
+   307→    ws.onerror = () => { /* onclose follows */ };
+   308→  }
+   309→
+   310→  function wsSend(obj) {
+   311→    if (!wsReady()) return false;
+   312→    try { state.ws.send(JSON.stringify(obj)); return true; } catch (err) { return false; }
+   313→  }
+   314→
+   315→  function scheduleReconnect() {
+   316→    if (state.reconnectTimer) return;
+   317→    const delay = Math.min(RECONNECT_BASE * Math.pow(2, state.reconnectAttempts), RECONNECT_MAX);
+   318→    state.reconnectAttempts += 1;
+   319→
+   320→    /* Never connected on this join? After a few quick attempts, stop
+   321→       and let the user fix the backend URL on the join screen. */
+   322→    if (!state.everConnected && state.reconnectAttempts > 2) {
+   323→      setConn('error', "Can't reach backend");
+   324→      rejoinOverlay(
+   325→        "Can't reach the party backend at " + BACKEND + '. ' +
+   326→        'Check the URL above (your deployed worker, e.g. https://zeus-party.YOUR_SUBDOMAIN.workers.dev) and press Save, then Join again.'
+   327→      );
+   328→      return;
+   329→    }
+   330→
+   331→    setConn('reconnecting', 'Reconnecting…');
+   332→    state.reconnectTimer = setTimeout(() => {
+   333→      state.reconnectTimer = null;
+   334→      connectSocket();
+   335→    }, delay);
+   336→  }
+   337→
+   338→  function startPing() {
+   339→    stopPing();
+   340→    state.pingTimer = setInterval(() => {
+   341→      wsSend({ type: 'ping' });
+   342→    }, PING_INTERVAL);
+   343→  }
+   344→  function stopPing() {
+   345→    if (state.pingTimer) { clearInterval(state.pingTimer); state.pingTimer = null; }
+   346→  }
+   347→  function clearTimers() {
+   348→    stopPing();
+   349→    if (state.reconnectTimer) { clearTimeout(state.reconnectTimer); state.reconnectTimer = null; }
+   350→  }
+   351→
+   352→  /* Bring the join overlay back (fatal first-join error) so the
+   353→     backend URL can be corrected. */
+   354→  function rejoinOverlay(message) {
+   355→    clearTimers();
+   356→    state.joined = false;
+   357→    state.ws = null;
+   358→    state.wsOpen = false;
+   359→    els.joinOverlay.classList.remove('is-hidden');
+   360→    els.joinBtn.disabled = false;
+   361→    els.joinBtn.textContent = 'Join the Party';
+   362→    showJoinError(message);
+   363→  }
+   364→
+   365→  function setConn(kind, label) {
+   366→    els.connPill.classList.toggle('is-connected', kind === 'connected');
+   367→    els.connPill.classList.toggle('is-error', kind === 'error');
+   368→    els.connLabel.textContent = label;
+   369→  }
+   370→
+   371→  /* ================= server -> client handlers ================= */
+   372→
+   373→  function handleMessage(msg) {
+   374→    switch (msg.type) {
+   375→      case 'state':   onState(msg); break;
+   376→      case 'members': onMembers(msg.members); break;
+   377→      case 'host':    onHost(msg.hostId); break;
+   378→      case 'chat':    onChat(msg); break;
+   379→      case 'error':   toast(msg.message || 'Party error', 'error'); break;
+   380→      case 'pong':    break; /* keep-alive reply */
+   381→      default:        break;
+   382→    }
+   383→  }
+   384→
+   385→  function onState(msg) {
+   386→    const s = msg.state || {};
+   387→    if (msg.you) state.myId = msg.you;
+   388→    if (typeof msg.serverNow === 'number') state.clockSkew = msg.serverNow - Date.now();
+   389→
+   390→    state.hostId = s.hostId || null;
+   391→    state.isHost = !!(state.myId && state.hostId === state.myId);
+   392→
+   393→    state.lastState = {
+   394→      paused: !!s.paused,
+   395→      time: Number(s.time) || 0,
+   396→      updatedAt: Number(s.updatedAt) || 0,
+   397→      receivedAt: performance.now(),
+   398→    };
+   399→
+   400→    refreshHostUI();
+   401→    if (Array.isArray(s.members)) renderMembers(s.members);
+   402→    maybeAutoSetFromUrlParam(s);
+   403→
+   404→    if (s.media && s.media.url) {
+   405→      const roomChanged = state.roomMediaUrl !== s.media.url;
+   406→      if (roomChanged) {
+   407→        state.roomMediaUrl = s.media.url;
+   408→        state.localOverride = false;
+   409→        applyMedia(s.media, { time: state.lastState.time, paused: state.lastState.paused, force: true });
+   410→      } else if (!state.localOverride && !state.isHost) {
+   411→        syncPlayback(); /* drift correction */
+   412→      }
+   413→    } else if (state.roomMediaUrl || state.currentMedia) {
+   414→      state.roomMediaUrl = null;
+   415→      state.localOverride = false;
+   416→      resetStage();
+   417→    }
+   418→    updateSyncPill();
+   419→  }
+   420→
+   421→  function onHost(hostId) {
+   422→    const wasHost = state.isHost;
+   423→    state.hostId = hostId || null;
+   424→    state.isHost = !!(state.myId && state.hostId === state.myId);
+   425→    refreshHostUI();
+   426→    updateSyncPill();
+   427→    if (state.isHost && !wasHost && state.joined) {
+   428→      toast("You're now the host — you control playback.");
+   429→    }
+   430→  }
+   431→
+   432→  function onMembers(members) {
+   433→    renderMembers(members || []);
+   434→  }
+   435→
+   436→  function onChat(msg) {
+   437→    appendChatMessage(msg);
+   438→  }
+   439→
+   440→  /* ---- one-shot: auto "Set Video" from ?url= (host only) ---- */
+   441→
+   442→  function maybeAutoSetFromUrlParam(roomSnapshot) {
+   443→    if (state.autoSetDone || !paramUrl || !state.isHost) return;
+   444→    state.autoSetDone = true;
+   445→    if (roomSnapshot && roomSnapshot.media && roomSnapshot.media.url) return; /* room already has a video */
+   446→    els.mediaInput.value = paramUrl;
+   447→    hostSetVideo(paramUrl, paramTitle);
+   448→    toast(detectMediaType(paramUrl) === 'unknown'
+   449→      ? "This source can't be synced automatically."
+   450→      : 'Video loaded from your watch page.');
+   451→  }
+   452→
+   453→  /* ================= player: stage management ================= */
+   454→
+   455→  function resetStage() {
+   456→    state.currentMedia = null;
+   457→    els.stageEmpty.classList.remove('is-hidden');
+   458→    els.stageNotice.classList.remove('is-visible');
+   459→    els.yt.classList.remove('is-active');
+   460→    els.mp4.classList.remove('is-active');
+   461→    els.tapOverlay.classList.remove('is-visible');
+   462→    els.typeBadge.hidden = true;
+   463→    els.mediaEyebrow.textContent = 'Now watching';
+   464→    els.mediaTitle.textContent = 'No video yet';
+   465→    updateSyncPill();
+   466→  }
+   467→
+   468→  function applyMedia(media, opts) {
+   469→    opts = opts || {};
+   470→    const time = Math.max(0, Number(opts.time) || 0);
+   471→    const paused = opts.paused !== false;
+   472→    state.currentMedia = media;
+   473→
+   474→    els.stageEmpty.classList.add('is-hidden');
+   475→    els.stageNotice.classList.remove('is-visible');
+   476→    els.tapOverlay.classList.remove('is-visible');
+   477→    els.yt.classList.toggle('is-active', media.type === 'youtube');
+   478→    els.mp4.classList.toggle('is-active', media.type === 'mp4');
+   479→
+   480→    els.typeBadge.hidden = false;
+   481→    els.typeBadge.textContent = media.type === 'youtube' ? 'YouTube' : media.type === 'mp4' ? 'MP4' : 'Link';
+   482→    els.typeBadge.className = 'type-badge' + (media.type === 'youtube' ? ' youtube' : media.type === 'mp4' ? ' mp4' : '');
+   483→    els.mediaEyebrow.textContent = state.localOverride ? 'Watching locally' : 'Now watching';
+   484→    els.mediaTitle.textContent = mediaTitleFor(media);
+   485→
+   486→    if (media.type === 'youtube') {
+   487→      loadYouTube(media, { time, paused });
+   488→    } else if (media.type === 'mp4') {
+   489→      loadMP4(media, { time, paused });
+   490→    } else {
+   491→      /* Not YouTube / not direct MP4: can't be synced. The room stays
+   492→         alive — chat works and the host can paste a proper link. */
+   493→      els.noticeUrl.textContent = media.url || '';
+   494→      els.stageNotice.classList.add('is-visible');
+   495→      stopLocalPlayers();
+   496→    }
+   497→    updateSyncPill();
+   498→  }
+   499→
+   500→  function stopLocalPlayers() {
+   501→    try { if (!els.mp4.paused) els.mp4.pause(); els.mp4.removeAttribute('src'); els.mp4.load(); } catch (err) {}
+   502→    try { if (ytPlayer && ytPlayer.stopVideo) ytPlayer.stopVideo(); } catch (err) {}
+   503→    hideTapOverlay();
+   504→  }
+   505→
+   506→  /* ================= player: MP4 ================= */
+   507→
+   508→  function loadMP4(media, opts) {
+   509→    const v = els.mp4;
+   510→    const url = media.url;
+   511→    let resolved = url;
+   512→    try { resolved = new URL(url, location.href).href; } catch (err) { /* keep as-is */ }
+   513→
+   514→    if (v.src !== resolved) {
+   515→      v.src = url;
+   516→      const onMeta = () => {
+   517→        v.removeEventListener('loadedmetadata', onMeta);
+   518→        try { if (opts.time > 0.3) v.currentTime = opts.time; } catch (err) {}
+   519→        if (!opts.paused) { v.play().catch(showTapOverlay); }
+   520→      };
+   521→      v.addEventListener('loadedmetadata', onMeta);
+   522→      v.load();
+   523→    } else {
+   524→      try { if (Math.abs(v.currentTime - opts.time) > DRIFT_TOLERANCE) v.currentTime = opts.time; } catch (err) {}
+   525→      if (!opts.paused && v.paused) { v.play().catch(showTapOverlay); }
+   526→      if (opts.paused && !v.paused) v.pause();
+   527→    }
+   528→  }
+   529→
+   530→  els.mp4.addEventListener('play', () => {
+   531→    hideTapOverlay();
+   532→    if (state.isHost) emitHostPlayback('play', els.mp4.currentTime);
+   533→  });
+   534→  els.mp4.addEventListener('pause', () => {
+   535→    if (state.isHost) emitHostPlayback('pause', els.mp4.currentTime);
+   536→  });
+   537→  els.mp4.addEventListener('seeked', () => {
+   538→    if (state.isHost) emitHostPlayback('seek', els.mp4.currentTime);
+   539→  });
+   540→  els.mp4.addEventListener('error', () => {
+   541→    if (state.currentMedia && state.currentMedia.type === 'mp4') {
+   542→      toast("Couldn't load this MP4 file.", 'error');
+   543→    }
+   544→  });
+   545→
+   546→  /* ================= player: YouTube ================= */
+   547→
+   548→  let ytApiPromise = null;
+   549→  let ytPlayer = null;
+   550→  let ytPendingApply = null;
+   551→
+   552→  function ensureYouTubeAPI() {
+   553→    if (ytApiPromise) return ytApiPromise;
+   554→    ytApiPromise = new Promise((resolve, reject) => {
+   555→      if (window.YT && window.YT.Player) { resolve(); return; }
+   556→      const prev = window.onYouTubeIframeAPIReady;
+   557→      window.onYouTubeIframeAPIReady = () => {
+   558→        if (typeof prev === 'function') { try { prev(); } catch (err) {} }
+   559→        resolve();
+   560→      };
+   561→      const s = document.createElement('script');
+   562→      s.src = 'https://www.youtube.com/iframe_api';
+   563→      s.async = true;
+   564→      s.onerror = () => { ytApiPromise = null; reject(new Error('YouTube API failed to load')); };
+   565→      document.head.appendChild(s);
+   566→      setTimeout(() => {
+   567→        if (!(window.YT && window.YT.Player)) { ytApiPromise = null; reject(new Error('YouTube API timeout')); }
+   568→      }, 12000);
+   569→    });
+   570→    return ytApiPromise;
+   571→  }
+   572→
+   573→  async function loadYouTube(media, opts) {
+   574→    const videoId = parseYouTubeId(media.url);
+   575→    if (!videoId) {
+   576→      /* safety net if the server type disagrees with the URL */
+   577→      applyMedia({ type: 'unknown', url: media.url, title: media.title }, opts);
+   578→      return;
+   579→    }
+   580→    try {
+   581→      await ensureYouTubeAPI();
+   582→    } catch (err) {
+   583→      toast("Couldn't load the YouTube player.", 'error');
+   584→      return;
+   585→    }
+   586→    if (!ytPlayer) {
+   587→      ytPendingApply = { videoId, opts };
+   588→      ytPlayer = new YT.Player('yt-player', {
+   589→        width: '100%',
+   590→        height: '100%',
+   591→        videoId,
+   592→        playerVars: {
+   593→          controls: 1,
+   594→          rel: 0,
+   595→          modestbranding: 1,
+   596→          playsinline: 1,
+   597→        },
+   598→        events: {
+   599→          onReady: () => {
+   600→            const pending = ytPendingApply;
+   601→            ytPendingApply = null;
+   602→            if (pending) applyYouTubeVideo(pending.videoId, pending.opts);
+   603→          },
+   604→          onStateChange: onYouTubeStateChange,
+   605→          onError: () => toast("Couldn't load this YouTube video.", 'error'),
+   606→        },
+   607→      });
+   608→    } else {
+   609→      applyYouTubeVideo(videoId, opts);
+   610→    }
+   611→  }
+   612→
+   613→  function applyYouTubeVideo(videoId, opts) {
+   614→    if (!ytPlayer) return;
+   615→    const t = Math.max(0, Number(opts.time) || 0);
+   616→    let currentVideoId = null;
+   617→    try { currentVideoId = ytPlayer.getVideoData() && ytPlayer.getVideoData().video_id; } catch (err) {}
+   618→
+   619→    if (currentVideoId !== videoId) {
+   620→      /* per spec: paused -> cueVideoById, playing -> loadVideoById */
+   621→      if (opts.paused) {
+   622→        try { ytPlayer.cueVideoById({ videoId, startSeconds: t }); } catch (err) {}
+   623→      } else {
+   624→        try { ytPlayer.loadVideoById({ videoId, startSeconds: t }); } catch (err) {}
+   625→      }
+   626→    } else {
+   627→      try {
+   628→        const cur = ytPlayer.getCurrentTime() || 0;
+   629→        if (Math.abs(cur - t) > DRIFT_TOLERANCE) ytPlayer.seekTo(t, true);
+   630→      } catch (err) {}
+   631→    }
+   632→    /* then apply pause/play accordingly */
+   633→    try { if (opts.paused) ytPlayer.pauseVideo(); else ytPlayer.playVideo(); } catch (err) {}
+   634→  }
+   635→
+   636→  function onYouTubeStateChange(e) {
+   637→    const S = window.YT.PlayerState;
+   638→    if (e.data === S.PLAYING) {
+   639→      hideTapOverlay();
+   640→      if (state.isHost) emitHostPlayback('play', ytPlayer.getCurrentTime());
+   641→    } else if (e.data === S.PAUSED) {
+   642→      if (state.isHost) emitHostPlayback('pause', ytPlayer.getCurrentTime());
+   643→    } else if (e.data === S.ENDED) {
+   644→      if (state.isHost) emitHostPlayback('pause', ytPlayer.getDuration());
+   645→    }
+   646→  }
+   647→
+   648→  /* ================= sync engine ================= */
+   649→
+   650→  /* Room target position, extrapolated on the SERVER clock (skew
+   651→     corrected) so every client computes the same target. */
+   652→  function targetTime() {
+   653→    const ls = state.lastState;
+   654→    if (!ls) return 0;
+   655→    if (ls.paused) return ls.time;
+   656→    return ls.time + (Date.now() + state.clockSkew - ls.updatedAt) / 1000;
+   657→  }
+   658→
+   659→  /* Non-hosts follow the room: pause/play + seek when drifting. */
+   660→  function syncPlayback() {
+   661→    if (state.isHost || state.localOverride || !state.currentMedia || !state.lastState) return;
+   662→    const paused = state.lastState.paused;
+   663→    const target = targetTime();
+   664→
+   665→    if (state.currentMedia.type === 'mp4') {
+   666→      const v = els.mp4;
+   667→      try { if (Math.abs(v.currentTime - target) > DRIFT_TOLERANCE) v.currentTime = target; } catch (err) {}
+   668→      if (paused && !v.paused) v.pause();
+   669→      if (!paused && v.paused) v.play().catch(showTapOverlay);
+   670→    } else if (state.currentMedia.type === 'youtube' && ytPlayer) {
+   671→      try {
+   672→        const cur = ytPlayer.getCurrentTime() || 0;
+   673→        if (Math.abs(cur - target) > DRIFT_TOLERANCE) ytPlayer.seekTo(target, true);
+   674→        if (paused) ytPlayer.pauseVideo(); else ytPlayer.playVideo();
+   675→      } catch (err) {}
+   676→    }
+   677→  }
+   678→
+   679→  /* Host -> server playback updates */
+   680→  function emitHostPlayback(kind, time) {
+   681→    if (!wsReady() || !state.isHost || !state.roomId) return;
+   682→    wsSend({ type: kind, time: Math.max(0, Number(time) || 0) });
+   683→  }
+   684→
+   685→  /* periodic drift correction + host YouTube seek detection */
+   686→  let lastHostYtTime = null;
+   687→  setInterval(() => {
+   688→    /* host: YouTube has no "seeked" event — detect time jumps
+   689→       (both while playing AND while paused) */
+   690→    if (state.isHost && state.currentMedia && state.currentMedia.type === 'youtube' && ytPlayer) {
+   691→      try {
+   692→        const cur = ytPlayer.getCurrentTime();
+   693→        const st = ytPlayer.getPlayerState();
+   694→        if (cur != null && st !== window.YT.PlayerState.UNSTARTED) {
+   695→          if (lastHostYtTime != null && Math.abs(cur - lastHostYtTime) > 1.8) {
+   696→            emitHostPlayback('seek', cur);
+   697→          }
+   698→          lastHostYtTime = cur;
+   699→        } else {
+   700→          lastHostYtTime = null;
+   701→        }
+   702→      } catch (err) { lastHostYtTime = null; }
+   703→    } else {
+   704→      lastHostYtTime = null;
+   705→    }
+   706→
+   707→    /* non-host: follow the room */
+   708→    if (!state.isHost) syncPlayback();
+   709→    updateSyncPill();
+   710→  }, SYNC_INTERVAL);
+   711→
+   712→  function updateSyncPill() {
+   713→    if (!state.roomId) { setSync('waiting', 'Waiting…'); return; }
+   714→    if (state.isHost) { setSync('host', 'You control playback'); return; }
+   715→    if (!state.currentMedia) { setSync('waiting', 'Waiting for video…'); return; }
+   716→    if (state.localOverride) { setSync('local', 'Local (not synced)'); return; }
+   717→    const ls = state.lastState;
+   718→    if (!ls) { setSync('waiting', 'Syncing…'); return; }
+   719→
+   720→    let localTime = null;
+   721→    let localPaused = true;
+   722→    if (state.currentMedia.type === 'mp4') {
+   723→      localTime = els.mp4.currentTime || 0;
+   724→      localPaused = els.mp4.paused;
+   725→    } else if (state.currentMedia.type === 'youtube' && ytPlayer) {
+   726→      try { localTime = ytPlayer.getCurrentTime() || 0; localPaused = ytPlayer.getPlayerState() !== window.YT.PlayerState.PLAYING; } catch (err) {}
+   727→    }
+   728→    if (localTime == null) { setSync('waiting', 'Syncing…'); return; }
+   729→
+   730→    const drift = Math.abs(localTime - targetTime());
+   731→    const pausedMatch = !!ls.paused === !!localPaused;
+   732→    if (pausedMatch && drift <= DRIFT_TOLERANCE) {
+   733→      setSync('synced', ls.paused ? 'Paused · in sync (' + fmtClock(localTime) + ')' : 'In sync · ' + fmtClock(localTime));
+   734→    } else {
+   735→      setSync('syncing', 'Syncing… ' + fmtClock(localTime));
+   736→    }
+   737→  }
+   738→
+   739→  function setSync(kind, label) {
+   740→    els.syncPill.classList.toggle('is-synced', kind === 'synced');
+   741→    els.syncPill.classList.toggle('is-host', kind === 'host');
+   742→    els.syncLabel.textContent = label;
+   743→  }
+   744→
+   745→  /* autoplay blocked -> "tap to start" overlay */
+   746→  function showTapOverlay() { els.tapOverlay.classList.add('is-visible'); }
+   747→  function hideTapOverlay() { els.tapOverlay.classList.remove('is-visible'); }
+   748→  els.tapOverlay.addEventListener('click', () => {
+   749→    hideTapOverlay();
+   750→    try {
+   751→      if (state.currentMedia && state.currentMedia.type === 'mp4') { els.mp4.muted = false; els.mp4.play().catch(() => {}); }
+   752→      else if (ytPlayer) { ytPlayer.playVideo(); }
+   753→    } catch (err) {}
+   754→  });
+   755→
+   756→  /* ================= set video (host) / local paste (non-host) ================= */
+   757→
+   758→  function hostSetVideo(url, title) {
+   759→    if (!wsReady()) { toast('Not connected yet…', 'error'); return; }
+   760→    const clean = String(url || '').trim();
+   761→    if (!clean) return;
+   762→    wsSend({
+   763→      type: 'set_media',
+   764→      media: { type: detectMediaType(clean), url: clean, title: String(title || '').slice(0, 120) },
+   765→    });
+   766→  }
+   767→
+   768→  function localSetVideo(url) {
+   769→    /* Non-host: pasting a URL is LOCAL ONLY — it never changes the
+   770→       room media (the server rejects non-host set_media anyway). */
+   771→    const clean = String(url || '').trim();
+   772→    if (!clean) return;
+   773→    state.localOverride = true;
+   774→    applyMedia({ type: detectMediaType(clean), url: clean, title: '' }, { time: 0, paused: true, force: true });
+   775→    toast('Playing locally — only the host sets the video for everyone.');
+   776→    refreshHostUI();
+   777→  }
+   778→
+   779→  els.mediaForm.addEventListener('submit', (e) => {
+   780→    e.preventDefault();
+   781→    const url = els.mediaInput.value.trim();
+   782→    if (!url) { els.mediaInput.focus(); return; }
+   783→    if (state.isHost) hostSetVideo(url, '');
+   784→    else localSetVideo(url);
+   785→  });
+   786→
+   787→  function refreshHostUI() {
+   788→    if (state.isHost) {
+   789→      els.setVideoBtn.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 16.5l6-4.5-6-4.5v9zM12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/></svg> Set Video';
+   790→      els.hostHint.textContent = 'You are the host — your play, pause and seek control everyone. Paste a YouTube or direct MP4 link.';
+   791→      els.setVideoBtn.classList.add('btn-primary');
+   792→    } else {
+   793→      els.setVideoBtn.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 16.5l6-4.5-6-4.5v9zM12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/></svg> Play locally';
+   794→      els.hostHint.textContent = state.hostId
+   795→        ? 'Only the host can set the room video. Pasting a link here plays it locally for you only.'
+   796→        : 'Waiting for the host… only the host can set the room video.';
+   797→      els.setVideoBtn.classList.add('btn-primary');
+   798→    }
+   799→  }
+   800→
+   801→  /* ================= members ================= */
+   802→
+   803→  function renderMembers(members) {
+   804→    els.membersRow.textContent = '';
+   805→    (members || []).forEach((m) => {
+   806→      const chip = document.createElement('span');
+   807→      chip.className = 'member-chip' + (m.id === state.hostId ? ' is-host' : '');
+   808→      const avatar = document.createElement('span');
+   809→      avatar.className = 'avatar';
+   810→      avatar.textContent = (m.name || 'G').charAt(0).toUpperCase();
+   811→      chip.appendChild(avatar);
+   812→      if (m.id === state.hostId) {
+   813→        const crown = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+   814→        crown.setAttribute('viewBox', '0 0 24 24');
+   815→        crown.setAttribute('class', 'crown');
+   816→        crown.setAttribute('aria-hidden', 'true');
+   817→        crown.innerHTML = '<path d="M5 16 3 5l5.5 5L12 3l3.5 7L21 5l-2 11zM4.5 19h15v2h-15z"/>';
+   818→        chip.appendChild(crown);
+   819→      }
+   820→      const name = document.createElement('span');
+   821→      name.textContent = m.name || 'Guest';
+   822→      chip.appendChild(name);
+   823→      if (m.id === state.myId) {
+   824→        const you = document.createElement('span');
+   825→        you.className = 'you-tag';
+   826→        you.textContent = 'you';
+   827→        chip.appendChild(you);
+   828→      }
+   829→      els.membersRow.appendChild(chip);
+   830→    });
+   831→  }
+   832→
+   833→  /* ================= chat ================= */
+   834→
+   835→  function appendChatMessage(msg) {
+   836→    if (els.chatEmpty && els.chatEmpty.parentNode) els.chatEmpty.remove();
+   837→    const wrap = document.createElement('div');
+   838→    /* System lines come from the worker as { name:"System", … } (and
+   839→       from this page as { system:true, … }) — render them without a
+   840→       message head. */
+   841→    const isSystem = !!(msg && (msg.system === true || msg.name === 'System'));
+   842→    const mine = !!(msg && msg.name === state.displayName && !isSystem);
+   843→    wrap.className = 'msg' + (isSystem ? ' is-system' : '') + (mine ? ' is-you' : '');
+   844→
+   845→    if (!isSystem) {
+   846→      const head = document.createElement('div');
+   847→      head.className = 'msg-head';
+   848→      const name = document.createElement('span');
+   849→      name.className = 'msg-name';
+   850→      name.textContent = (msg && msg.name) || 'Guest';
+   851→      const time = document.createElement('span');
+   852→      time.className = 'msg-time';
+   853→      time.textContent = new Date((msg && msg.ts) || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+   854→      head.append(name, time);
+   855→      wrap.appendChild(head);
+   856→    }
+   857→    const text = document.createElement('p');
+   858→    text.className = 'msg-text';
+   859→    text.textContent = (msg && msg.message) || '';
+   860→    wrap.appendChild(text);
+   861→
+   862→    els.chatMessages.appendChild(wrap);
+   863→    while (els.chatMessages.children.length > 200) els.chatMessages.firstChild.remove();
+   864→    els.chatMessages.scrollTop = els.chatMessages.scrollHeight;
+   865→  }
+   866→
+   867→  els.chatForm.addEventListener('submit', (e) => {
+   868→    e.preventDefault();
+   869→    const text = els.chatInput.value.trim().slice(0, 500);
+   870→    if (!text) return;
+   871→    if (!wsReady()) { toast('Not connected yet…', 'error'); return; }
+   872→    wsSend({ type: 'chat', message: text, ts: Date.now() });
+   873→    els.chatInput.value = '';
+   874→    els.chatInput.focus();
+   875→  });
+   876→
+   877→  /* ================= invite ================= */
+   878→
+   879→  els.copyInviteBtn.addEventListener('click', async () => {
+   880→    const link = els.inviteLink.value;
+   881→    if (!link) return;
+   882→    const ok = await copyText(link);
+   883→    toast(ok ? 'Invite link copied!' : 'Copy failed — select the link manually.', ok ? 'success' : 'error');
+   884→  });
+   885→
+   886→  /* ================= join flow ================= */
+   887→
+   888→  function showJoinError(message) {
+   889→    els.joinError.textContent = message;
+   890→    els.joinError.classList.add('is-visible');
+   891→  }
+   892→  function hideJoinError() { els.joinError.classList.remove('is-visible'); }
+   893→
+   894→  /* ---- party backend URL: validation + save (join screen) ---- */
+   895→
+   896→  function validateBackend(url) {
+   897→    if (!url) {
+   898→      return 'Enter your Party Backend URL (https://…workers.dev) and press Save.';
+   899→    }
+   900→    if (location.protocol === 'https:' && url.indexOf('http://') === 0) {
+   901→      return "HTTPS page can't connect to HTTP server. Use an https Party Backend URL.";
+   902→    }
+   903→    if (!/^(https?|wss?):\/\//i.test(url)) {
+   904→      return 'Party Backend URL must start with https:// (or wss://).';
+   905→    }
+   906→    return null;
+   907→  }
+   908→
+   909→  /* "Join the Party" is only clickable with a valid backend URL. */
+   910→  function refreshJoinAvailability() {
+   911→    const candidate = normalizeBackend(els.backendInput.value) || BACKEND;
+   912→    const err = validateBackend(candidate);
+   913→    if (err) {
+   914→      els.joinBtn.disabled = true;
+   915→      showJoinError(err);
+   916→    } else {
+   917→      els.joinBtn.disabled = false;
+   918→      hideJoinError();
+   919→    }
+   920→  }
+   921→
+   922→  function saveBackendUrl() {
+   923→    const value = normalizeBackend(els.backendInput.value);
+   924→    els.backendInput.value = value;
+   925→    try { localStorage.setItem(BACKEND_STORAGE_KEY, value); } catch (err) {}
+   926→    BACKEND = value || DEFAULT_BACKEND;
+   927→    refreshJoinAvailability();
+   928→    if (!validateBackend(BACKEND)) {
+   929→      toast('Party backend URL saved.', 'success');
+   930→      /* optional liveness probe — purely informational */
+   931→      checkBackendHealth(BACKEND);
+   932→    }
+   933→  }
+   934→
+   935→  async function checkBackendHealth(base) {
+   936→    try {
+   937→      const ctrl = new AbortController();
+   938→      const timer = setTimeout(() => ctrl.abort(), 5000);
+   939→      const res = await fetch(httpBase(base) + '/health', { signal: ctrl.signal });
+   940→      clearTimeout(timer);
+   941→      if (!res.ok) throw new Error('bad status');
+   942→      toast('Backend reachable — ready to join.', 'success');
+   943→    } catch (err) {
+   944→      toast("Saved, but the backend didn't respond at " + base + ' — is your worker deployed?', 'error');
+   945→    }
+   946→  }
+   947→
+   948→  els.saveBackendBtn.addEventListener('click', saveBackendUrl);
+   949→  els.backendInput.addEventListener('input', refreshJoinAvailability);
+   950→  els.backendInput.addEventListener('keydown', (e) => {
+   951→    if (e.key === 'Enter') { e.preventDefault(); saveBackendUrl(); }
+   952→  });
+   953→
+   954→  async function startParty() {
+   955→    if (state.joined) return;
+   956→    const backendError = validateBackend(BACKEND);
+   957→    if (backendError) {
+   958→      els.joinBtn.disabled = true;
+   959→      showJoinError(backendError);
+   960→      els.backendInput.focus();
+   961→      return;
+   962→    }
+   963→    const name = (els.nameInput.value || '').trim().slice(0, 24) || randomGuestName();
+   964→    try { localStorage.setItem('zeus_party_name', name); } catch (err) {}
+   965→
+   966→    els.joinBtn.disabled = true;
+   967→    els.joinBtn.textContent = 'Connecting…';
+   968→    hideJoinError();
+   969→
+   970→    try {
+   971→      if (!state.roomId) {
+   972→        state.roomId = await createRoom();  /* also validates the backend early */
+   973→        updateUrlWithRoom();
+   974→      }
+   975→      state.displayName = name;
+   976→      state.everConnected = false;
+   977→      state.reconnectAttempts = 0;
+   978→      renderRoomBadges();
+   979→      connectSocket();
+   980→      state.joined = true;
+   981→      els.joinOverlay.classList.add('is-hidden');
+   982→      appendChatMessage({ system: true, name: 'System', message: 'Welcome to the party! Invite friends with the link below the player.' });
+   983→    } catch (err) {
+   984→      state.roomId = paramRoom || null;
+   985→      showJoinError(
+   986→        "Can't reach the party backend at " + BACKEND + '. ' +
+   987→        'Check the URL above and make sure your worker is deployed (cd party-worker && npx wrangler deploy).'
+   988→      );
+   989→      els.joinBtn.disabled = false;
+   990→      els.joinBtn.textContent = 'Join the Party';
+   991→      setConn('error', "Can't reach backend");
+   992→    }
+   993→  }
+   994→
+   995→  els.joinBtn.addEventListener('click', startParty);
+   996→  els.nameInput.addEventListener('keydown', (e) => {
+   997→    if (e.key === 'Enter') { e.preventDefault(); startParty(); }
+   998→  });
+   999→
+  1000→  /* ================= boot ================= */
+  1001→
+  1002→  (function boot() {
+  1003→    let saved = '';
+  1004→    try { saved = localStorage.getItem('zeus_party_name') || ''; } catch (err) {}
+  1005→    els.nameInput.value = saved || randomGuestName();
+  1006→    els.backendInput.value = BACKEND; /* saved backend URL or the default worker URL */
+  1007→    els.joinMeta.innerHTML = paramRoom
+  1008→      ? 'Joining room <strong>' + paramRoom + '</strong>'
+  1009→      : 'A new room will be created for you.';
+  1010→    resetStage();
+  1011→    renderRoomBadges();
+  1012→    setConn('connecting', 'Connecting…');
+  1013→    refreshHostUI();
+  1014→    refreshJoinAvailability();
+  1015→    setTimeout(() => {
+  1016→      (els.joinBtn.disabled ? els.backendInput : els.nameInput).focus();
+  1017→    }, 150);
+  1018→  })();
+  1019→
+  1020→  /* Debug/testing handle (harmless in production) */
+  1021→  window.ZEUSParty = {
+  1022→    state,
+  1023→    get ws() { return state.ws; },
+  1024→    get ytPlayer() { return ytPlayer; },
+  1025→    mp4: els.mp4,
+  1026→    setMedia: hostSetVideo,
+  1027→    sync: syncPlayback,
+  1028→    detectMediaType,
+  1029→    parseYouTubeId,
+  1030→    get backend() { return BACKEND; },
+  1031→    validateBackend,
+  1032→    saveBackendUrl,
+  1033→  };
+  1034→
+  1035→})();
+  1036→
