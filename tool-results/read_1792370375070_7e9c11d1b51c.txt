@@ -1,0 +1,861 @@
+     1→/* ============================================================
+     2→   ZEUS - index.js
+     3→   Homepage logic: hero slider (auto-sliding, dots, arrows,
+     4→   pause-on-hover) with a cinematic auto-playing muted direct-MP4
+     5→   <video> trailer layer + mute toggle (Ken Burns backdrop
+     6→   fallback when no stream is available), four content rows with
+     7→   skeletons, error handling and smooth horizontal scroll
+     8→   with arrow buttons.
+     9→   ============================================================ */
+    10→
+    11→'use strict';
+    12→
+    13→/* ============================================================
+    14→   STATE
+    15→   ============================================================ */
+    16→let heroSlides = [];
+    17→let heroGenreMap = {};
+    18→let currentSlide = 0;
+    19→let heroTimer = null;
+    20→
+    21→/* Hero trailer state */
+    22→let heroTrailerHandle = null;  // the single shared <video> player handle
+    23→let heroTrailerMuted = true;   // sound state of the current trailer
+    24→let heroTrailerToken = 0;      // guards async work across slide changes
+    25→
+    26→/* ============================================================
+    27→   INIT
+    28→   ============================================================ */
+    29→document.addEventListener('DOMContentLoaded', () => {
+    30→  initCommonUI();
+    31→  initSectionArrows();
+    32→  loadHero();
+    33→  loadHomeRows();
+    34→});
+    35→
+    36→/* ============================================================
+    37→   HOMEPAGE CONTENT ROWS
+    38→   Existing rows (unchanged) + the five new sections.
+    39→   ============================================================ */
+    40→function loadHomeRows() {
+    41→  /* --- NEW: TOP 10 Today (below the hero, above everything else) --- */
+    42→  loadTop10Row();
+    43→
+    44→  /* --- NEW: Streaming provider tabs (default: Netflix) --- */
+    45→  initProviderTabs();
+    46→
+    47→  // Trending leads with an editorial widescreen (16:9 backdrop) row;
+    48→  // the remaining rows stay classic 2:3 poster rails.
+    49→  loadSection($('#trending-row'), getTrending, {
+    50→    filterPerson: true,
+    51→    requireBackdrop: true,
+    52→    wide: true,
+    53→    horizontal: true,
+    54→    emptyMessage: 'No trending titles available right now.'
+    55→  });
+    56→  loadSection($('#popular-row'), getPopularMovies, {
+    57→    requirePoster: true,
+    58→    horizontal: true,
+    59→    emptyMessage: 'No popular movies available right now.'
+    60→  });
+    61→
+    62→  /* --- NEW: Current & upcoming TV shows (16:9 backdrop cards) --- */
+    63→  loadTvUpcomingRow();
+    64→
+    65→  loadSection($('#top-rated-row'), getTopRatedMovies, {
+    66→    requirePoster: true,
+    67→    horizontal: true,
+    68→    emptyMessage: 'No top rated movies available right now.'
+    69→  });
+    70→
+    71→  /* --- NEW: Recently added in 4K (16:9 backdrop cards + 4K pill) --- */
+    72→  loadRecent4KRow();
+    73→
+    74→  loadSection($('#latest-tv-row'), getOnTheAirTV, {
+    75→    requirePoster: true,
+    76→    horizontal: true,
+    77→    emptyMessage: 'No TV shows airing right now.'
+    78→  });
+    79→
+    80→  /* --- NEW: Popular Genres mood cards (very bottom, above footer) --- */
+    81→  loadGenreMoods();
+    82→}
+    83→
+    84→/* ============================================================
+    85→   NEW SECTION 1 — TOP 10 TODAY
+    86→   ------------------------------------------------------------
+    87→   Ten 2:3 poster cards from /trending/all/day, each with a red
+    88→   "TOP / number" badge in the top-left corner. Same card
+    89→   component, hover trailers and watchlist hearts as every
+    90→   other row.
+    91→   ============================================================ */
+    92→async function loadTop10Row() {
+    93→  const row = $('#top10-row');
+    94→  if (!row) return;
+    95→  showSkeletons(row, 10, 'card');
+    96→  try {
+    97→    const data = await getTrendingToday();
+    98→    const items = ((data && data.results) || [])
+    99→      .filter((item) => item.media_type !== 'person' && item.poster_path)
+   100→      .slice(0, 10);
+   101→    if (!items.length) {
+   102→      showEmptyState(row, 'No trending titles available right now.');
+   103→      return;
+   104→    }
+   105→    row.innerHTML = '';
+   106→    const fragment = document.createDocumentFragment();
+   107→    items.forEach((item, index) => {
+   108→      fragment.appendChild(createMovieCard(item, { rank: index + 1 }));
+   109→    });
+   110→    row.appendChild(fragment);
+   111→  } catch (error) {
+   112→    showErrorState(row, error.message, loadTop10Row);
+   113→  }
+   114→}
+   115→
+   116→/* ============================================================
+   117→   NEW SECTION 2 — STREAMING PROVIDER TABS (brand-coloured)
+   118→   ------------------------------------------------------------
+   119→   Seven provider tabs (Netflix, Prime Video, HBO Max, Disney+,
+   120→   Apple TV+, Paramount+, Hulu), each styled with its official
+   121→   brand colour. Clicking a tab loads that provider's most
+   122→   popular movies AND TV shows (mixed, 20+ titles, US region)
+   123→   into the row below and updates the section header ("Only on
+   124→   Netflix", ...). Hovering or clicking a tab bathes the whole
+   125→   section in a smooth gradient of that brand's colours and
+   126→   makes the brand name glow. Netflix is active by default.
+   127→   ============================================================ */
+   128→
+   129→/* Brand colour data per provider id (mirrored by CSS in the
+   130→   [data-brand="..."] rules on the section element). */
+   131→const PROVIDER_BRANDS = {
+   132→  '8':    'netflix',
+   133→  '9':    'prime',
+   134→  '1899': 'hbo',
+   135→  '337':  'disney',
+   136→  '350':  'apple',
+   137→  '531':  'paramount',
+   138→  '15':   'hulu'
+   139→};
+   140→
+   141→const PROVIDER_TABS_SECTION = () => $('#provider-section');
+   142→
+   143→/** Paint the section background + brand glow for a provider id. */
+   144→function setProviderBrand(providerId) {
+   145→  const section = PROVIDER_TABS_SECTION();
+   146→  if (!section) return;
+   147→  const brand = PROVIDER_BRANDS[String(providerId)] || 'netflix';
+   148→  section.dataset.brand = brand;
+   149→}
+   150→
+   151→/** Instantly rewrite the section header — "Only on NETFLIX",
+   152→    "Only on DISNEY+", ... The brand name is uppercased and
+   153→    painted in the brand's exact colour by the [data-brand]
+   154→    CSS. Used for hover previews AND for real tab clicks. */
+   155→function setProviderHeading(providerName) {
+   156→  const title = $('#provider-title');
+   157→  if (title) {
+   158→    title.innerHTML = `<span class="title-bar"></span>Only on <span class="brand-name">${escapeHtml(providerName)}</span>`;
+   159→  }
+   160→}
+   161→
+   162→function initProviderTabs() {
+   163→  const tabs = $$('.provider-tab');
+   164→  if (!tabs.length) return;
+   165→
+   166→  let activeTab = tabs.find((tab) => tab.classList.contains('active')) || tabs[0];
+   167→
+   168→  tabs.forEach((tab) => {
+   169→    tab.addEventListener('click', () => {
+   170→      if (tab.classList.contains('active')) return;
+   171→      activeTab = tab;
+   172→      tabs.forEach((other) => {
+   173→        const isActive = other === tab;
+   174→        other.classList.toggle('active', isActive);
+   175→        other.setAttribute('aria-selected', String(isActive));
+   176→      });
+   177→      setProviderBrand(tab.dataset.provider);
+   178→      loadProviderContent(tab.dataset.provider, tab.dataset.name);
+   179→    });
+   180→
+   181→    // Hovering a tab previews that brand instantly: the ambient
+   182→    // wash glides over, the tab scales + glows, and the header
+   183→    // text swaps to the hovered brand ("Only on DISNEY+", ...).
+   184→    tab.addEventListener('mouseenter', () => {
+   185→      setProviderBrand(tab.dataset.provider);
+   186→      setProviderHeading(tab.dataset.name);
+   187→    });
+   188→  });
+   189→
+   190→  const strip = $('#provider-tabs');
+   191→  if (strip) {
+   192→    // Leaving the tab strip restores the ACTIVE brand + header.
+   193→    strip.addEventListener('mouseleave', () => {
+   194→      setProviderBrand(activeTab ? activeTab.dataset.provider : '8');
+   195→      setProviderHeading(activeTab ? activeTab.dataset.name : 'Netflix');
+   196→    });
+   197→  }
+   198→
+   199→  // Default active tab: Netflix
+   200→  setProviderBrand('8');
+   201→  loadProviderContent('8', 'Netflix');
+   202→}
+   203→
+   204→function loadProviderContent(providerId, providerName) {
+   205→  setProviderHeading(providerName);
+   206→  loadProviderMixedRail(providerId);
+   207→}
+   208→
+   209→/** Fetch a provider's movies AND TV shows, merge them into one
+   210→    mixed rail (interleaved, de-duplicated, 24 titles) and render
+   211→    it with the standard card component. */
+   212→async function loadProviderMixedRail(providerId) {
+   213→  const row = $('#provider-row');
+   214→  if (!row) return;
+   215→  showSkeletons(row, 8, 'card');
+   216→  try {
+   217→    const [moviesRes, tvRes] = await Promise.allSettled([
+   218→      discoverByProvider(providerId),
+   219→      discoverTVByProvider(providerId)
+   220→    ]);
+   221→
+   222→    const movies = moviesRes.status === 'fulfilled' ? (moviesRes.value.results || []) : [];
+   223→    const shows = tvRes.status === 'fulfilled' ? (tvRes.value.results || []) : [];
+   224→
+   225→    // Tag the media type explicitly — discover endpoints return
+   226→    // bare results, and movie/tv id namespaces can collide.
+   227→    movies.forEach((m) => { m.media_type = 'movie'; });
+   228→    shows.forEach((s) => { s.media_type = 'tv'; });
+   229→
+   230→    // Interleave movie/TV/movie/TV so both media are represented
+   231→    // along the whole rail, then drop numeric id collisions.
+   232→    const seen = new Set();
+   233→    const mixed = [];
+   234→    const maxLen = Math.max(movies.length, shows.length);
+   235→    for (let i = 0; i < maxLen; i++) {
+   236→      [movies[i], shows[i]].forEach((item) => {
+   237→        if (!item || !item.poster_path) return;
+   238→        const key = `${item.media_type}-${item.id}`;
+   239→        if (seen.has(key)) return;
+   240→        seen.add(key);
+   241→        mixed.push(item);
+   242→      });
+   243→    }
+   244→
+   245→    const items = mixed.slice(0, 24); // 20+ titles per provider
+   246→    if (!items.length) {
+   247→      showEmptyState(row, 'No titles available for this service right now.');
+   248→      return;
+   249→    }
+   250→
+   251→    row.innerHTML = '';
+   252→    const fragment = document.createDocumentFragment();
+   253→    items.forEach((item) => fragment.appendChild(createMovieCard(item)));
+   254→    row.appendChild(fragment);
+   255→  } catch (error) {
+   256→    showErrorState(row, error.message, () => loadProviderMixedRail(providerId));
+   257→  }
+   258→}
+   259→
+   260→/* ============================================================
+   261→   NEW SECTION 3 — CURRENT & UPCOMING TV SHOWS
+   262→   ------------------------------------------------------------
+   263→   Wide 16:9 backdrop cards fed by /tv/on_the_air and
+   264→   /tv/airing_today (merged, de-duplicated). Cards carry red
+   265→   "New episode" / "New season" flags and "S1·E3" episode info
+   266→   in the metadata line, derived from the episode data TMDB
+   267→   attaches to those endpoints.
+   268→   ============================================================ */
+   269→async function loadTvUpcomingRow() {
+   270→  const row = $('#tv-upcoming-row');
+   271→  if (!row) return;
+   272→  showSkeletons(row, 8, 'card-wide');
+   273→  try {
+   274→    const [onAir, airingToday] = await Promise.allSettled([
+   275→      getOnTheAirTV(),
+   276→      getAiringTodayTV()
+   277→    ]);
+   278→    const onAirItems = onAir.status === 'fulfilled' ? (onAir.value.results || []) : [];
+   279→    const airingItems = airingToday.status === 'fulfilled' ? (airingToday.value.results || []) : [];
+   280→    if (!onAirItems.length && !airingItems.length) {
+   281→      throw new Error('No TV schedule data available.');
+   282→    }
+   283→
+   284→    // Shows with an episode airing today come first, then the rest.
+   285→    const seen = new Set();
+   286→    const items = [...airingItems, ...onAirItems]
+   287→      .filter((show) => {
+   288→        if (!show || !show.backdrop_path || seen.has(show.id)) return false;
+   289→        seen.add(show.id);
+   290→        return true;
+   291→      })
+   292→      .slice(0, CONFIG.cardsPerRow);
+   293→
+   294→    if (!items.length) {
+   295→      showEmptyState(row, 'No upcoming TV shows available right now.');
+   296→      return;
+   297→    }
+   298→
+   299→    // List endpoints don't carry episode data — pull each show's
+   300→    // brief details (next/last episode) so cards can show the
+   301→    // "New episode" / "New season" flags and "S1·E3" info.
+   302→    // Requests are staggered to stay well inside TMDB rate limits.
+   303→    const enriched = await Promise.all(items.map(async (show, index) => {
+   304→      try {
+   305→        await new Promise((resolve) => setTimeout(resolve, index * 60));
+   306→        const detail = await getTVBrief(show.id);
+   307→        return {
+   308→          ...show,
+   309→          next_episode_to_air: detail.next_episode_to_air || null,
+   310→          last_episode_to_air: detail.last_episode_to_air || null
+   311→        };
+   312→      } catch (error) {
+   313→        return show; // episode info is optional decoration
+   314→      }
+   315→    }));
+   316→
+   317→    row.innerHTML = '';
+   318→    const fragment = document.createDocumentFragment();
+   319→    enriched.forEach((show) => {
+   320→      const { badge, metaNote } = describeTvEpisode(show);
+   321→      fragment.appendChild(createMovieCard(show, { wide: true, badge, metaNote }));
+   322→    });
+   323→    row.appendChild(fragment);
+   324→  } catch (error) {
+   325→    showErrorState(row, error.message, loadTvUpcomingRow);
+   326→  }
+   327→}
+   328→
+   329→/** Derive the "New episode" / "New season" flag and "S1·E3"
+   330→    metadata from a show's next/last episode data. */
+   331→function describeTvEpisode(show) {
+   332→  const next = show.next_episode_to_air;
+   333→  const last = show.last_episode_to_air;
+   334→  const today = new Date().toISOString().slice(0, 10);
+   335→
+   336→  if (next && next.season_number && next.episode_number && next.air_date >= today) {
+   337→    return {
+   338→      badge: next.episode_number === 1 ? { text: 'New season' } : { text: 'New episode' },
+   339→      metaNote: `S${next.season_number}·E${next.episode_number}`
+   340→    };
+   341→  }
+   342→  if (last && last.season_number && last.episode_number) {
+   343→    const airedRecently = last.air_date &&
+   344→      (Date.now() - new Date(last.air_date).getTime()) / 86400000 <= 7;
+   345→    return {
+   346→      badge: airedRecently ? { text: 'New episode' } : null,
+   347→      metaNote: `S${last.season_number}·E${last.episode_number}`
+   348→    };
+   349→  }
+   350→  return { badge: null, metaNote: null };
+   351→}
+   352→
+   353→/* ============================================================
+   354→   NEW SECTION 4 — RECENTLY ADDED IN 4K
+   355→   ------------------------------------------------------------
+   356→   Wide 16:9 backdrop cards from
+   357→   /discover/movie?sort_by=release_date.desc&vote_count.gte=50,
+   358→   filtered to already-released titles, each wearing a small
+   359→   red "4K" pill.
+   360→   ============================================================ */
+   361→async function loadRecent4KRow() {
+   362→  const row = $('#recent-4k-row');
+   363→  if (!row) return;
+   364→  showSkeletons(row, 8, 'card-wide');
+   365→  try {
+   366→    const data = await getRecentMovies();
+   367→    const today = new Date().toISOString().slice(0, 10);
+   368→    const items = ((data && data.results) || [])
+   369→      .filter((movie) => movie.backdrop_path && movie.release_date && movie.release_date <= today)
+   370→      .slice(0, CONFIG.cardsPerRow);
+   371→
+   372→    if (!items.length) {
+   373→      showEmptyState(row, 'No recent releases available right now.');
+   374→      return;
+   375→    }
+   376→
+   377→    row.innerHTML = '';
+   378→    const fragment = document.createDocumentFragment();
+   379→    items.forEach((movie) => {
+   380→      fragment.appendChild(createMovieCard(movie, {
+   381→        wide: true,
+   382→        badge: { text: '4K', modifier: 'card-flag--pill' }
+   383→      }));
+   384→    });
+   385→    row.appendChild(fragment);
+   386→  } catch (error) {
+   387→    showErrorState(row, error.message, loadRecent4KRow);
+   388→  }
+   389→}
+   390→
+   391→/* ============================================================
+   392→   NEW SECTION 5 — POPULAR GENRES (mood cards)
+   393→   ------------------------------------------------------------
+   394→   Eight colored gradient cards (NOT posters): a representative
+   395→   movie backdrop under a strong per-genre color gradient, the
+   396→   genre name bottom-left. Clicking opens browse.html?genre={id}.
+   397→   ============================================================ */
+   398→const GENRE_MOODS = [
+   399→  { id: 35,    name: 'Comedy',           cls: 'comedy' },
+   400→  { id: 28,    name: 'Action',           cls: 'action' },
+   401→  { id: 18,    name: 'Drama',            cls: 'drama' },
+   402→  { id: 27,    name: 'Horror',           cls: 'horror' },
+   403→  { id: 10749, name: 'Romance',          cls: 'romance' },
+   404→  { id: 12,    name: 'Adventure',        cls: 'adventure' },
+   405→  { id: 878,   name: 'Science Fiction',  cls: 'scifi' },
+   406→  { id: 53,    name: 'Thriller',         cls: 'thriller' }
+   407→];
+   408→
+   409→async function loadGenreMoods() {
+   410→  const row = $('#genre-row');
+   411→  if (!row) return;
+   412→  showSkeletons(row, 8, 'card-wide');
+   413→  try {
+   414→    const artPaths = await Promise.all(
+   415→      GENRE_MOODS.map(async (genre) => {
+   416→        try {
+   417→          const data = await discoverByGenre(genre.id);
+   418→          const hit = ((data && data.results) || []).find((movie) => movie.backdrop_path);
+   419→          return hit ? hit.backdrop_path : null;
+   420→        } catch (error) {
+   421→          return null; // gradient-only card still renders
+   422→        }
+   423→      })
+   424→    );
+   425→
+   426→    row.innerHTML = '';
+   427→    const fragment = document.createDocumentFragment();
+   428→    GENRE_MOODS.forEach((genre, index) => {
+   429→      fragment.appendChild(createGenreCard(genre, artPaths[index]));
+   430→    });
+   431→    row.appendChild(fragment);
+   432→  } catch (error) {
+   433→    showErrorState(row, error.message, loadGenreMoods);
+   434→  }
+   435→}
+   436→
+   437→/** Build one mood card: backdrop art + strong genre gradient. */
+   438→function createGenreCard(genre, backdropPath) {
+   439→  const card = document.createElement('a');
+   440→  card.className = `genre-card genre-card--${genre.cls}`;
+   441→  card.href = `browse.html?genre=${genre.id}`;
+   442→  card.setAttribute('aria-label', `Browse ${genre.name} movies`);
+   443→  if (backdropPath) {
+   444→    card.style.setProperty('--genre-art', `url('${IMAGE_BASE_URL}${BACKDROP_MD_SIZE}${backdropPath}')`);
+   445→  }
+   446→  card.innerHTML = `<span class="genre-name">${escapeHtml(genre.name)}</span>`;
+   447→  return card;
+   448→}
+   449→
+   450→/* ============================================================
+   451→   HERO SLIDER
+   452→   ============================================================ */
+   453→async function loadHero() {
+   454→  try {
+   455→    // Genres are non-critical — failure just hides the chips.
+   456→    try {
+   457→      const genreData = await getGenres();
+   458→      heroGenreMap = {};
+   459→      (genreData.genres || []).forEach((g) => {
+   460→        heroGenreMap[g.id] = g.name;
+   461→      });
+   462→    } catch (genreError) {
+   463→      heroGenreMap = {};
+   464→    }
+   465→
+   466→    const data = await getTrending();
+   467→    const results = (data.results || [])
+   468→      .filter((item) => item.media_type !== 'person' && item.backdrop_path)
+   469→      .slice(0, CONFIG.heroSlideCount);
+   470→
+   471→    if (!results.length) {
+   472→      showHeroError('No featured titles could be loaded.');
+   473→      return;
+   474→    }
+   475→
+   476→    heroSlides = results;
+   477→    renderHeroSlides();
+   478→    startAutoSlide();
+   479→  } catch (error) {
+   480→    showHeroError(error.message);
+   481→  }
+   482→}
+   483→
+   484→function showHeroError(message) {
+   485→  const hero = $('#hero');
+   486→  if (!hero) return;
+   487→  // Hide (don't remove) controls so a later successful re-render can restore them
+   488→  ['#hero-skeleton', '#hero-dots', '#hero-prev', '#hero-next'].forEach((sel) => {
+   489→    const el = $(sel);
+   490→    if (el) el.setAttribute('hidden', '');
+   491→  });
+   492→
+   493→  const existingError = $('#hero-error');
+   494→  if (existingError) existingError.remove();
+   495→
+   496→  const errorBox = document.createElement('div');
+   497→  errorBox.className = 'hero-content';
+   498→  errorBox.id = 'hero-error';
+   499→  errorBox.innerHTML = `
+   500→    <div class="container">
+   501→      <div class="hero-text">
+   502→        <span class="hero-media-type">ZEUS</span>
+   503→        <h1 class="hero-title">Watch Movies &amp; TV Shows Online Free</h1>
+   504→        <p class="hero-overview">Failed to load featured titles. ${escapeHtml(message)}</p>
+   505→        <div class="hero-buttons">
+   506→          <button class="btn btn-primary" id="hero-retry">
+   507→            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.65 6.35A7.95 7.95 0 0 0 12 4a8 8 0 1 0 7.73 10h-2.08A6 6 0 1 1 12 6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
+   508→            Try Again
+   509→          </button>
+   510→          <a href="search.html" class="btn btn-glass">Browse Titles</a>
+   511→        </div>
+   512→      </div>
+   513→    </div>
+   514→  `;
+   515→  hero.appendChild(errorBox);
+   516→  const retry = errorBox.querySelector('#hero-retry');
+   517→  if (retry) {
+   518→    retry.addEventListener('click', async () => {
+   519→      errorBox.remove();
+   520→      const skeleton = document.createElement('div');
+   521→      skeleton.className = 'hero-skeleton';
+   522→      skeleton.id = 'hero-skeleton';
+   523→      skeleton.removeAttribute('hidden');
+   524→      hero.prepend(skeleton);
+   525→      await loadHero();
+   526→    });
+   527→  }
+   528→}
+   529→
+   530→function renderHeroSlides() {
+   531→  const hero = $('#hero');
+   532→  if (!hero) return;
+   533→
+   534→  // Remove skeleton + any stale error UI, restore controls
+   535→  const skeleton = $('#hero-skeleton');
+   536→  if (skeleton) skeleton.remove();
+   537→  const staleError = $('#hero-error');
+   538→  if (staleError) staleError.remove();
+   539→  // Clear any previously rendered slides (defensive against re-entry)
+   540→  $$('.hero-slide', hero).forEach((slide) => slide.remove());
+   541→  ['#hero-dots', '#hero-prev', '#hero-next'].forEach((sel) => {
+   542→    const el = $(sel);
+   543→    if (el) el.removeAttribute('hidden');
+   544→  });
+   545→
+   546→  // Build slides
+   547→  const slidesHtml = heroSlides.map((item, index) => {
+   548→    const type = getMediaType(item);
+   549→    const title = getMediaTitle(item);
+   550→    const year = getMediaYear(item);
+   551→    const rating = item.vote_average ? item.vote_average.toFixed(1) : 'N/A';
+   552→    const backdrop = imageUrl(item.backdrop_path, BACKDROP_SIZE, FALLBACK_STILL);
+   553→    const genreNames = (item.genre_ids || [])
+   554→      .map((id) => heroGenreMap[id] || GENRE_MAP[id])
+   555→      .filter(Boolean)
+   556→      .slice(0, 3);
+   557→    const overview = item.overview || 'No description available.';
+   558→
+   559→    return `
+   560→      <div class="hero-slide ${index === 0 ? 'active' : ''}" role="tabpanel" aria-hidden="${index !== 0}">
+   561→        <div class="hero-backdrop" style="background-image:url('${backdrop}')"></div>
+   562→        <div class="hero-trailer" aria-hidden="true"></div>
+   563→        <div class="hero-overlay"></div>
+   564→        <div class="hero-content">
+   565→          <div class="container">
+   566→            <div class="hero-text">
+   567→              <span class="hero-media-type">${type === 'tv' ? 'TV Series' : 'Movie'}</span>
+   568→              <h1 class="hero-title">${escapeHtml(title)}</h1>
+   569→              <div class="hero-meta">
+   570→                <span class="rating-badge">
+   571→                  <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true">
+   572→                    <path d="M12 17.27 18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/>
+   573→                  </svg>
+   574→                  <span>${rating}</span>
+   575→                </span>
+   576→                <span class="dot"></span>
+   577→                <span>${year}</span>
+   578→                ${genreNames.length ? '<span class="dot"></span>' : ''}
+   579→              </div>
+   580→              ${genreNames.length ? `
+   581→              <div class="hero-genres">
+   582→                ${genreNames.map((name) => `<span class="hero-genre-chip">${escapeHtml(name)}</span>`).join('')}
+   583→              </div>` : ''}
+   584→              <p class="hero-overview">${escapeHtml(overview)}</p>
+   585→              <div class="hero-buttons">
+   586→                <a class="btn btn-primary" href="${getWatchHref(item)}">
+   587→                  <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+   588→                  Watch Now
+   589→                </a>
+   590→                <a class="btn btn-glass" href="${getMediaHref(item)}">
+   591→                  <svg viewBox="0 0 24 24" fill="currentColor"><path d="M11 7h2v2h2v2h-2v2h-2v-2H9V9h2V7zm7 3c0 4-3.1 7.4-7 8.9-3.9-1.5-7-4.9-7-8.9V6l7-3 7 3v4z"/></svg>
+   592→                  More Info
+   593→                </a>
+   594→              </div>
+   595→            </div>
+   596→          </div>
+   597→        </div>
+   598→      </div>
+   599→    `;
+   600→  }).join('');
+   601→
+   602→  hero.insertAdjacentHTML('afterbegin', slidesHtml);
+   603→
+   604→  // Build dots
+   605→  const dotsContainer = $('#hero-dots');
+   606→  if (dotsContainer) {
+   607→    dotsContainer.innerHTML = heroSlides
+   608→      .map((_, i) => `<button class="hero-dot ${i === 0 ? 'active' : ''}" data-index="${i}" role="tab" aria-label="Go to slide ${i + 1}"></button>`)
+   609→      .join('');
+   610→    dotsContainer.addEventListener('click', (event) => {
+   611→      const dot = event.target.closest('.hero-dot');
+   612→      if (dot) goToSlide(Number(dot.dataset.index), true);
+   613→    });
+   614→  }
+   615→
+   616→  // Arrows
+   617→  const prev = $('#hero-prev');
+   618→  const next = $('#hero-next');
+   619→  if (prev) prev.addEventListener('click', () => goToSlide(currentSlide - 1, true));
+   620→  if (next) next.addEventListener('click', () => goToSlide(currentSlide + 1, true));
+   621→
+   622→  // Trailer sound toggle
+   623→  const muteBtn = $('#hero-mute-btn');
+   624→  if (muteBtn) muteBtn.addEventListener('click', toggleHeroTrailerMute);
+   625→
+   626→  // Pause auto-slide on hover
+   627→  hero.addEventListener('mouseenter', stopAutoSlide);
+   628→  hero.addEventListener('mouseleave', startAutoSlide);
+   629→
+   630→  // Pause when tab is hidden
+   631→  document.addEventListener('visibilitychange', () => {
+   632→    if (document.hidden) stopAutoSlide();
+   633→    else startAutoSlide();
+   634→  });
+   635→
+   636→  // Warm the trailer-key cache for every slide (staggered, cheap
+   637→  // JSON calls) so later transitions fade straight into video.
+   638→  heroSlides.forEach((item, i) => {
+   639→    setTimeout(() => getTrailerKey(item.id, getMediaType(item)), 300 + i * 250);
+   640→  });
+   641→
+   642→  // Kick off the first slide's cinematic trailer
+   643→  syncHeroTrailer();
+   644→}
+   645→
+   646→function goToSlide(index, manual = false) {
+   647→  if (!heroSlides.length) return;
+   648→  const slides = $$('.hero-slide');
+   649→  const dots = $$('.hero-dot');
+   650→  if (!slides.length) return;
+   651→
+   652→  currentSlide = (index + heroSlides.length) % heroSlides.length;
+   653→
+   654→  slides.forEach((slide, i) => {
+   655→    slide.classList.toggle('active', i === currentSlide);
+   656→    slide.setAttribute('aria-hidden', String(i !== currentSlide));
+   657→  });
+   658→  dots.forEach((dot, i) => dot.classList.toggle('active', i === currentSlide));
+   659→
+   660→  syncHeroTrailer();
+   661→
+   662→  if (manual) startAutoSlide(); // reset the timer
+   663→}
+   664→
+   665→function startAutoSlide() {
+   666→  stopAutoSlide();
+   667→  if (!heroSlides.length) return;
+   668→  heroTimer = setInterval(() => goToSlide(currentSlide + 1), CONFIG.heroAutoPlayInterval);
+   669→}
+   670→
+   671→function stopAutoSlide() {
+   672→  if (heroTimer) {
+   673→    clearInterval(heroTimer);
+   674→    heroTimer = null;
+   675→  }
+   676→}
+   677→
+   678→/* ============================================================
+   679→   HERO TRAILER (Netflix-style auto-playing muted trailer)
+   680→   Every slide keeps an empty .hero-trailer layer between its
+   681→   backdrop image and the gradient overlay. While a slide is
+   682→   active we: show the backdrop for 2s, fetch the title's
+   683→   trailer key (cached), fade a single shared chrome-free
+   684→   <video> (direct MP4 sources — VidSrc trailer endpoint, then
+   685→   Invidious stream proxies) into that slide's layer, and swap
+   686→   it out again when the slide changes. When every source
+   687→   fails the backdrop itself gets the Ken Burns pan/zoom, so
+   688→   the hero never falls flat.
+   689→   ============================================================ */
+   690→const HERO_TRAILER_DELAY_MS = 2000; // backdrop-first delay before the video fades in
+   691→
+   692→function syncHeroTrailer() {
+   693→  const token = ++heroTrailerToken;
+   694→  stopHeroTrailer();
+   695→
+   696→  const item = heroSlides[currentSlide];
+   697→  if (!item || document.hidden) return;
+   698→
+   699→  // Ambient lighting: the whole site glows with the active
+   700→  // slide's colours (Apple TV+ vibrancy).
+   701→  ambientBackdrop.setBase(item);
+   702→
+   703→  const type = getMediaType(item);
+   704→  const delay = new Promise((resolve) => setTimeout(resolve, HERO_TRAILER_DELAY_MS));
+   705→  const keyPromise = getTrailerKey(item.id, type);
+   706→
+   707→  Promise.all([delay, keyPromise]).then(([ , key]) => {
+   708→    // Slide changed (or trailer stopped) while we were waiting
+   709→    if (token !== heroTrailerToken) return;
+   710→    if (heroSlides[currentSlide] !== item || document.hidden) return;
+   711→    startHeroTrailer(item, key);
+   712→  });
+   713→}
+   714→
+   715→function startHeroTrailer(item, videoKey) {
+   716→  const slide = $$('.hero-slide')[currentSlide];
+   717→  const layer = slide ? slide.querySelector('.hero-trailer') : null;
+   718→  if (!layer) return;
+   719→
+   720→  const mediaType = getMediaType(item);
+   721→  const cached = trailerSourceCache.get(trailerCacheKey(item.id, mediaType));
+   722→  // Cached total failure or tripped session circuit breaker ->
+   723→  // no network, straight to Ken Burns.
+   724→  const sources = (cached && cached.status === 'failed') || !trailerChainEnabled()
+   725→    ? []
+   726→    : orderedTrailerSources(item, videoKey);
+   727→  if (!sources.length) {
+   728→    applyHeroKenBurns(slide);
+   729→    return;
+   730→  }
+   731→
+   732→  // Baseline: the backdrop is alive (Ken Burns pan) while the
+   733→  // stream connects — the video fades in over it on playback.
+   734→  applyHeroKenBurns(slide);
+   735→
+   736→  heroTrailerHandle = mountTrailerVideo(layer, sources, {
+   737→    watchdogMs: 5000,
+   738→    onSourceDead: noteSourceDead,
+   739→    onResolved(src) {
+   740→      rememberTrailerSource(item.id, mediaType, src);
+   741→      if (src) console.log('HERO TRAILER PLAYING', item.id, src);
+   742→    },
+   743→    onPlaying() {
+   744→      // Slide changed while the stream was connecting
+   745→      if (heroSlides[currentSlide] !== item) {
+   746→        stopHeroTrailer();
+   747→        return;
+   748→      }
+   749→      // The moving picture replaces the Ken Burns pan.
+   750→      removeHeroKenBurns(slide);
+   751→      heroTrailerMuted = true;
+   752→      updateHeroMuteButton();
+   753→      requestAnimationFrame(() => requestAnimationFrame(() => layer.classList.add('playing')));
+   754→      const muteBtn = $('#hero-mute-btn');
+   755→      if (muteBtn) muteBtn.hidden = false;
+   756→    },
+   757→    onFailed() {
+   758→      // Every direct source failed -> Ken Burns backdrop fallback
+   759→      // (already running — just make sure it is on).
+   760→      if (heroSlides[currentSlide] !== item) return;
+   761→      applyHeroKenBurns(slide);
+   762→    }
+   763→  });
+   764→}
+   765→
+   766→/** Ken Burns fallback: the slide's backdrop slowly pans/zooms
+   767→    (20s loop) — premium even without video. */
+   768→function applyHeroKenBurns(slide) {
+   769→  const backdrop = slide ? slide.querySelector('.hero-backdrop') : null;
+   770→  if (backdrop) backdrop.classList.add('trailer-fallback');
+   771→}
+   772→
+   773→function removeHeroKenBurns(slide) {
+   774→  const backdrop = slide ? slide.querySelector('.hero-backdrop') : null;
+   775→  if (backdrop) backdrop.classList.remove('trailer-fallback');
+   776→}
+   777→
+   778→function stopHeroTrailer() {
+   779→  $$('.hero-slide .hero-trailer').forEach((layer) => layer.classList.remove('playing'));
+   780→  $$('.hero-slide .hero-backdrop.trailer-fallback').forEach((bd) => bd.classList.remove('trailer-fallback'));
+   781→
+   782→  const muteBtn = $('#hero-mute-btn');
+   783→  if (muteBtn) muteBtn.hidden = true;
+   784→
+   785→  if (heroTrailerHandle) {
+   786→    // Free the decoder immediately — no fade-out wait needed.
+   787→    heroTrailerHandle.destroy();
+   788→    heroTrailerHandle = null;
+   789→  }
+   790→  heroTrailerMuted = true;
+   791→}
+   792→
+   793→function toggleHeroTrailerMute() {
+   794→  const video = heroTrailerHandle ? heroTrailerHandle.video : null;
+   795→  if (!video) return;
+   796→  heroTrailerMuted = !heroTrailerMuted;
+   797→  video.muted = heroTrailerMuted;
+   798→  if (!heroTrailerMuted) {
+   799→    try {
+   800→      video.volume = 1;
+   801→      const attempt = video.play();
+   802→      if (attempt && typeof attempt.catch === 'function') attempt.catch(() => {});
+   803→    } catch (playError) { /* unmuted resume is best-effort */ }
+   804→  }
+   805→  updateHeroMuteButton();
+   806→}
+   807→
+   808→function updateHeroMuteButton() {
+   809→  const btn = $('#hero-mute-btn');
+   810→  if (!btn) return;
+   811→  btn.classList.toggle('muted', heroTrailerMuted);
+   812→  btn.setAttribute('aria-pressed', String(!heroTrailerMuted));
+   813→  const label = heroTrailerMuted ? 'Unmute trailer' : 'Mute trailer';
+   814→  btn.setAttribute('aria-label', label);
+   815→  btn.title = label;
+   816→}
+   817→
+   818→/* ============================================================
+   819→   HORIZONTAL SCROLL ARROWS (all content rows)
+   820→   ============================================================ */
+   821→function initSectionArrows() {
+   822→  $$('.scroll-btn').forEach((button) => {
+   823→    const row = $(button.dataset.target);
+   824→    if (!row) return;
+   825→
+   826→    // Scroll by ~85% of visible width
+   827→    button.addEventListener('click', () => {
+   828→      const amount = row.clientWidth * CONFIG.scrollAmountRatio;
+   829→      const direction = button.classList.contains('next') ? 1 : -1;
+   830→      row.scrollBy({ left: amount * direction, behavior: 'smooth' });
+   831→    });
+   832→
+   833→    // Enable/disable arrows at row edges
+   834→    const updateArrows = () => {
+   835→      const prevBtn = row.parentElement.querySelector(`.scroll-btn.prev[data-target="${button.dataset.target}"]`);
+   836→      const nextBtn = row.parentElement.querySelector(`.scroll-btn.next[data-target="${button.dataset.target}"]`);
+   837→      const maxScroll = row.scrollWidth - row.clientWidth;
+   838→      if (prevBtn) prevBtn.disabled = row.scrollLeft <= 4;
+   839→      if (nextBtn) nextBtn.disabled = row.scrollLeft >= maxScroll - 4;
+   840→    };
+   841→
+   842→    let ticking = false;
+   843→    row.addEventListener('scroll', () => {
+   844→      if (!ticking) {
+   845→        window.requestAnimationFrame(() => {
+   846→          updateArrows();
+   847→          ticking = false;
+   848→        });
+   849→        ticking = true;
+   850→      }
+   851→    }, { passive: true });
+   852→
+   853→    // Initial state + after content loads
+   854→    updateArrows();
+   855→    const afterLoad = () => updateArrows();
+   856→    setTimeout(afterLoad, 1500);
+   857→    setTimeout(afterLoad, 3500);
+   858→    window.addEventListener('resize', debounce(updateArrows, 200), { passive: true });
+   859→  });
+   860→}
+   861→

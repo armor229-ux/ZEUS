@@ -48,7 +48,7 @@
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap">
 
   <!-- Styles -->
-  <link rel="stylesheet" href="style.css?v=2.7">
+  <link rel="stylesheet" href="style.css?v=2.8">
 
   <!-- Smooth menu transitions: arrived via an in-site nav? hide the black loader from first paint -->
   <script>try{if(sessionStorage.getItem('zeus_nav_transition')==='1')document.documentElement.classList.add('no-page-loader')}catch(e){}</script>
@@ -74,7 +74,7 @@
   <!-- Adsterra Popunder -->
   <script src="https://pl31074980.profitableratecpmnetwork.com/53/a6/6e/53a66e7f76455d567a95800c6705deda.js"></script>
   <!-- Subtitle colour + timing preferences (saved locally, applied globally) -->
-  <script src="subtitle-prefs.js?v=1.0" defer></script>
+  <script src="subtitle-prefs.js?v=1.1" defer></script>
 </head>
 <body>
 
@@ -130,6 +130,11 @@
         Search
       </a>
     </nav>
+    <!-- Right: ZEUS wordmark logo (fixed top-right corner) -->
+    <a href="index.html" class="zeus-logo-btn zeus-glass" aria-label="ZEUS home">
+      <span class="nav-logo"><img src="logo.svg" alt="ZEUS" class="nav-logo-img zeus-logo-img" decoding="async"></span>
+    </a>
+
   </div>
 
   <!-- ==================== HERO (auto-sliding featured) ==================== -->
@@ -197,6 +202,90 @@
           </div>
         </div>
         <div class="movies-row movies-row--wide" id="trending-row"></div>
+      </div>
+    </section>
+
+    <!-- NEW: Arabic Movies -->
+    <section class="content-section" aria-labelledby="arabic-movies-title">
+      <div class="container">
+        <div class="section-header">
+          <div class="section-heading">
+            <h2 class="section-title" id="arabic-movies-title"><span class="title-bar"></span>Arabic Movies — أفلام عربية</h2>
+            <p class="section-subtitle">Popular movies in Arabic</p>
+          </div>
+          <div class="section-controls">
+            <button class="scroll-btn prev" data-target="#arabic-movies-row" aria-label="Scroll Arabic movies left">
+              <svg viewBox="0 0 24 24"><path d="M15.41 7.41 14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>
+            </button>
+            <button class="scroll-btn next" data-target="#arabic-movies-row" aria-label="Scroll Arabic movies right">
+              <svg viewBox="0 0 24 24"><path d="M10 6 8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg>
+            </button>
+          </div>
+        </div>
+        <div class="movies-row" id="arabic-movies-row"></div>
+      </div>
+    </section>
+
+    <!-- NEW: Arabic TV Series -->
+    <section class="content-section" aria-labelledby="arabic-tv-title">
+      <div class="container">
+        <div class="section-header">
+          <div class="section-heading">
+            <h2 class="section-title" id="arabic-tv-title"><span class="title-bar"></span>Arabic TV Series — مسلسلات عربية</h2>
+            <p class="section-subtitle">Popular series in Arabic</p>
+          </div>
+          <div class="section-controls">
+            <button class="scroll-btn prev" data-target="#arabic-tv-row" aria-label="Scroll Arabic series left">
+              <svg viewBox="0 0 24 24"><path d="M15.41 7.41 14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>
+            </button>
+            <button class="scroll-btn next" data-target="#arabic-tv-row" aria-label="Scroll Arabic series right">
+              <svg viewBox="0 0 24 24"><path d="M10 6 8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg>
+            </button>
+          </div>
+        </div>
+        <div class="movies-row" id="arabic-tv-row"></div>
+      </div>
+    </section>
+
+    <!-- NEW: Turkish Movies -->
+    <section class="content-section" aria-labelledby="turkish-movies-title">
+      <div class="container">
+        <div class="section-header">
+          <div class="section-heading">
+            <h2 class="section-title" id="turkish-movies-title"><span class="title-bar"></span>Turkish Movies — Filmler (Türkçe)</h2>
+            <p class="section-subtitle">Popular movies in Turkish</p>
+          </div>
+          <div class="section-controls">
+            <button class="scroll-btn prev" data-target="#turkish-movies-row" aria-label="Scroll Turkish movies left">
+              <svg viewBox="0 0 24 24"><path d="M15.41 7.41 14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>
+            </button>
+            <button class="scroll-btn next" data-target="#turkish-movies-row" aria-label="Scroll Turkish movies right">
+              <svg viewBox="0 0 24 24"><path d="M10 6 8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg>
+            </button>
+          </div>
+        </div>
+        <div class="movies-row" id="turkish-movies-row"></div>
+      </div>
+    </section>
+
+    <!-- NEW: Turkish TV Series -->
+    <section class="content-section" aria-labelledby="turkish-tv-title">
+      <div class="container">
+        <div class="section-header">
+          <div class="section-heading">
+            <h2 class="section-title" id="turkish-tv-title"><span class="title-bar"></span>Turkish TV Series — Diziler (Türkçe)</h2>
+            <p class="section-subtitle">Popular series in Turkish</p>
+          </div>
+          <div class="section-controls">
+            <button class="scroll-btn prev" data-target="#turkish-tv-row" aria-label="Scroll Turkish series left">
+              <svg viewBox="0 0 24 24"><path d="M15.41 7.41 14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>
+            </button>
+            <button class="scroll-btn next" data-target="#turkish-tv-row" aria-label="Scroll Turkish series right">
+              <svg viewBox="0 0 24 24"><path d="M10 6 8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg>
+            </button>
+          </div>
+        </div>
+        <div class="movies-row" id="turkish-tv-row"></div>
       </div>
     </section>
 
@@ -487,9 +576,9 @@
 
   <!-- Scripts -->
   <script src="config.js?v=2.7"></script>
-  <script src="api.js?v=2.7"></script>
+  <script src="api.js?v=2.8"></script>
   <script src="watchlist.js?v=2.7"></script>
-  <script src="index.js?v=2.7"></script>
+  <script src="index.js?v=2.8"></script>
   <script src="auth.js?v=3.1"></script>
   <script src="library.js?v=3.0"></script>
 </body>

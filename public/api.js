@@ -198,6 +198,26 @@ async function getRecentMovies(page = 1) {
   });
 }
 
+/** Popular movies in one original language — Arabic & Turkish home rails. */
+async function discoverMoviesByLanguage(languageCode, page = 1) {
+  return fetchFromTMDB('/discover/movie', {
+    with_original_language: languageCode,
+    sort_by: 'popularity.desc',
+    page,
+    include_adult: 'false'
+  });
+}
+
+/** Popular TV shows in one original language — Arabic & Turkish home rails. */
+async function discoverTVByLanguage(languageCode, page = 1) {
+  return fetchFromTMDB('/discover/tv', {
+    with_original_language: languageCode,
+    sort_by: 'popularity.desc',
+    page,
+    include_adult: 'false'
+  });
+}
+
 /* ============================================================
    2b. TRAILER VIDEO SOURCES (shared: hero + card hover)
    ------------------------------------------------------------
@@ -700,6 +720,9 @@ function getUrlParam(name) {
  *   rank     — TOP 10 number badge (top-left, red)
  *   badge    — { text, modifier } flag badge ("New episode", "4K", ...)
  *   metaNote — extra text appended to the metadata line (e.g. "S1·E3")
+ * Cards whose item is Arabic or Turkish also carry a tiny frosted
+ * .zeus-lang-badge pill ("AR"/"TR", top-right) with the item's
+ * original language.
  */
 /* element -> TMDB item, read by the desktop hover-trailer system */
 const cardItemData = new WeakMap();
@@ -729,6 +752,14 @@ function createMovieCard(item, { wide = false, rank = null, badge = null, metaNo
     ? `<span class="card-flag${badge.modifier ? ' ' + badge.modifier : ''}">${escapeHtml(badge.text)}</span>`
     : '';
 
+  // AR / TR language badge — tiny frosted pill on the top-right of
+  // the artwork (Arabic & Turkish rails). Placed after the watchlist
+  // button in the DOM so the ~ sibling selector can slide it below
+  // the heart whenever the heart is visible.
+  const langBadgeHtml = (item.original_language === 'ar' || item.original_language === 'tr')
+    ? `<span class="zeus-lang-badge zeus-glass" aria-label="Original language: ${escapeHtml(getLanguageName(item.original_language))}">${item.original_language.toUpperCase()}</span>`
+    : '';
+
   const card = document.createElement('article');
   card.className = `movie-card${wide ? ' wide' : ''}`;
   cardItemData.set(card, item);
@@ -747,6 +778,7 @@ function createMovieCard(item, { wide = false, rank = null, badge = null, metaNo
     ${rankHtml}
     ${badgeHtml}
     ${typeof createWatchlistCardButton === 'function' ? createWatchlistCardButton(item) : ''}
+    ${langBadgeHtml}
     <div class="card-caption">
       <h3 class="card-caption-title">${escapeHtml(title)}</h3>
       <p class="card-caption-meta">

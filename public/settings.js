@@ -253,6 +253,25 @@
     }
   }
 
+  /* ---------------- preferred subtitle language (window.ZEUS.subtitles) ----------------
+     Persists under its OWN localStorage key (zeus_sub_pref, e.g.
+     "ar") — subtitle-prefs.js auto-selects matching text tracks
+     (srclang / language / label) on every video that plays,
+     site-wide. Also not part of zeus_settings. */
+
+  function bindSubtitlePref() {
+    const subs = window.ZEUS && window.ZEUS.subtitles;
+    const select = document.getElementById('sub-pref-select');
+    if (!subs || !select || typeof subs.getPref !== 'function') return;
+
+    select.value = subs.getPref() || '';
+    select.addEventListener('change', () => {
+      if (typeof subs.savePref === 'function') subs.savePref(select.value);
+      const label = select.options[select.selectedIndex].text;
+      toast(select.value ? 'Preferred subtitles: ' + label + '.' : 'Preferred subtitles cleared.');
+    });
+  }
+
   /* ---------------- account card ---------------- */
 
   function esc(text) {
@@ -385,6 +404,7 @@
     applySettings(settings);
     bindControls(settings);
     bindSubtitlePrefs();
+    bindSubtitlePref();
     renderAccountCard();
     renderDeviceList();
 

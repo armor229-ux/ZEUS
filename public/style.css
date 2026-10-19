@@ -5856,3 +5856,121 @@ body::after{
     display: none !important;
   }
 }
+
+/* ============================================================
+   31. ZEUS LOGO (fixed top-right) + AR/TR language badges
+       on the Arabic & Turkish home rails
+   ------------------------------------------------------------
+   New elements only; no existing rule above is modified.
+   • .zeus-logo-btn restores the ZEUS wordmark as a frosted
+     glass pill pinned to the top-RIGHT corner (the gear keeps
+     the top-left). It reuses the existing logo asset and its
+     signature lightning treatment (.nav-logo / .nav-logo-img),
+     so the strike animation + hover arc burst keep working.
+   • .zeus-lang-badge is the tiny frosted "AR"/"TR" pill on the
+     top-right of Arabic/Turkish cards. The watchlist heart
+     lives in the same corner, so the badge politely slides
+     below it whenever the heart is visible.
+   ============================================================ */
+
+/* Corner buttons sit above the (non-interactive) top bar */
+.zeus-settings-btn,
+.zeus-logo-btn{
+  z-index: 1100;
+}
+
+/* Logo button — a separate frosted glass pill pinned in the
+   top-RIGHT corner, fully independent of the centered nav
+   pill. Same banner-aware offset as the gear. */
+.zeus-logo-btn{
+  position: fixed;
+  top: calc(var(--banner-height, 0px) + 16px);
+  right: 16px;
+  height: 44px;
+  min-width: 44px;
+  padding: 0 13px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #e7e7ea;
+  transition: filter 0.18s ease;
+}
+.zeus-logo-btn:hover{
+  filter: brightness(1.08);
+}
+.zeus-logo-btn:focus-visible{
+  outline: 2px solid rgba(255, 255, 255, 0.65);
+  outline-offset: 2px;
+}
+
+/* The ZEUS wordmark (existing logo asset) sized for the pill */
+.zeus-logo-img{
+  height: 24px;
+  width: auto;
+  display: block;
+}
+
+/* AR / TR language badge — tiny frosted pill on the top-right
+   of cards whose original language is Arabic or Turkish
+   (injected by createMovieCard in api.js). */
+.zeus-lang-badge{
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 5;
+  pointer-events: none; /* clicks fall through to the card link */
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1.2px;
+  color: #fff;
+  text-transform: uppercase;
+  white-space: nowrap;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  transition: transform 0.25s ease;
+}
+/* The watchlist heart occupies the same corner — whenever it is
+   visible (card hover, or already in the watchlist) the badge
+   slides down out of its way. Transform-only, GPU friendly. */
+.movie-card:hover .zeus-lang-badge,
+.watchlist-btn.active ~ .zeus-lang-badge{
+  transform: translateY(38px);
+}
+
+/* Narrow viewports: the page-centered pill must still clear
+   BOTH corner buttons (gear left, logo right), so it shrinks
+   and scrolls internally — it never overlaps either corner. */
+@media (max-width: 820px){
+  .zeus-navpill{
+    max-width: calc(100vw - 310px); /* clears 44px gear + ~131px logo pill */
+  }
+}
+
+/* Mobile: tighter offsets mirroring the gear; smaller wordmark
+   and a tighter pill clearance. */
+@media (max-width: 640px){
+  .zeus-logo-btn{
+    top: calc(var(--banner-height, 0px) + 10px);
+    right: 10px;
+    height: 40px;
+    padding: 0 9px;
+  }
+  .zeus-logo-img{
+    height: 18px;
+  }
+  .zeus-lang-badge{
+    top: 6px;
+    right: 6px;
+    padding: 2px 7px;
+    font-size: 9px;
+  }
+  .movie-card:hover .zeus-lang-badge,
+  .watchlist-btn.active ~ .zeus-lang-badge{
+    transform: translateY(34px);
+  }
+  .zeus-navpill{
+    max-width: calc(100vw - 226px); /* clears 40px gear + ~97px logo pill */
+  }
+}

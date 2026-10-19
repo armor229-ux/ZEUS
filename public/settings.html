@@ -25,7 +25,7 @@
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap">
 
   <!-- Styles -->
-  <link rel="stylesheet" href="style.css?v=2.7">
+  <link rel="stylesheet" href="style.css?v=2.8">
   <link rel="stylesheet" href="settings.css?v=1.0">
 
   <!-- Smooth menu transitions: arrived via an in-site nav? hide the black loader from first paint -->
@@ -34,7 +34,7 @@
   <!-- Apply saved appearance settings before first paint (no theme flash) -->
   <script>try{var __zs=JSON.parse(localStorage.getItem('zeus_settings')||'{}');if(__zs.theme&&__zs.theme!=='dark')document.documentElement.dataset.theme=__zs.theme;if(__zs.accent&&__zs.accent!=='gold')document.documentElement.dataset.accent=__zs.accent;if(__zs.reduceMotion)document.documentElement.dataset.reduceMotion='1';if(__zs.subtitleSize)document.documentElement.style.setProperty('--zeus-sub-size',__zs.subtitleSize/100);var __zc=localStorage.getItem('zeus_sub_color');if(__zc)document.documentElement.style.setProperty('--zeus-sub-color',__zc);}catch(e){}</script>
   <!-- Subtitle colour + timing preferences (saved locally, applied globally) -->
-  <script src="subtitle-prefs.js?v=1.0" defer></script>
+  <script src="subtitle-prefs.js?v=1.1" defer></script>
 </head>
 <body>
 
@@ -90,6 +90,11 @@
         Search
       </a>
     </nav>
+    <!-- Right: ZEUS wordmark logo (fixed top-right corner) -->
+    <a href="index.html" class="zeus-logo-btn zeus-glass" aria-label="ZEUS home">
+      <span class="nav-logo"><img src="logo.svg" alt="ZEUS" class="nav-logo-img zeus-logo-img" decoding="async"></span>
+    </a>
+
   </div>
 
   <!-- ==================== SETTINGS PAGE ==================== -->
@@ -225,6 +230,22 @@
                 <option value="german">German</option>
                 <option value="arabic">Arabic</option>
                 <option value="japanese">Japanese</option>
+              </select>
+            </div>
+
+            <div class="settings-row">
+              <div class="settings-row-label">
+                <span class="settings-row-name">Preferred subtitle language</span>
+                <span class="settings-row-hint">Auto-selects matching tracks when a video plays — e.g. Arabic (ar)</span>
+              </div>
+              <select class="zeus-select" id="sub-pref-select" aria-label="Preferred subtitle language">
+                <option value="">Default (no auto-selection)</option>
+                <option value="ar">Arabic (ar)</option>
+                <option value="en">English (en)</option>
+                <option value="tr">Turkish (tr)</option>
+                <option value="es">Spanish (es)</option>
+                <option value="fr">French (fr)</option>
+                <option value="de">German (de)</option>
               </select>
             </div>
 
@@ -563,9 +584,9 @@
 
   <!-- Scripts -->
   <script src="config.js?v=2.7"></script>
-  <script src="api.js?v=2.7"></script>
+  <script src="api.js?v=2.8"></script>
   <script src="watchlist.js?v=2.7"></script>
   <script src="auth.js?v=3.1"></script>
-  <script src="settings.js?v=1.0"></script>
+  <script src="settings.js?v=1.1"></script>
 </body>
 </html>

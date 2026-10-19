@@ -53,6 +53,13 @@ function loadHomeRows() {
     horizontal: true,
     emptyMessage: 'No trending titles available right now.'
   });
+
+  /* --- NEW: Arabic & Turkish sections (movies + TV, AR/TR badges) --- */
+  loadLanguageRow('#arabic-movies-row', 'ar', 'movie', 'No Arabic movies available right now.');
+  loadLanguageRow('#arabic-tv-row', 'ar', 'tv', 'No Arabic TV shows available right now.');
+  loadLanguageRow('#turkish-movies-row', 'tr', 'movie', 'No Turkish movies available right now.');
+  loadLanguageRow('#turkish-tv-row', 'tr', 'tv', 'No Turkish TV shows available right now.');
+
   loadSection($('#popular-row'), getPopularMovies, {
     requirePoster: true,
     horizontal: true,
@@ -110,6 +117,45 @@ async function loadTop10Row() {
     row.appendChild(fragment);
   } catch (error) {
     showErrorState(row, error.message, loadTop10Row);
+  }
+}
+
+/* ============================================================
+   NEW SECTION 1b — ARABIC & TURKISH RAILS (movies + TV)
+   ------------------------------------------------------------
+   Four classic 2:3 poster rows fed by /discover/movie and
+   /discover/tv with with_original_language=ar|tr, sorted by
+   popularity. Every card wears a tiny frosted "AR"/"TR"
+   language badge (injected by createMovieCard) and behaves
+   like any other card: hover trailers, watchlist hearts,
+   detail-page links.
+   ============================================================ */
+async function loadLanguageRow(rowSelector, language, type, emptyMessage) {
+  const row = $(rowSelector);
+  if (!row) return;
+  showSkeletons(row, 8, 'card');
+  try {
+    const fetcher = type === 'tv' ? discoverTVByLanguage : discoverMoviesByLanguage;
+    const data = await fetcher(language);
+    const items = ((data && data.results) || [])
+      .filter((item) => item.poster_path)
+      .slice(0, CONFIG.cardsPerRow);
+
+    if (!items.length) {
+      showEmptyState(row, emptyMessage);
+      return;
+    }
+
+    // Tag the media type explicitly — discover endpoints return
+    // bare results, and movie/tv id namespaces can collide.
+    items.forEach((item) => { item.media_type = type; });
+
+    row.innerHTML = '';
+    const fragment = document.createDocumentFragment();
+    items.forEach((item) => fragment.appendChild(createMovieCard(item)));
+    row.appendChild(fragment);
+  } catch (error) {
+    showErrorState(row, error.message, () => loadLanguageRow(rowSelector, language, type, emptyMessage));
   }
 }
 
