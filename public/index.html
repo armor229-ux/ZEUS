@@ -48,7 +48,7 @@
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap">
 
   <!-- Styles -->
-  <link rel="stylesheet" href="style.css?v=2.8">
+  <link rel="stylesheet" href="style.css?v=2.9">
 
   <!-- Smooth menu transitions: arrived via an in-site nav? hide the black loader from first paint -->
   <script>try{if(sessionStorage.getItem('zeus_nav_transition')==='1')document.documentElement.classList.add('no-page-loader')}catch(e){}</script>
@@ -129,6 +129,8 @@
         </svg>
         Search
       </a>
+      <a href="#section-arabic" class="zeus-nav-item">Arabic</a>
+      <a href="#section-turkish" class="zeus-nav-item">Turkish</a>
     </nav>
     <!-- Right: ZEUS wordmark logo (fixed top-right corner) -->
     <a href="index.html" class="zeus-logo-btn zeus-glass" aria-label="ZEUS home">
@@ -206,7 +208,7 @@
     </section>
 
     <!-- NEW: Arabic Movies -->
-    <section class="content-section" aria-labelledby="arabic-movies-title">
+    <section class="content-section" id="section-arabic" aria-labelledby="arabic-movies-title">
       <div class="container">
         <div class="section-header">
           <div class="section-heading">
@@ -248,7 +250,7 @@
     </section>
 
     <!-- NEW: Turkish Movies -->
-    <section class="content-section" aria-labelledby="turkish-movies-title">
+    <section class="content-section" id="section-turkish" aria-labelledby="turkish-movies-title">
       <div class="container">
         <div class="section-header">
           <div class="section-heading">
@@ -581,5 +583,6 @@
   <script src="index.js?v=2.8"></script>
   <script src="auth.js?v=3.1"></script>
   <script src="library.js?v=3.0"></script>
+  <script src="header-autohide.js?v=1.0"></script>
 </body>
 </html>

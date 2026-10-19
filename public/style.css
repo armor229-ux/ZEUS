@@ -5974,3 +5974,95 @@ body::after{
     max-width: calc(100vw - 226px); /* clears 40px gear + ~97px logo pill */
   }
 }
+
+/* ============================================================
+   32. ZEUS HEADER AUTO-HIDE + ARABIC/TURKISH PILL LINKS
+   ------------------------------------------------------------
+   New behaviour only; no existing rule above is modified.
+   • Scrolling DOWN hides the whole header (gear + centered
+     pill + logo); scrolling UP — or returning near the top, or
+     moving the mouse back to the top edge — brings it back.
+     ONLY the header moves: page content never shifts.
+   • Driven by header-autohide.js, which toggles the
+     data-header-hidden attribute on <html>. The shift uses the
+     independent `translate` property, so it composes with the
+     existing transform hints instead of clobbering them.
+   • Banner awareness (the spec's --zeus-safe-top job) is
+     already handled natively by ZEUS: the fixed disclaimer
+     banner drives --banner-height, which every header element
+     already positions itself below. No duplicate mechanism.
+   • #section-arabic / #section-turkish are the jump targets
+     for the new Arabic/Turkish pill links (index rails).
+     scroll-margin-top keeps the fixed header from covering the
+     section title after the jump.
+   ============================================================ */
+:root{
+  --zeus-header-shift: 0;   /* 0 when visible; -140% when hidden */
+}
+
+[data-header-hidden="1"]{
+  --zeus-header-shift: -140%;
+}
+
+/* The three header pieces slide up + fade out together.
+   `translate` (not `transform`) so the existing translateZ(0)
+   GPU hint on .zeus-glass keeps working. The logo's existing
+   filter hover transition is preserved inside its own list. */
+.zeus-settings-btn,
+.zeus-navpill{
+  translate: 0 var(--zeus-header-shift);
+  visibility: visible;
+  transition: opacity 0.22s ease, translate 0.24s ease, visibility 0s;
+}
+.zeus-logo-btn{
+  translate: 0 var(--zeus-header-shift);
+  visibility: visible;
+  transition: filter 0.18s ease, opacity 0.22s ease, translate 0.24s ease, visibility 0s;
+}
+
+/* Hidden state: header gone from hit-testing AND tab order
+   (visibility flips only after the fade completes; showing is
+   instant). */
+[data-header-hidden="1"] .zeus-settings-btn,
+[data-header-hidden="1"] .zeus-navpill{
+  opacity: 0;
+  pointer-events: none;
+  visibility: hidden;
+  transition: opacity 0.22s ease, translate 0.24s ease, visibility 0s linear 0.22s;
+}
+[data-header-hidden="1"] .zeus-logo-btn{
+  opacity: 0;
+  pointer-events: none;
+  visibility: hidden;
+  transition: filter 0.18s ease, opacity 0.22s ease, translate 0.24s ease, visibility 0s linear 0.22s;
+}
+
+/* Jump targets: the fixed header must not cover the section
+   title after an Arabic/Turkish jump (banner-aware). */
+#section-arabic,
+#section-turkish{
+  scroll-margin-top: calc(var(--banner-height, 0px) + 72px);
+}
+
+/* The pill grew by the Arabic/Turkish items, so it needs its
+   corner-button clearance (and internal scroll) on slightly
+   wider viewports too. Scoped to 641px+ so the tighter mobile
+   rule below 640px keeps winning; >940px always has room. */
+@media (min-width: 641px) and (max-width: 940px){
+  .zeus-navpill{
+    max-width: calc(100vw - 310px); /* clears 44px gear + ~131px logo pill */
+    overflow-x: auto;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+  .zeus-navpill::-webkit-scrollbar{ display: none; }
+}
+
+/* Reduced motion: hide/show instantly, no slide/fade */
+@media (prefers-reduced-motion: reduce){
+  .zeus-settings-btn,
+  .zeus-logo-btn,
+  .zeus-navpill{
+    transition: none;
+  }
+}
