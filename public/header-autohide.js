@@ -56,9 +56,13 @@
 
   /* Mouse back at the top edge reveals the header even while
      the page is stationary. The zone tracks the real header
-     bottom (banner-aware) with a little slack below it. */
+     bottom (banner-aware) with a little slack below it.
+     The pill is position:fixed (section 33), so it is measured
+     directly; the topbar wrapper is kept as a fallback for any
+     page without the pill. */
   function revealZone() {
-    var bar = document.querySelector('.zeus-topbar');
+    var bar = document.querySelector('.zeus-navpill')
+      || document.querySelector('.zeus-topbar');
     if (bar) {
       var bottom = bar.getBoundingClientRect().bottom;
       if (bottom > 0) return bottom + 28;

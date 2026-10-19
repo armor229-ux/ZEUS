@@ -6066,3 +6066,132 @@ body::after{
     transition: none;
   }
 }
+
+/* ============================================================
+   33. ZEUS PILL ORGANIZATION — fixed center + Genre item
+   ------------------------------------------------------------
+   Final order: Home | Anime | Discover | Library | Genre |
+   Arabic | Turkish | Search (Search last, red icon).
+   Spec-board adaptations (documented, nothing else touched):
+   • `top` uses --banner-height (ZEUS's native safe-top, the
+     fixed disclaimer strip) instead of --zeus-safe-top, so
+     the pill stays below the banner and level with the
+     unchanged corner buttons. --zeus-safe-top does not exist
+     in ZEUS — the banner var already does this job.
+   • max-width uses corner-safe clearances (100vw - 320px /
+     - 226px) instead of the board's 100vw - 140/110px: those
+     numbers assume no corner buttons and would let the pill
+     slide under the pinned logo on narrow viewports. On wide
+     desktops the pill renders at natural width, where both
+     formulas are equivalent — the constraint only engages
+     exactly when the corners need the room.
+   • justify-content: flex-start (not center): with
+     overflow-x: auto, centered flex content makes the
+     left-most items unreachable once the pill scrolls. The
+     pill itself is still perfectly page-centered via
+     left: 50% + translateX(-50%).
+   • The independent `translate` property (header auto-hide,
+     section 32) composes with this transform — both apply.
+   ============================================================ */
+.zeus-navpill{
+  position: fixed;
+  top: calc(var(--banner-height, 0px) + 12px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 3600;
+
+  display: flex;
+  align-items: center;
+  justify-content: flex-start; /* keeps Home reachable when scrolling — see note above */
+  gap: 6px;
+
+  width: max-content;
+  max-width: calc(100vw - 320px); /* never slides under gear/logo */
+  padding: 7px 10px;
+  border-radius: 999px;
+
+  overflow-x: auto;
+  overflow-y: hidden;
+  white-space: nowrap;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.zeus-navpill::-webkit-scrollbar{
+  display: none;
+}
+.zeus-navpill > *{
+  flex: 0 0 auto;
+}
+
+.zeus-nav-item{
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 42px;
+  padding: 0 18px;
+  border-radius: 999px;
+  color: #d8d8dc;
+  font-weight: 600;
+  font-size: 14px;
+  line-height: 1;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background 0.18s ease, color 0.18s ease, opacity 0.18s ease;
+}
+
+.zeus-nav-item:hover{
+  color: #ffffff;
+}
+
+.zeus-nav-item.active{
+  background: #ffffff;
+  color: #111111;
+}
+
+.zeus-nav-search{
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #ff4b4b;
+}
+
+.zeus-search-icon{
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+/* Genre jump target joins the Arabic/Turkish jump targets */
+#section-arabic,
+#section-turkish,
+#section-genres{
+  scroll-margin-top: calc(var(--banner-height, 0px) + 72px);
+}
+
+/* Compact sizing on smaller screens (the board's ≤900px tier) */
+@media (max-width: 900px){
+  .zeus-navpill{
+    gap: 4px;
+    padding: 6px 8px;
+  }
+
+  .zeus-nav-item{
+    height: 40px;
+    padding: 0 14px;
+    font-size: 13px;
+  }
+}
+
+/* Mobile: tighter pill offset (level with the 40px corner
+   buttons) + the tighter corner clearance */
+@media (max-width: 640px){
+  .zeus-navpill{
+    top: calc(var(--banner-height, 0px) + 6px);
+    max-width: calc(100vw - 226px); /* clears 40px gear + ~97px logo pill */
+  }
+
+  .zeus-nav-item{
+    padding: 0 12px;
+    font-size: 13px;
+  }
+}
