@@ -153,8 +153,8 @@ function renderTVDetails(show) {
       <p class="detail-overview">${escapeHtml(show.overview || 'No overview available for this show yet.')}</p>
 
       <div class="detail-actions">
-        <a class="btn btn-primary" href="watch.html?id=${show.id}&type=tv&season=${firstSeasonNumber}&episode=1">
-          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+        <a class="btn btn-primary btn-watchnow" href="watch.html?id=${show.id}&type=tv&season=${firstSeasonNumber}&episode=1">
+          <svg class="btn-watchnow-bolt" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M13 2 4.5 13.5h5.2L8.6 22l8.9-11.8h-5.4L13 2z"/></svg>
           Watch Now
         </a>
         ${typeof createWatchlistDetailButton === 'function' ? createWatchlistDetailButton(show) : ''}

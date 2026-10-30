@@ -33,7 +33,7 @@
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap">
 
   <!-- Styles -->
-  <link rel="stylesheet" href="style.css?v=2.10">
+  <link rel="stylesheet" href="style.css?v=2.17">
   <link rel="stylesheet" href="account.css?v=3.0">
 
   <!-- Smooth menu transitions: arrived via an in-site nav? hide the black loader from first paint -->
@@ -73,13 +73,11 @@
     </div>
   </div>
 
-  <!-- ==================== TOP BAR (centered frosted glass nav pill + settings gear) ==================== -->
+  <!-- ==================== TOP BAR (big logo left + frosted glass nav pill + Login/Settings buttons top-right) ==================== -->
   <div class="zeus-topbar">
-    <a href="settings.html" class="zeus-settings-btn zeus-glass" aria-label="Settings">
-      <svg class="zeus-gear-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <circle cx="12" cy="12" r="3"></circle>
-        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
-      </svg>
+    <!-- Left: BIG ZEUS wordmark logo (fixed top-left corner) -->
+    <a href="index.html" class="zeus-logo-btn zeus-glass" aria-label="ZEUS home">
+      <span class="nav-logo"><img src="logo.svg" alt="ZEUS" class="nav-logo-img zeus-logo-img" decoding="async"></span>
     </a>
 
     <nav class="zeus-navpill zeus-glass" aria-label="Main navigation">
@@ -98,11 +96,23 @@
         Search
       </a>
     </nav>
-    <!-- Right: ZEUS wordmark logo (fixed top-right corner) -->
-    <a href="index.html" class="zeus-logo-btn zeus-glass" aria-label="ZEUS home">
-      <span class="nav-logo"><img src="logo.svg" alt="ZEUS" class="nav-logo-img zeus-logo-img" decoding="async"></span>
-    </a>
 
+    <!-- Right: separate action buttons — Login / Settings (fixed top-right corner) -->
+    <div class="zeus-header-actions">
+      <a href="login.html" class="zeus-action-btn zeus-glass" aria-label="Login">
+        <svg class="zeus-user-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="8" r="3"></circle>
+          <path d="M4 21c1.5-4 5-6 8-6s6.5 2 8 6"></path>
+        </svg>
+        <span>Login</span>
+      </a>
+      <a href="settings.html" class="zeus-action-btn zeus-glass" aria-label="Settings">
+      <svg class="zeus-gear-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="12" r="3"></circle>
+        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+      </svg>
+      </a>
+    </div>
   </div>
 
   <!-- ==================== ACCOUNT PAGE ==================== -->
@@ -270,6 +280,26 @@
   <script src="auth.js?v=3.1"></script>
   <script src="library.js?v=3.0"></script>
   <script src="account.js?v=3.0"></script>
-  <script src="header-autohide.js?v=1.1"></script>
+  <script src="header-autohide.js?v=1.5"></script>
+  <script src="zeus-modals.js?v=1.0"></script>
+  <!-- ZEUS safe-top: feeds --zeus-safe-top from the fixed disclaimer banner (banner-aware header) -->
+  <script>
+  (function(){
+    function updateSafeTop(){
+      const cands = document.querySelectorAll(
+        '.disclaimer-banner, .notice-bar, .site-banner, .disclaimer-bar, [data-site-banner], #top-banner, #notice, #banner'
+      );
+      let h = 0;
+      for (const el of cands){
+        const r = el.getBoundingClientRect();
+        if (r.top <= 0 && r.height > h) h = r.height;
+      }
+      document.documentElement.style.setProperty('--zeus-safe-top', h + 'px');
+    }
+    updateSafeTop();
+    addEventListener('resize', updateSafeTop, {passive:true});
+    new MutationObserver(updateSafeTop).observe(document.body, {childList:true, subtree:true, attributes:true});
+  })();
+  </script>
 </body>
 </html>

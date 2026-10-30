@@ -6195,3 +6195,1667 @@ body::after{
     font-size: 13px;
   }
 }
+
+/* ============================================================
+   34. ZEUS HEADER v5 — BIG LOGO LEFT + CENTERED FROSTED PILL +
+       SETTINGS TOP-RIGHT
+   ------------------------------------------------------------
+   Spec-board CSS, appended at the very end so it wins the
+   cascade. Spec-board adaptations (documented; nothing above
+   is modified and nothing else is touched):
+   • --zeus-safe-top maps to --banner-height (ZEUS's native
+     safe-top: the fixed disclaimer strip sets it via
+     body.banner-visible — 52px desktop / 88px two-line mobile,
+     instantly, no JS needed). The safe-top helper before
+     </body> also measures the same banner live (.disclaimer-
+     banner was added to its candidate list — the board's
+     generic candidates don't match ZEUS's real banner class);
+     both mechanisms converge on the same value.
+   • LOGO SIZING: the board's .zeus-logo-img{width:30px;
+     height:30px} assumes a square icon. ZEUS's logo.svg is a
+     360×84 WORDMARK — a 30×30 box letterboxes it down to
+     ~30px wide ≈ 7px tall, i.e. a SHRINK (forbidden). The
+     wordmark is sized by HEIGHT instead: 30px tall, width auto
+     (~129px) = +25% bigger than the previous 24px. The button
+     wraps it: width max-content, min-width 56px.
+   • CORNER RELEASE: sections 30/31 pin the gear top-LEFT
+     (left:16px) and the logo top-RIGHT (right:16px). The
+     appended `left/right: auto` lines release those old
+     corners so the new ones apply cleanly (otherwise the old
+     offsets over-constrain the fixed boxes).
+   • PILL CENTERING: `justify-content: safe center` follows the
+     board's `center` — perfectly centered whenever the pill
+     fits, start-aligned (fully scrollable, Home reachable) the
+     moment it overflows on narrow screens.
+   • PILL CLEARANCE: max-width uses corner-safe formulas
+     (100vw - 340px / - 310px ≤900px / - 288px ≤640px) instead
+     of the board's -220/-180: those assume a 56px square logo;
+     with the ~150px wordmark pill the nav would slide under
+     the logo around 700-1080px viewports. The constraint only
+     engages exactly when the corners need the room — on wide
+     desktops the pill renders at natural width either way.
+   ============================================================ */
+/* v5.1 MICRO-ADJUSTMENT (board follow-up): pill a touch smaller
+   (gap 6→4, padding 7/10→6/8, items 42/18/14px→40/14/13px) and
+   shifted 12px left (left: calc(50% - 12px)); logo bigger
+   (container 56×44→64×48, wordmark 30→36px tall — the 360×84
+   wordmark is sized by height; a square box would shrink it).
+   Corner-safe max-widths retuned for the bigger wordmark
+   (-420 base / -380 ≤940 / -300 ≤640); ≤640px stays truly
+   centered (no room for the shift there). Settings untouched;
+   nothing outside this section changed. */
+:root{
+  --zeus-safe-top: var(--banner-height, 0px);
+}
+
+.zeus-glass{
+  backdrop-filter: blur(18px) saturate(1.25);
+  -webkit-backdrop-filter: blur(18px) saturate(1.25);
+  background: rgba(20,20,24,0.55);
+  border: 1px solid rgba(255,255,255,0.10);
+  box-shadow: 0 12px 36px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.08);
+  will-change: transform, filter;
+  transform: translateZ(0);
+}
+
+/* LOGO on LEFT, bigger */
+.zeus-logo-btn{
+  position: fixed !important;
+  top: calc(var(--zeus-safe-top) + 12px) !important;
+  left: max(12px, env(safe-area-inset-left)) !important;
+  right: auto;                 /* releases the old top-right pin (section 31) */
+  width: max-content;          /* wordmark pill — wraps the bigger logo */
+  min-width: 64px;             /* v5.1: bigger container (was 56px) */
+  height: 48px;                /* v5.1: taller (was 44px) */
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  z-index: 4000 !important;
+  padding: 0 10px;
+}
+.zeus-logo-img{
+  height: 36px;                /* v5.1: bigger logo (was 30px; +20%) */
+  width: auto;                 /* 360×84 wordmark — sized by height (a 36×36 box would shrink it to ~8px tall) */
+  display: block;
+}
+
+/* SETTINGS on TOP-RIGHT */
+.zeus-settings-btn{
+  position: fixed !important;
+  top: calc(var(--zeus-safe-top) + 12px) !important;
+  right: max(12px, env(safe-area-inset-right)) !important;
+  left: auto;                  /* releases the old top-left pin (section 30) */
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  z-index: 4000 !important;
+  color: #e7e7ea;
+}
+.zeus-gear-icon{
+  width: 18px;
+  height: 18px;
+}
+
+/* CENTER NAV PILL */
+.zeus-navpill{
+  position: fixed;
+  top: calc(var(--zeus-safe-top, 0px) + 12px);
+  left: calc(50% - 12px);      /* v5.1: slightly left (was 50%) */
+  transform: translateX(-50%);
+  z-index: 3600;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  justify-content: safe center; /* centered when it fits; scroll-safe when it overflows */
+  gap: 4px;                    /* v5.1: tighter item spacing (was 6px) */
+
+  width: max-content;
+  max-width: calc(100vw - 420px); /* v5.1: corner-safe for the bigger wordmark + gear (the board's -240 assumes a square logo) */
+  padding: 6px 8px;            /* v5.1: smaller / compact (was 7px 10px) */
+  border-radius: 999px;
+
+  overflow-x: auto;
+  overflow-y: hidden;
+  white-space: nowrap;
+  -webkit-overflow-scrolling: touch;
+}
+.zeus-navpill::-webkit-scrollbar{
+  display: none;
+}
+
+.zeus-nav-item{
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 40px;                /* v5.1: smaller buttons (was 42px) */
+  padding: 0 14px;             /* v5.1: (was 0 18px) */
+  border-radius: 999px;
+  color: #d8d8dc;
+  font-weight: 600;
+  font-size: 13px;             /* v5.1: slightly smaller text (was 14px) */
+  line-height: 1;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background .18s ease, color .18s ease, opacity .18s ease;
+}
+
+.zeus-nav-item:hover{
+  color: #ffffff;
+}
+
+.zeus-nav-item.active{
+  background: #ffffff;
+  color: #111111;
+}
+
+.zeus-nav-search{
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #ff4b4b;
+}
+
+.zeus-search-icon{
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+#section-arabic,
+#section-turkish{
+  scroll-margin-top: calc(var(--zeus-safe-top) + 72px);
+}
+
+@media (max-width: 940px){    /* v5.1: 900→940 — covers the 901-940px band where section 32's old -310 clearance would clip the bigger wordmark */
+  .zeus-logo-btn{
+    min-width: 56px;           /* v5.1: bigger (was 50px) */
+  }
+
+  .zeus-logo-img{
+    height: 30px;              /* v5.1: bigger (was 26px) */
+  }
+
+  .zeus-navpill{
+    max-width: calc(100vw - 380px); /* v5.1: clears the bigger wordmark + the 12px left shift */
+    gap: 4px;
+    padding: 6px 8px;
+  }
+
+  .zeus-nav-item{
+    height: 40px;
+    padding: 0 14px;
+    font-size: 13px;
+  }
+}
+
+@media (max-width: 640px){
+  .zeus-logo-btn{
+    top: calc(var(--zeus-safe-top) + 10px) !important;
+    left: 10px !important;
+    right: auto;
+    min-width: 48px;
+    height: 40px;
+  }
+
+  .zeus-logo-img{
+    height: 26px;              /* v5.1: a touch bigger (was 24px) */
+  }
+
+  .zeus-settings-btn{
+    top: calc(var(--zeus-safe-top) + 10px) !important;
+    right: 10px !important;
+    left: auto;
+    width: 40px;
+    height: 40px;
+  }
+
+  .zeus-navpill{
+    left: 50%;                 /* v5.1: no room for the -12px shift on phones — stays truly centered */
+    max-width: calc(100vw - 300px); /* v5.1: clears the bigger wordmark + 40px gear */
+  }
+
+  .zeus-nav-item{
+    padding: 0 12px;
+    font-size: 13px;
+  }
+}
+
+/* ============================================================
+   35. ZEUS HEADER v5.2 — FINAL FIX: COMPACT ALWAYS-VISIBLE PILL
+   ------------------------------------------------------------
+   Board follow-up, appended at the very end so it wins the
+   cascade. Board CSS verbatim + documented adaptations (nothing
+   above is modified and nothing else is touched):
+   • AUTO-HIDE DISABLED: header-autohide.js is neutered to a
+     documented no-op (its 13 <script> tags stay — no HTML
+     edits — but it no longer listens to scroll/mousemove and
+     never sets data-header-hidden, so the header NEVER hides,
+     slides, or fades on scroll). The [data-header-hidden]
+     blocks below are belt-and-suspenders: even if the
+     attribute were set by anything else, all three header
+     pieces stay fully visible.
+   • HIDDEN-STATE OVERRIDE: the board's block applies
+     `transform: translateX(-50%) !important` to ALL THREE
+     elements — that is the pill's own centering transform, but
+     on the logo/gear (pinned by left/right, not centered) it
+     would shift them left by half their width. Split: the pill
+     keeps the transform; logo/gear get only the visibility
+     restore. Added `translate: 0 !important` to all three —
+     the auto-hide slide (section 32) uses the independent
+     `translate` property, not `transform`, so THIS is the line
+     that actually pins them on screen.
+   • PILL CLEARANCE: the board's flat max-width: calc(100vw -
+     320px) clamps the pill's left edge at 160px whenever it
+     overflows. In the 641-940px band the wordmark pill's right
+     edge is ~163px → 2.6px of overlap. That band uses -340px
+     instead (left edge 170px, clean 7px+ gap, just as
+     compact). ≥941px never clamps (pill renders at natural
+     width); ≤640px carries the smaller 133px wordmark (right
+     edge ~143px) so the board's -320 is already safe there.
+   • JUSTIFY: `safe center` after the board's `center` —
+     centered whenever the pill fits, start-aligned (Home
+     reachable) the moment it overflows on narrow screens.
+   • HOVER: the board's `transition: none` would also kill the
+     logo's hover brightness fade (a hover effect, not
+     auto-hide) — restored below. The gear's :hover is instant
+     color by design; the nav items keep their own transition
+     (declared in this section).
+   ============================================================ */
+
+/* ALWAYS VISIBLE HEADER PILL */
+.zeus-navpill{
+  position: fixed !important;
+  top: calc(var(--zeus-safe-top, 0px) + 10px) !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  z-index: 9999 !important;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  justify-content: safe center;    /* centered when it fits; scroll-safe when it overflows */
+  gap: 2px;                         /* tighter spacing */
+
+  width: max-content !important;
+  max-width: calc(100vw - 320px);   /* keeps it compact */
+  padding: 4px 6px;                 /* smaller pill */
+  border-radius: 999px;
+
+  overflow-x: auto;
+  overflow-y: hidden;
+  white-space: nowrap;
+  -webkit-overflow-scrolling: touch;
+
+  backdrop-filter: blur(18px) saturate(1.25);
+  -webkit-backdrop-filter: blur(18px) saturate(1.25);
+  background: rgba(20,20,24,0.55);
+  border: 1px solid rgba(255,255,255,0.10);
+  box-shadow: 0 12px 36px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.08);
+
+  opacity: 1 !important;
+  visibility: visible !important;
+  pointer-events: auto;
+}
+
+.zeus-navpill::-webkit-scrollbar{
+  display: none;
+}
+
+.zeus-nav-item{
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 34px;                     /* smaller item height */
+  padding: 0 10px;                  /* smaller padding */
+  border-radius: 999px;
+  color: #d8d8dc;
+  font-weight: 600;
+  font-size: 12px;                  /* smaller text */
+  line-height: 1;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background .18s ease, color .18s ease, opacity .18s ease;
+}
+
+.zeus-nav-item:hover{
+  color: #ffffff;
+}
+
+.zeus-nav-item.active{
+  background: #ffffff;
+  color: #111111;
+}
+
+.zeus-nav-search{
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: #ff4b4b;
+}
+
+.zeus-search-icon{
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+
+/* make sure the pill never gets hidden by scroll scripts */
+[data-header-hidden="1"] .zeus-navpill{
+  opacity: 1 !important;
+  visibility: visible !important;
+  pointer-events: auto !important;
+  transform: translateX(-50%) !important; /* the pill's own centering transform */
+  translate: 0 !important;                /* pins it — the auto-hide slide uses `translate`, not `transform` */
+  transition: none !important;            /* restore (if ever needed) is instant, no fade */
+}
+/* logo + gear: same visibility restore, WITHOUT the board's
+   translateX(-50%) (they are corner-pinned by left/right —
+   centering them would shift them half their width off their
+   corners). */
+[data-header-hidden="1"] .zeus-settings-btn,
+[data-header-hidden="1"] .zeus-logo-btn{
+  opacity: 1 !important;
+  visibility: visible !important;
+  pointer-events: auto !important;
+  translate: 0 !important;                /* pins them on screen */
+  transition: none !important;
+}
+
+/* if any old auto-hide code exists, neutralize it */
+.zeus-navpill,
+.zeus-settings-btn,
+.zeus-logo-btn{
+  transition: none;
+}
+
+/* ...but keep the logo's hover brightness fade — that is a
+   hover effect, not auto-hide (gear :hover is instant color by
+   design; nav items keep their own transition above). */
+.zeus-logo-btn{
+  transition: filter .18s ease;
+}
+
+/* 641-940px band: board clearance adaptation — see header
+   note. Keeps the compact pill clear of the 150px wordmark. */
+@media (min-width: 641px) and (max-width: 940px){
+  .zeus-navpill{
+    max-width: calc(100vw - 340px) !important;
+  }
+}
+
+/* keep sections anchored correctly */
+#section-arabic,
+#section-turkish,
+#section-genres{
+  scroll-margin-top: calc(var(--zeus-safe-top, 0px) + 72px);
+}
+
+/* ============================================================
+   36. ZEUS HEADER v5.3 — SEARCH/LOGIN/SETTINGS ACTION BUTTONS +
+       SLIGHTLY-LEFT COMPACT PILL + PREMIUM FROSTED GLASS
+   ------------------------------------------------------------
+   Board follow-up, appended at the very end so it wins the
+   cascade. Board CSS verbatim + documented adaptations (nothing
+   above is modified and nothing else is touched):
+   • HREFS: the board's /search, /login, /settings, /anime…
+     are generic placeholders. ZEUS's real routes are kept
+     (search.html / login.html / settings.html + the existing
+     pill hrefs, byte-identical) — "do not change routes".
+   • GLASS SCOPE: .zeus-glass is ALSO used by settings.html
+     cards. The premium upgrade (blur 18→22, saturate 1.25→1.35,
+     darker 0.62 glass) is scoped to `.zeus-topbar .zeus-glass`
+     (pill + logo + action buttons) so nothing outside the
+     header changes.
+   • --zeus-safe-top: the board's `:root{--zeus-safe-top:0px}`
+     reset is NOT applied — it would clobber the section-34
+     banner mapping and slide the header under the fixed
+     disclaimer banner. The existing mapping
+     (--zeus-safe-top: var(--banner-height, 0px)) + the live
+     safe-top helper (already before </body> on all 13 pages,
+     with .disclaimer-banner in its candidate list) keep the
+     header banner-aware. The board's helper = the one already
+     shipped.
+   • LOGO SIZING: unchanged (section 34 rules stay in force —
+     wordmark sized by height, 36px, 64×48 button). The board's
+     56×44 button + 30×30 square img assumes a square icon;
+     ZEUS's logo.svg is a 360×84 WORDMARK — a 30×30 box
+     letterboxes it to ~30px wide ≈ 7px tall (a forbidden
+     shrink). Logo position/size therefore byte-identical.
+   • PILL CLEARANCE: the pill lost its widest item (Search) but
+     the right corner now carries THREE buttons (~255px with
+     labels) instead of one 44px gear. Corner-safe clamps
+     (right side binds): base calc(100vw - 540px); ≤940
+     calc(100vw - 390px) with icon-only action buttons (spans
+     hidden — the board hides labels only ≤640, but with the
+     ~163px wordmark left + 3 labeled buttons right, a 641-940px
+     viewport would squeeze the pill to ~100px); ≤640
+     calc(100vw - 310px), pill truly centered (no room for the
+     shift on phones — same call as v5.1/v5.2). !important is
+     required to beat section 35's !important pins.
+   • SETTINGS POSITION: the gear keeps its exact corner — the
+     actions container is pinned to the same top/right offsets
+     the gear used (top: safe+12 / right: 12 desktop, safe+10 /
+     right: 10 ≤640) and the gear is the LAST (rightmost)
+     button, 44px tall desktop = pixel-identical anchor.
+   • HOVER/FOCUS: the gear loses .zeus-settings-btn (its old
+     :hover/:focus-visible rules die with the class) —
+     .zeus-action-btn gets the same hover (white + brightness,
+     matching the logo's) and the same focus ring pattern.
+   • ALWAYS VISIBLE (v5.2 promise): the actions join the
+     belt-and-suspenders pin block — even if data-header-hidden
+     were set by anything else, everything stays on screen.
+   • scroll-margin for #section-arabic/#section-turkish/
+     #section-genres is already exactly in effect (section 35,
+     same value) — not duplicated.
+   ============================================================ */
+
+/* PREMIUM FROSTED GLASS — header pieces only (scoped: settings
+   cards also use .zeus-glass and must not change) */
+.zeus-topbar .zeus-glass{
+  backdrop-filter: blur(22px) saturate(1.35);
+  -webkit-backdrop-filter: blur(22px) saturate(1.35);
+  background: rgba(18,18,24,0.62);
+  border: 1px solid rgba(255,255,255,0.12);
+  box-shadow: 0 14px 40px rgba(0,0,0,0.50), inset 0 1px 0 rgba(255,255,255,0.10);
+  will-change: transform, filter;
+  transform: translateZ(0);
+}
+
+/* NAV PILL — smaller, slightly left, more premium */
+.zeus-navpill{
+  left: calc(50% - 28px) !important;   /* slightly left (beats section 35's left:50% !important) */
+  gap: 3px;                            /* tighter spacing */
+  max-width: calc(100vw - 540px) !important; /* corner-safe: wordmark left + 3 labeled buttons right */
+  padding: 4px 6px;                    /* smaller / compact */
+}
+.zeus-navpill::-webkit-scrollbar{
+  display: none;
+}
+
+.zeus-nav-item{
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 34px;                        /* smaller item height */
+  padding: 0 11px;                     /* smaller padding */
+  border-radius: 999px;
+  color: #d8d8dc;
+  font-weight: 600;
+  font-size: 12px;                     /* smaller text */
+  line-height: 1;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background .18s ease, color .18s ease, opacity .18s ease;
+}
+.zeus-nav-item:hover{
+  color: #ffffff;
+}
+.zeus-nav-item.active{
+  background: #ffffff;
+  color: #111111;
+}
+
+/* RIGHT ACTION BUTTONS — Search / Login / Settings.
+   Pinned to the gear's exact old corner (top-right); the gear
+   stays the rightmost button, so its position is unchanged. */
+.zeus-header-actions{
+  position: fixed;
+  top: calc(var(--zeus-safe-top, 0px) + 12px);
+  right: max(12px, env(safe-area-inset-right));
+  z-index: 4000;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.zeus-action-btn{
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 44px;
+  padding: 0 14px;
+  border-radius: 999px;
+  color: #f1f1f1;
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  transition: color .18s ease, filter .18s ease;
+}
+
+.zeus-action-btn span{
+  line-height: 1;
+}
+
+.zeus-action-btn:hover{
+  color: #ffffff;
+  filter: brightness(1.08);
+}
+
+.zeus-action-btn:focus-visible{
+  outline: 2px solid rgba(255, 255, 255, 0.65);
+  outline-offset: 2px;
+}
+
+.zeus-search-icon,
+.zeus-user-icon,
+.zeus-gear-icon{
+  width: 17px;
+  height: 17px;
+  flex-shrink: 0;
+}
+
+.zeus-action-btn[href="search.html"]{   /* board's [href="/search"] adapted to ZEUS's real route */
+  color: #ff4b4b;
+}
+.zeus-action-btn[href="search.html"]:hover{
+  color: #ff6b6b;
+}
+
+/* ALWAYS VISIBLE (v5.2 promise extended to the new buttons) */
+[data-header-hidden="1"] .zeus-header-actions,
+[data-header-hidden="1"] .zeus-action-btn{
+  opacity: 1 !important;
+  visibility: visible !important;
+  pointer-events: auto !important;
+  translate: 0 !important;
+  transition: none !important;
+}
+
+/* ≤940px: icon-only action buttons (frees the right corner for
+   the pill — see header note) + compact pill shifted 16px */
+@media (max-width: 940px){
+  .zeus-action-btn span{
+    display: none; /* keep buttons compact */
+  }
+  .zeus-action-btn{
+    height: 40px;
+    padding: 0 11px;
+    font-size: 12px;
+  }
+
+  .zeus-navpill{
+    left: calc(50% - 16px) !important;  /* slightly left (tablet) */
+    max-width: calc(100vw - 390px) !important; /* clears wordmark + icon buttons */
+    gap: 2px;
+  }
+  .zeus-nav-item{
+    height: 32px;
+    padding: 0 9px;
+    font-size: 12px;
+  }
+}
+
+/* ≤640px: tighter offsets (gear's exact mobile corner), truly
+   centered pill (no room for the shift on phones) */
+@media (max-width: 640px){
+  .zeus-header-actions{
+    top: calc(var(--zeus-safe-top, 0px) + 10px);
+    right: 10px;
+  }
+  .zeus-action-btn{
+    height: 38px;
+    padding: 0 10px;
+  }
+
+  .zeus-navpill{
+    left: 50% !important;              /* no room for the shift — stays truly centered */
+    max-width: calc(100vw - 310px) !important;
+  }
+  .zeus-nav-item{
+    height: 30px;
+    padding: 0 8px;
+    font-size: 11px;
+  }
+}
+
+/* ============================================================
+   37. ZEUS GOLD UPDATE — CONTINUE WATCHING + GOLD WATCH NOW +
+       GLIDING PILL + GOLDEN SCROLL AMBIENCE
+   ------------------------------------------------------------
+   Board update (4 parts, appended at the very end so it wins
+   the cascade; nothing above is modified):
+   37A  Continue Watching row — same .content-section /
+        .movies-row / .movie-card system as every other row,
+        plus an always-visible caption, a gold resume progress
+        bar on the artwork and a small remove button. The
+        section itself is `hidden` in the HTML and only
+        revealed by continue-watching.js when saved progress
+        exists (no empty row, ever).
+   37B  Watch Now button — the ZEUS logo's gold identity
+        (#FFF200 → #FFD700 → #FFB800), dark text, a lightning
+        bolt icon with a soft electric glow and a single
+        shine sweep on hover. Sizes/layout untouched: same
+        .btn geometry, only colors + icon + glow.
+   37C  Nav pill gliding thumb — a white indicator pill that
+        GLIDES between the nav items (transform/width only,
+        200ms premium easing ≈ the requested 180–220ms). The
+        thumb is created by header-autohide.js which adds
+        .zeus-navpill--glide to the pill; without JS the
+        items keep their classic .active background, so
+        nothing regresses.
+   37D  Golden scroll ambience — a fixed .zeus-gold-veil layer
+        (also created by header-autohide.js) that fades in
+        when body[data-scrolled="1"] (set past ~48px of
+        scroll, rAF-throttled). Opacity-only transition =
+        compositor work, zero layout jank. Dark base stays;
+        alphas are low so text contrast is untouched.
+   ============================================================ */
+
+/* ---------- 37A. CONTINUE WATCHING --------------------------------- */
+
+/* CW cards keep the pure-artwork look, but the caption is
+   ALWAYS visible (progress must be readable without hover) */
+.cw-card .card-caption-title,
+.cw-card .card-caption-meta{
+  opacity: 1;
+  transform: none;
+}
+/* gold percentage inside the meta line */
+.cw-meta-pct{
+  color: rgba(255, 214, 10, 0.95);
+  font-weight: 700;
+}
+.cw-meta-ep{
+  color: var(--text-secondary);
+}
+
+/* Resume progress bar — thin gold strip along the bottom of
+   the artwork, clipped by the card's rounded corners */
+.cw-progress{
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 2;
+  height: 5px;
+  background: rgba(0, 0, 0, 0.55);
+}
+.cw-progress-fill{
+  height: 100%;
+  width: 0;
+  border-radius: 0 3px 3px 0;
+  background: linear-gradient(90deg, #F5B800, #FFD700 55%, #FFF200);
+  box-shadow: 0 0 10px rgba(255, 210, 0, 0.5);
+  transition: width 0.4s ease;
+}
+
+/* Remove button — small frosted circle, top-left of the
+   artwork (the TOP 10 rank spot; never collides with the
+   watchlist heart / language badge on the right) */
+.cw-remove{
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 4;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(15, 15, 20, 0.62);
+  color: rgba(255, 255, 255, 0.85);
+  cursor: pointer;
+  opacity: 0;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transition: opacity 0.2s ease, background 0.18s ease,
+              color 0.18s ease, transform 0.2s var(--ease);
+}
+.cw-card:hover .cw-remove,
+.cw-remove:focus-visible{
+  opacity: 1;
+}
+.cw-remove:hover{
+  background: rgba(211, 47, 47, 0.88);
+  border-color: rgba(255, 255, 255, 0.22);
+  color: #ffffff;
+  transform: scale(1.08);
+}
+.cw-remove:focus-visible{
+  outline: 2px solid rgba(255, 255, 255, 0.65);
+  outline-offset: 2px;
+}
+.cw-remove svg{
+  width: 13px;
+  height: 13px;
+  fill: currentColor;
+  pointer-events: none;
+}
+/* touch devices have no hover — keep the control reachable */
+@media (hover: none){
+  .cw-remove{
+    opacity: 1;
+  }
+}
+
+/* ---------- 37B. GOLD WATCH NOW ------------------------------------ */
+
+/* Same geometry as .btn-primary — only the paint changes.
+   Gold ladder mirrors logo.svg: #FFF200 / #FFD700 / #FFB800 */
+.btn-watchnow{
+  position: relative;
+  overflow: hidden;
+  color: #1a1200;
+  background: linear-gradient(180deg, #FFE45C 0%, #FFD700 46%, #F0B400 100%);
+  box-shadow: 0 6px 22px rgba(255, 202, 0, 0.30),
+              inset 0 1px 0 rgba(255, 255, 255, 0.55),
+              inset 0 -1px 0 rgba(150, 100, 0, 0.18);
+}
+/* the bolt carries a soft electric halo */
+.btn-watchnow .btn-watchnow-bolt{
+  position: relative;
+  z-index: 1;
+  filter: drop-shadow(0 0 5px rgba(255, 190, 0, 0.7));
+}
+.btn-watchnow:hover{
+  color: #140d00;
+  background: linear-gradient(180deg, #FFF179 0%, #FFDD33 46%, #FFC400 100%);
+  box-shadow: 0 8px 30px rgba(255, 205, 0, 0.48),
+              inset 0 1px 0 rgba(255, 255, 255, 0.6),
+              inset 0 -1px 0 rgba(150, 100, 0, 0.18);
+  transform: translateY(-1px);
+}
+/* single shine sweep per hover-in (hover-only, per spec) */
+.btn-watchnow::after{
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -70%;
+  width: 45%;
+  background: linear-gradient(105deg, transparent, rgba(255, 255, 255, 0.6), transparent);
+  transform: skewX(-18deg);
+  opacity: 0;
+  pointer-events: none;
+}
+.btn-watchnow:hover::after{
+  animation: watchnowShine 0.9s ease-out 1;
+}
+@keyframes watchnowShine{
+  0%   { left: -70%; opacity: 0; }
+  15%  { opacity: 1; }
+  100% { left: 125%; opacity: 0; }
+}
+/* tiny energetic bolt zap on hover — quick, then calm */
+.btn-watchnow:hover .btn-watchnow-bolt{
+  animation: watchnowBolt 1s ease-in-out 1;
+}
+@keyframes watchnowBolt{
+  0%, 100%{
+    transform: none;
+    filter: drop-shadow(0 0 5px rgba(255, 190, 0, 0.7));
+  }
+  28%{
+    transform: scale(1.14) rotate(-5deg);
+    filter: drop-shadow(0 0 10px rgba(255, 224, 0, 0.95));
+  }
+  55%{
+    transform: scale(1.05) rotate(2deg);
+    filter: drop-shadow(0 0 7px rgba(255, 210, 0, 0.85));
+  }
+}
+
+/* ---------- 37C. GLIDING NAV PILL ---------------------------------- */
+
+/* items float above the thumb (thumb paints beneath the text) */
+.zeus-navpill--glide .zeus-nav-item{
+  position: relative;
+  z-index: 1;
+  /* color + background stay transitioned (already .18s in
+     sections 35/36) so the label cross-fades as it glides */
+}
+/* with the thumb present the item itself must not paint a
+   second background — the thumb IS the active background */
+.zeus-navpill--glide .zeus-nav-item.active{
+  background: transparent;
+}
+.zeus-navpill-thumb{
+  position: absolute;
+  top: 4px;               /* = the pill's 4px vertical padding */
+  bottom: 4px;
+  left: 0;
+  z-index: 0;
+  width: 40px;
+  border-radius: 999px;
+  background: #ffffff;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.38),
+              0 0 0 0.5px rgba(0, 0, 0, 0.05);
+  opacity: 0;             /* header-autohide.js reveals it inline */
+  transform: translateX(6px);
+  pointer-events: none;
+  will-change: transform;
+  transition: transform 200ms cubic-bezier(0.32, 0.72, 0.16, 1),
+              width 200ms cubic-bezier(0.32, 0.72, 0.16, 1),
+              opacity 180ms ease;
+}
+
+/* ---------- 37D. GOLDEN SCROLL AMBIENCE ----------------------------- */
+
+/* Fixed warm-gold layer, faded in on scroll (opacity only —
+   pure compositor work). Sits with the other background
+   layers (z-index -1, under all content & vignette grain).
+   Alphas stay low: the dark premium base remains dominant
+   and text contrast is untouched. */
+.zeus-gold-veil{
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 700ms ease;
+  will-change: opacity;
+  background:
+    radial-gradient(120% 85% at 50% -12%, rgba(255, 200, 40, 0.14), transparent 62%),
+    radial-gradient(85% 65% at 6% 30%, rgba(255, 170, 0, 0.08), transparent 58%),
+    radial-gradient(75% 60% at 95% 82%, rgba(255, 196, 23, 0.07), transparent 55%),
+    radial-gradient(140% 110% at 50% 120%, rgba(120, 80, 0, 0.10), transparent 60%);
+}
+body[data-scrolled="1"] .zeus-gold-veil{
+  opacity: 1;
+}
+
+/* ---------- reduced motion: everything stays instant/calm ----------- */
+@media (prefers-reduced-motion: reduce){
+  .btn-watchnow::after,
+  .btn-watchnow:hover::after{
+    animation: none;
+  }
+  .btn-watchnow:hover .btn-watchnow-bolt{
+    animation: none;
+  }
+  .zeus-navpill-thumb{
+    transition: opacity 0.15s ease;
+  }
+  .zeus-gold-veil{
+    transition: none;
+  }
+}
+
+/* ============================================================
+   38. ZEUS SEARCH-PILL FIX — SEARCH BACK INSIDE THE PILL (GOLD)
+       + CLEARLY GOLDEN SCROLL BACKGROUND
+   ------------------------------------------------------------
+   Board follow-up (appended at the very end so it wins the
+   cascade; nothing above is modified):
+   38A  Search rejoins the nav pill as its LAST item
+        (Home|Anime|Discover|Library|Genre|Arabic|Turkish|Search),
+        painted in the logo's gold — #ffd84a text + icon with a
+        soft warm glow, brighter #ffe36a on hover. The separate
+        red Search action button outside the pill is gone from
+        the HTML; Login/Settings keep their exact corner. The
+        item NEVER takes the active state or the white thumb
+        (header-autohide.js v1.4 guard + the CSS belt-and-
+        suspenders below) — it navigates to search.html.
+   38B  Pill rebalance for 8 items: the right corner lost the
+        ~100px Search button, the pill gained the ~80px Search
+        item — the ≥941px corner-safe clamp eases
+        540px → 460px and the board's compact values apply
+        (gap 2px, item padding 0 10px). Scoped INSIDE a
+        min-width:941px media so the ≤940/≤640 tiers of section
+        36 stay byte-identical (their clamps were tuned against
+        the wordmark clearance and keep winning below 941px).
+   38C  Golden scroll ambience, STRENGTHENED: section 37D's
+        deliberately-faint veil (max alpha 0.14) reads as "still
+        dark" — the board asked for a clearly visible flagship
+        gold. The veil's gradients are overridden here with
+        strong warm golds (0.35 / 0.28 / 0.18 + a wide amber
+        wash), and while scrolled the cool purple/blue base
+        (.zeus-bg-blur) recedes to 55% so the gold clearly
+        dominates. Both moves are OPACITY-ONLY transitions
+        (700ms, compositor, zero layout/filter jank) and fully
+        reversible — scrolling back to the top restores the
+        dark base smoothly. The dark base itself is never
+        removed, so readability stays high.
+   ============================================================ */
+
+/* ---------- 38A. GOLD SEARCH INSIDE THE PILL ------------------------ */
+
+/* the board's recommended values; #ffd84a = the logo's warm gold */
+.zeus-nav-search{
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: #ffd84a;
+  text-shadow: 0 0 10px rgba(255, 216, 74, 0.25);   /* subtle glow like the logo */
+}
+.zeus-nav-search .zeus-search-icon{
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  color: #ffd84a;
+  filter: drop-shadow(0 0 6px rgba(255, 216, 74, 0.35));
+}
+.zeus-nav-search:hover{
+  color: #ffe36a;                                    /* brighter gold, still elegant */
+  text-shadow: 0 0 14px rgba(255, 216, 74, 0.40);
+}
+.zeus-nav-search:hover .zeus-search-icon{
+  filter: drop-shadow(0 0 8px rgba(255, 227, 106, 0.50));
+}
+.zeus-nav-search:focus-visible{
+  outline: 2px solid rgba(255, 216, 74, 0.55);
+  outline-offset: 2px;
+  border-radius: 999px;
+}
+/* belt-and-suspenders: even if anything ever set .active on the
+   gold Search, it must NOT flip to the white pill look (gold
+   text on the white thumb would be unreadable). It stays gold. */
+.zeus-nav-item.zeus-nav-search.active{
+  background: transparent;
+  color: #ffd84a;
+}
+.zeus-navpill--glide .zeus-nav-item.zeus-nav-search.active{
+  background: transparent;
+}
+
+/* ---------- 38B. PILL REBALANCE FOR 8 ITEMS (≥941px only) ----------- */
+
+@media (min-width: 941px){
+  .zeus-navpill{
+    gap: 2px;                                       /* board's compact spacing */
+    max-width: calc(100vw - 460px) !important;      /* corner now: wordmark + Login/Settings only */
+  }
+  .zeus-nav-item{
+    padding: 0 10px;                                /* board's compact padding */
+  }
+}
+
+/* ---------- 38C. CLEARLY GOLDEN SCROLL BACKGROUND ------------------- */
+
+/* Stronger veil gradients (override 37D's faint wash — same
+   selector later in the cascade wins). Warm gold ladder
+   matching the logo glow: #FFE05A / #FFBA3C / #FF9628. */
+.zeus-gold-veil{
+  background:
+    radial-gradient(1200px 750px at 15% 12%, rgba(255, 224, 90, 0.35), transparent 52%),
+    radial-gradient(950px 700px at 82% 14%, rgba(255, 186, 60, 0.28), transparent 50%),
+    radial-gradient(1000px 800px at 50% 95%, rgba(255, 150, 40, 0.18), transparent 58%),
+    radial-gradient(1600px 1100px at 50% 38%, rgba(200, 140, 20, 0.10), transparent 62%);
+}
+
+/* while scrolled, the cool purple/blue base recedes so the gold
+   clearly dominates — opacity-only, smooth both ways */
+.zeus-bg-blur{
+  transition: opacity 700ms ease;
+}
+body[data-scrolled="1"] .zeus-bg-blur{
+  opacity: 0.55;
+}
+
+/* reduced motion: the ambience change stays instant (no fade) */
+@media (prefers-reduced-motion: reduce){
+  .zeus-bg-blur{
+    transition: none;
+  }
+}
+
+/* ============================================================
+   39. ZEUS BACKGROUND FIX — CLEARLY GOLDEN SCROLL STATE
+       (GRADIENT + BLUR)
+   ------------------------------------------------------------
+   Board follow-up (appended at the very end so it wins the
+   cascade; nothing above is modified — this section supersedes
+   §38C's veil approach):
+   39A  BASE — .zeus-bg-blur's cool purple/blue gradients are
+        repainted with the board's warm gold-tinted dark base
+        (0.16 / 0.10 / 0.08 golds over #07070a→#050507), blur
+        34px / saturate 1.35 / contrast 1.05, inset -90px,
+        220% drift size, 24s zeusBgShift. The resting page stays
+        dark premium — just warmly lit instead of coolly lit.
+   39B  SCROLLED — the layer itself transforms into the board's
+        STRONG gold gradient (0.42 / 0.30 / 0.20 / 0.10 golds
+        over a warm dark base) with blur 40px / saturate 1.65 /
+        contrast 1.08 / scale 1.12. Supersedes §38C's opacity
+        .55 dim (opacity returns to 1 — this layer now CARRIES
+        the gold, it is not hidden behind a veil).
+   39C  EXTRA GLOW — body::before screen-blend gold layer
+        (board's ::before spec) ADAPTED to fade smoothly: the
+        board's rule pops the pseudo-element into existence on
+        scroll (no transition is possible on a pseudo that
+        doesn't exist yet); here body::before ALWAYS exists at
+        opacity 0 and fades to the board's .75 over .35s — same
+        endpoint, smooth both ways. body::before was unused in
+        ZEUS (verified) so nothing is displaced.
+   39D  HERO OVERLAY — the board's .zeus-hero-overlay doesn't
+        exist in ZEUS; the equivalent is .hero-overlay (injected
+        by index.js inside the homepage hero slides). Only the
+        board's OPTIONAL scrolled softening is mapped, done via
+        animatable opacity (0.8 ≈ the board's 0.50/0.62 ratio)
+        instead of a gradient swap so the change is a smooth
+        350ms fade; the hero's tuned 6-stop gradient is NOT
+        replaced (base look untouched).
+   39E  VEIL RETIRED — §37D/§38C's .zeus-gold-veil is
+        superseded: stacking it on 39B+39C would overshoot the
+        board's "not too bright" rule (≈0.67 stacked gold at the
+        top-left). header-autohide.js v1.5 no longer creates the
+        element; this display:none guards any stale-cached JS.
+   39F  Reduced motion — re-asserted AFTER 39A/39B/39C so the
+        later cascade cannot restart the animation/transition.
+
+   Board adaptations (documented; nothing else is touched):
+   • :root{--zeus-safe-top:0px} NOT applied — it would clobber
+     the banner-aware header mapping (§34/§36 precedent: the
+     disclaimer banner drives --zeus-safe-top; resetting it
+     slides the header under the banner = a forbidden header
+     change).
+   • body{position:relative; background:#050507} NOT applied —
+     body already carries --bg:#000000 which propagates to the
+     canvas (html has no background), and both fixed layers
+     above it (#ambient-bg, .zeus-bg-blur) are fully opaque, so
+     the board's body rule is a visual no-op here. Skipped to
+     keep the diff minimal.
+   • body::after grain NOT re-declared — §30 already ships the
+     byte-identical grain rule.
+   • @keyframes zeusBgShift NOT re-declared — §30 already ships
+     the identical keyframes; only the duration changes (22s→24s
+     via 39A's animation shorthand). The keyframes' 4-position
+     list cycles over 39B's 5 layers (5th ← 1st) — harmless.
+   • The board's inline <script> is NOT injected into the 13
+     pages — its function (toggle data-scrolled past 12px,
+     rAF-throttled, resize-aware) is adapted into the existing
+     shared header-autohide.js (v1.5) that all 13 pages already
+     load. The board's MutationObserver variant is deliberately
+     not copied: with their verbatim code it infinite-loops
+     (setAttribute fires attribute mutation records even for
+     identical values → observer → setAttribute → …), and ZEUS
+     is an MPA — there is no SPA navigation to observe. The
+     change-guarded writer makes attribute thrash impossible.
+   ============================================================ */
+
+/* ---------- 39A. BASE — warm premium dark (supersedes §30 base) --- */
+
+.zeus-bg-blur{
+  position: fixed;
+  inset: -90px;
+  z-index: -2;
+  pointer-events: none;
+
+  background:
+    radial-gradient(1200px 750px at 18% 14%, rgba(255, 214, 76, 0.16), transparent 54%),
+    radial-gradient(1000px 700px at 82% 12%, rgba(255, 176, 44, 0.10), transparent 52%),
+    radial-gradient(900px 700px at 50% 100%, rgba(255, 120, 24, 0.08), transparent 60%),
+    linear-gradient(180deg, #07070a 0%, #0a0a0f 48%, #050507 100%);
+
+  background-size: 220% 220%;
+  filter: blur(34px) saturate(1.35) contrast(1.05);
+  transform: scale(1.1);
+  opacity: 1;
+  transition: opacity .35s ease, filter .35s ease, background .35s ease;
+  animation: zeusBgShift 24s ease-in-out infinite;
+}
+
+/* ---------- 39B. SCROLLED — strong gold (supersedes §38C dim) ----- */
+
+body[data-scrolled="1"] .zeus-bg-blur{
+  background:
+    radial-gradient(1300px 800px at 16% 12%, rgba(255, 232, 110, 0.42), transparent 50%),
+    radial-gradient(1100px 760px at 84% 10%, rgba(255, 191, 58, 0.30), transparent 48%),
+    radial-gradient(1000px 820px at 48% 96%, rgba(255, 154, 40, 0.20), transparent 58%),
+    radial-gradient(700px 500px at 50% 50%, rgba(255, 215, 70, 0.10), transparent 70%),
+    linear-gradient(180deg, #0a0706 0%, #100b08 48%, #070608 100%);
+
+  filter: blur(40px) saturate(1.65) contrast(1.08);
+  opacity: 1;
+  transform: scale(1.12);
+}
+
+/* ---------- 39C. EXTRA GOLD GLOW — smooth screen-blend fade ------- */
+
+body::before{
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(900px 500px at 18% 18%, rgba(255, 225, 90, 0.18), transparent 58%),
+    radial-gradient(850px 520px at 80% 14%, rgba(255, 190, 50, 0.14), transparent 55%),
+    radial-gradient(900px 700px at 52% 92%, rgba(255, 145, 35, 0.10), transparent 62%);
+  mix-blend-mode: screen;
+  opacity: 0;                 /* board's ::before adapted: always */
+  transition: opacity .35s ease;   /* present, fades instead of popping */
+}
+body[data-scrolled="1"]::before{
+  opacity: .75;
+}
+
+/* ---------- 39D. HERO OVERLAY — soften slightly on scroll --------- */
+
+.hero-overlay{
+  transition: opacity .35s ease;
+}
+body[data-scrolled="1"] .hero-overlay{
+  opacity: .8;                /* ≈ the board's 0.50/0.62 softening ratio */
+}
+
+/* ---------- 39E. VEIL RETIRED (superseded by 39A/39B/39C) --------- */
+
+.zeus-gold-veil{
+  display: none !important;
+}
+
+/* ---------- 39F. reduced motion — re-asserted after 39A-39C ------- */
+
+@media (prefers-reduced-motion: reduce){
+  .zeus-bg-blur{
+    animation: none;
+    transition: none;
+  }
+  body::before{
+    transition: none;
+  }
+}
+
+/* ============================================================
+   40. ZEUS UPDATE — GOLD ACTIVE PILL + PREMIUM PILL +
+       LOGIN MODAL + SETTINGS MODAL
+   ------------------------------------------------------------
+   Board follow-up (appended at the very end so it wins the
+   cascade; nothing above is modified):
+   40A  GOLD ACTIVE STATE — the active nav item and the gliding
+        thumb (.zeus-navpill-thumb) repaint from white to the
+        logo's gold ladder (linear #ffe26a → #ffd13e) with the
+        board's glow shadows. Active text stays DARK #111 for
+        contrast on the gold. The thumb's glide speeds up to the
+        board's .18s (was 200ms) — still transform/width only;
+        the board's `left` variant would trigger layout every
+        frame, translateX is the compliant equivalent (§37C
+        precedent). The gold Search item still never takes the
+        active state (§38A guard, JS guard in header-autohide.js).
+   40B  PREMIUM FROSTED PILL — header glass blur 22→24px,
+        saturate 1.35→1.45, dark gradient glass, cleaner 16px/42px
+        shadow, a subtle top shine layer on the pill (::before),
+        gap 2px everywhere, compact 0 10px items and the full
+        transition set on the items. NOT taken from the board's
+        block, on purpose (documented adaptations, §36 precedent):
+        position/top/left/transform/z-index — the pill's
+        banner-aware mapping + slightly-left offset must not move;
+        max-width calc(100vw - 320px) — the tuned tier clamps
+        (460/390/310 + the 641-940 wordmark clearance) are
+        corner-safe; 320px would collide at 641-940px.
+   40C  MODAL SYSTEM — premium glass dialog cards (DOM built by
+        zeus-modals.js). Login and Settings open IN PLACE: any
+        in-site link resolving to login.html / settings.html is
+        intercepted and opens the matching card instead. Centered,
+        backdrop blur, 220ms in/out, ESC / outside-click / ×,
+        focus trap, body scroll lock while open.
+   40D  LOGIN FORM — modal-scoped fields, gold focus rings, a
+        gold Sign In button (same ladder as the active pill),
+        link row (Forgot password / Create account), inline
+        message states and the signed-in state.
+        The SETTINGS modal reuses the real .settings-card /
+        .zeus-switch / .zeus-segment system — zeus-modals.js
+        injects settings.css on pages that don't already load
+        it, so the card looks byte-identical to the settings
+        page without duplicating 600 lines here.
+   40E  Reduced motion — re-asserted after 40A/40C.
+   ============================================================ */
+
+/* ---------- 40A. GOLD ACTIVE PILL ------------------------------------ */
+
+/* fallback active state (no-JS, or before the glide boots):
+   the white pill becomes the logo's gold — text stays dark */
+.zeus-nav-item.active{
+  background: linear-gradient(180deg, #ffe26a 0%, #ffd13e 100%);
+  color: #111111;
+  box-shadow:
+    0 6px 18px rgba(255, 210, 60, 0.28),
+    0 0 18px rgba(255, 220, 90, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+
+/* glide mode: the item paints nothing (the thumb IS the active
+   background, §37C) — keeps the dark text for gold contrast */
+.zeus-navpill--glide .zeus-nav-item.active{
+  background: transparent;
+  box-shadow: none;
+}
+/* the gold Search item never takes the active look (§38A guard);
+   with a gold thumb it must also never inherit the glow ring */
+.zeus-nav-item.zeus-nav-search.active{
+  box-shadow: none;
+}
+
+/* the gliding indicator itself — same gold ladder + glow */
+.zeus-navpill-thumb{
+  background: linear-gradient(180deg, #ffe26a 0%, #ffd13e 100%);
+  box-shadow:
+    0 6px 18px rgba(255, 210, 60, 0.28),
+    0 0 18px rgba(255, 220, 90, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.35);
+  transition: transform .18s ease, width .18s ease, opacity .18s ease;
+}
+
+/* ---------- 40B. PREMIUM FROSTED PILL -------------------------------- */
+
+/* header glass family (pill + logo + Login/Settings buttons),
+   scoped to the topbar so settings cards etc. never change */
+.zeus-topbar .zeus-glass{
+  backdrop-filter: blur(24px) saturate(1.45);
+  -webkit-backdrop-filter: blur(24px) saturate(1.45);
+  background: linear-gradient(180deg, rgba(24, 24, 30, 0.72), rgba(16, 16, 20, 0.62));
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow:
+    0 16px 42px rgba(0, 0, 0, 0.48),
+    inset 0 1px 0 rgba(255, 255, 255, 0.10);
+}
+
+/* compact pill — gap 2px at every tier, board padding */
+.zeus-navpill{
+  gap: 2px;
+  padding: 4px 6px;
+}
+
+/* subtle top shine layer across the pill */
+.zeus-navpill::before{
+  content: "";
+  position: absolute;
+  inset: 1px;
+  border-radius: inherit;
+  pointer-events: none;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.10), transparent 35%);
+  opacity: .35;
+}
+
+/* compact items + the full transition set (glow fades in/out) */
+.zeus-nav-item{
+  padding: 0 10px;
+  transition:
+    background .18s ease,
+    color .18s ease,
+    transform .18s ease,
+    box-shadow .18s ease,
+    opacity .18s ease;
+}
+
+/* ---------- 40C. MODAL SYSTEM ---------------------------------------- */
+
+/* backdrop — covers everything (z 10000 > header/pill), blurred */
+.zeus-modal-backdrop{
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: none;                     /* opened via .zeus-modal-open */
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(4, 4, 8, 0.55);
+  backdrop-filter: blur(7px);
+  -webkit-backdrop-filter: blur(7px);
+}
+.zeus-modal-backdrop.zeus-modal-open{
+  display: flex;
+  animation: zmBackdropIn .2s ease;
+}
+.zeus-modal-backdrop.zeus-modal-closing{
+  animation: zmBackdropOut .2s ease forwards;
+}
+
+/* the card — deep frosted glass, rounded, soft-lit top edge */
+.zeus-modal{
+  position: relative;
+  width: min(560px, 100%);
+  max-height: min(86vh, 860px);
+  overflow-y: auto;
+  border-radius: 22px;
+  padding: 26px 26px 22px;
+  background: linear-gradient(180deg, rgba(26, 26, 34, 0.90), rgba(14, 14, 20, 0.88));
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  box-shadow:
+    0 30px 80px rgba(0, 0, 0, 0.60),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(28px) saturate(1.4);
+  -webkit-backdrop-filter: blur(28px) saturate(1.4);
+  animation: zmIn .22s cubic-bezier(0.32, 0.72, 0.16, 1);
+}
+.zeus-modal.zeus-modal-settings{
+  width: min(920px, 100%);
+}
+.zeus-modal-backdrop.zeus-modal-closing .zeus-modal{
+  animation: zmOut .2s ease forwards;
+}
+
+/* slim custom scrollbar inside the card */
+.zeus-modal{
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.18) transparent;
+}
+.zeus-modal::-webkit-scrollbar{ width: 10px; }
+.zeus-modal::-webkit-scrollbar-track{ background: transparent; }
+.zeus-modal::-webkit-scrollbar-thumb{
+  background: rgba(255, 255, 255, 0.14);
+  border-radius: 999px;
+  border: 3px solid transparent;
+  background-clip: padding-box;
+}
+.zeus-modal::-webkit-scrollbar-thumb:hover{
+  background: rgba(255, 255, 255, 0.26);
+  background-clip: padding-box;
+}
+
+@keyframes zmBackdropIn{ from{ opacity: 0; } }
+@keyframes zmBackdropOut{ to{ opacity: 0; } }
+@keyframes zmIn{ from{ opacity: 0; transform: translateY(16px) scale(0.96); } }
+@keyframes zmOut{ to{ opacity: 0; transform: translateY(14px) scale(0.97); } }
+
+/* body scroll lock while a modal is open */
+body.zeus-modal-lock{ overflow: hidden; }
+
+/* close button — frosted circle, rotates on hover */
+.zeus-modal-close{
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  z-index: 2;
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.06);
+  color: #d8d8dc;
+  cursor: pointer;
+  font-size: 18px;
+  line-height: 1;
+  transition: background .18s ease, color .18s ease, transform .18s ease;
+}
+.zeus-modal-close:hover{
+  background: rgba(255, 255, 255, 0.14);
+  color: #ffffff;
+  transform: rotate(90deg);
+}
+.zeus-modal-close:focus-visible{
+  outline: 2px solid rgba(255, 216, 74, 0.65);
+  outline-offset: 2px;
+}
+
+/* modal heading block */
+.zeus-modal-title{
+  margin: 0 0 4px;
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+}
+.zeus-modal-sub{
+  margin: 0 0 18px;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--text-secondary);
+}
+
+/* phones — tighter card, tighter backdrop */
+@media (max-width: 640px){
+  .zeus-modal-backdrop{ padding: 12px; }
+  .zeus-modal{ padding: 20px 18px 16px; border-radius: 20px; }
+  .zeus-modal-title{ font-size: 20px; }
+}
+
+/* ---------- 40D. LOGIN FORM (modal-scoped) --------------------------- */
+
+.zeus-login-form{
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.zeus-field{
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+.zeus-field-label{
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--text-secondary);
+}
+.zeus-input{
+  height: 46px;
+  padding: 0 16px;
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 600;
+  outline: none;
+  transition: border-color .18s ease, box-shadow .18s ease, background .18s ease;
+}
+.zeus-input::placeholder{ color: rgba(255, 255, 255, 0.35); }
+.zeus-input:focus{
+  border-color: rgba(255, 210, 60, 0.55);
+  box-shadow: 0 0 0 3px rgba(255, 216, 74, 0.16);
+  background: rgba(0, 0, 0, 0.45);
+}
+
+/* remember-me row */
+.zeus-remember{
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.zeus-remember input{
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: #ffd13e;
+  cursor: pointer;
+}
+
+/* gold Sign In / Create Account button — the active pill's ladder */
+.zeus-login-submit{
+  height: 46px;
+  margin-top: 2px;
+  padding: 0 18px;
+  border: 0;
+  border-radius: 999px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  color: #111111;
+  background: linear-gradient(180deg, #ffe26a 0%, #ffd13e 100%);
+  box-shadow:
+    0 8px 24px rgba(255, 210, 60, 0.30),
+    inset 0 1px 0 rgba(255, 255, 255, 0.35);
+  transition: filter .18s ease, transform .18s ease, box-shadow .18s ease;
+}
+.zeus-login-submit:hover{
+  filter: brightness(1.06);
+  transform: translateY(-1px);
+  box-shadow: 0 10px 28px rgba(255, 210, 60, 0.38);
+}
+.zeus-login-submit:active{
+  transform: translateY(0);
+  filter: brightness(0.98);
+}
+.zeus-login-submit:focus-visible{
+  outline: 2px solid rgba(255, 216, 74, 0.65);
+  outline-offset: 2px;
+}
+
+/* links row + footer line */
+.zeus-login-links{
+  display: flex;
+  justify-content: center;
+  gap: 18px;
+}
+.zeus-forgot-link,
+.zeus-signup-link,
+.zeus-back-link{
+  color: #ffd84a;
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+}
+.zeus-forgot-link:hover,
+.zeus-signup-link:hover,
+.zeus-back-link:hover{
+  color: #ffe36a;
+  text-decoration: underline;
+}
+.zeus-login-alt{
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  text-align: center;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+/* inline messages */
+.zeus-login-message{
+  min-height: 18px;
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.45;
+  text-align: center;
+  color: var(--text-secondary);
+}
+.zeus-login-message--error{ color: #FF9A94; }
+.zeus-login-message--success{ color: #8aff7d; }
+
+/* signed-in state (Login pressed while already signed in) */
+.zeus-login-signedin{
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 4px 0 2px;
+}
+.zeus-login-avatar{
+  width: 46px;
+  height: 46px;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  font-size: 18px;
+  font-weight: 800;
+  color: #111111;
+  background: linear-gradient(180deg, #ffe26a, #ffd13e);
+  box-shadow: 0 6px 18px rgba(255, 210, 60, 0.28);
+}
+.zeus-login-signedin-meta{ flex: 1; min-width: 0; }
+.zeus-login-signedin-email{
+  margin: 0;
+  font-size: 14.5px;
+  font-weight: 700;
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
+}
+.zeus-login-signedin-note{
+  margin: 2px 0 0;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+/* ---------- 40E. reduced motion — re-asserted after 40A/40C --------- */
+
+@media (prefers-reduced-motion: reduce){
+  .zeus-navpill-thumb{
+    transition: opacity .15s ease;
+  }
+  .zeus-modal,
+  .zeus-modal-backdrop.zeus-modal-open,
+  .zeus-modal-backdrop.zeus-modal-closing{
+    animation: none;
+  }
+}
+
+/* ============================================================
+   41. ZEUS UPDATE — ARABIC/TURKISH INTO GENRE + YELLOW CW LINE
+   ------------------------------------------------------------
+   Board follow-up (appended at the very end so it wins the
+   cascade; nothing above is modified):
+   41A  GENRE SUBSECTIONS — the standalone Arabic/Turkish home
+        sections were removed from index.html and their FILMS
+        rails now live ONLY inside the Genre area
+        (#section-genres), as language subsections after the
+        mood cards. This is just the wrapper rhythm — the
+        header, controls, arrows and .movies-row inside are
+        the byte-identical existing components. The wrappers
+        carry #section-arabic / #section-turkish so the nav
+        pill's anchors (never changed on any page) and §35's
+        scroll-margin rules keep resolving.
+   41B  YELLOW TRACKING LINE — the Continue Watching progress
+        bar (§37A, .cw-progress/.cw-progress-fill — existing
+        class names, continue-watching.js untouched) is
+        restyled to the board's spec: a thin 4px line INSIDE
+        the card, inset 8px from the poster's edges, rounded,
+        on a rgba(255,255,255,.10) track, filled with the
+        logo-gold gradient #ffe26a → #ffd13e and a soft glow.
+        Later in the cascade, so it supersedes §37A's
+        edge-to-edge strip. overflow:hidden is NOT carried
+        over from the board's sketch — it would clip the
+        fill's glow; nothing can overflow (fill width ≤ 100%,
+        both ends rounded).
+   41C  Reduced motion — re-asserted (fill width transition).
+   ============================================================ */
+
+/* ---------- 41A. GENRE LANGUAGE SUBSECTIONS -------------------------- */
+
+/* one visual group per language inside the Genre area:
+   clear separation from the mood cards above, then the
+   standard .section-header margin (26px) carries to the row */
+.genre-subsection{
+  margin-top: 52px;
+}
+.genre-subsection + .genre-subsection{
+  margin-top: 46px;
+}
+/* subsection titles sit one step below the section's h2 —
+   same .section-title look, slightly calmer size */
+.genre-subsection .section-title{
+  font-size: 22px;
+}
+.genre-subsection .section-title::before{
+  top: 12%;
+}
+/* keep the anchor jumps clear of the fixed header (mirrors
+   §35's #section-arabic/#section-turkish/#section-genres rule;
+   the ids now point at these wrappers) */
+#section-arabic,
+#section-turkish{
+  scroll-margin-top: calc(var(--zeus-safe-top, 0px) + 72px);
+}
+
+/* ---------- 41B. YELLOW TRACKING LINE (Continue Watching) ------------ */
+
+/* the track — thin, inset, INSIDE the card on the poster
+   (supersedes §37A's edge-to-edge bottom strip) */
+.cw-progress{
+  left: 8px;
+  right: 8px;
+  bottom: 8px;
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.10);
+}
+/* the fill — logo-gold gradient + soft glow, rounded ends */
+.cw-progress-fill{
+  border-radius: 999px;
+  background: linear-gradient(90deg, #ffe26a 0%, #ffd13e 100%);
+  box-shadow: 0 0 10px rgba(255, 220, 90, 0.35);
+}
+
+/* ---------- 41C. reduced motion — re-asserted after 41B -------------- */
+
+@media (prefers-reduced-motion: reduce){
+  .cw-progress-fill{
+    transition: none;
+  }
+}

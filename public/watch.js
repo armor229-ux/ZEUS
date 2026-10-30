@@ -1222,6 +1222,29 @@ async function loadWatchInfo() {
     const year = getMediaYear(data);
     const rating = data.vote_average ? data.vote_average.toFixed(1) : 'N/A';
 
+    // Continue Watching (GOLD UPDATE): seed/refresh this viewing
+    // session's resume entry. localStorage only — no backend.
+    // Real positions arrive via postMessage when the source
+    // player supports them; otherwise continue-watching.js keeps
+    // a visible-time estimate going. begin() is idempotent and
+    // handles in-page episode changes (it re-runs via every
+    // loadWatchInfo call).
+    if (window.ZeusCW) {
+      ZeusCW.begin({
+        id: watchId,
+        type: watchType,
+        title,
+        year,
+        posterPath: data.poster_path || '',
+        backdropPath: data.backdrop_path || '',
+        season: watchType === 'tv' ? currentSeason : null,
+        episode: watchType === 'tv' ? currentEpisode : null,
+        runtimeMin: watchType === 'tv'
+          ? ((data.episode_run_time && data.episode_run_time[0]) || null)
+          : (data.runtime || null)
+      });
+    }
+
     updateMetaTags({
       title: `Watch ${title} (${year}) Online Free | ZEUS`,
       description: data.overview ? data.overview.slice(0, 155) : `Watch ${title} online free in HD.`,
