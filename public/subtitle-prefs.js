@@ -25,6 +25,16 @@
      labels like "Arabic", "عربي") whenever a video plays or is
      added — on every page, including watch parties. Other
      subtitle tracks are switched off so captions never double.
+
+   v1.2 — ANIME SUBTITLE DEFAULT (board fix): watch.js flags the
+   current playback as anime (TMDB genre 16 = Animation) via
+   setAnimeMode(true). For anime, subtitles default ON:
+     1. preferred language track wins (existing behavior),
+     2. otherwise the FIRST available subtitle/captions track
+        is auto-selected,
+     3. videos without any subtitle track are left alone —
+        playback is never forced or broken.
+   Non-anime playback keeps the exact previous behavior.
    ============================================================ */
 
 'use strict';
@@ -39,8 +49,9 @@ window.ZEUS = window.ZEUS || {};
   const DEFAULT_COLOR = '#ffffff';
   const DEFAULT_OFFSET = 0;
   const originalTimes = new WeakMap(); // Map<VTTCue, {s:number,e:number}>
-  const prefApplied = new WeakMap();   // Map<HTMLVideoElement, pref already selected>
+  const prefApplied = new WeakMap();   // Map<HTMLVideoElement, selection key already applied>
   const hookedVideos = new WeakSet();  // videos with play/load listeners attached
+  let animeMode = false;               // anime playback: subtitles default ON (set by watch.js)
 
   /* Words a track LABEL may carry for a preference code — lets
      "Arabic" match labels like "Arabic", "عربي", "Arabic (forced)". */
@@ -80,29 +91,65 @@ window.ZEUS = window.ZEUS || {};
     return words.some((word) => label.indexOf(word) !== -1);
   }
 
-  /* Auto-select the preferred language track on one video.
-     Runs at most once per (video, pref) pair so a user's manual
-     track choice is never fought on every play event; picking a
-     different preference in Settings re-triggers it. */
+  /* Auto-select the best subtitle track on one video.
+     Priority: preferred language (Settings) → first available
+     track when the playback is flagged anime → nothing.
+     Runs at most once per (video, selection key) pair so a
+     user's manual track choice is never fought on every play
+     event; picking a different preference in Settings or
+     toggling anime mode re-triggers it exactly once. */
   function applyPrefToVideo(video) {
+    if (!video || !video.textTracks) return;
+
     const pref = getPref();
-    if (!pref || !video || !video.textTracks) return;
-    if (prefApplied.get(video) === pref) return;
+    const selectionKey = (pref || '-') + '|' + (animeMode ? 'anime' : '-');
+    if (prefApplied.get(video) === selectionKey) return;
 
     const tracks = video.textTracks;
-    for (let i = 0; i < tracks.length; i++) {
-      const track = tracks[i];
-      if ((track.kind === 'subtitles' || track.kind === 'captions') && trackMatchesPref(track, pref)) {
-        for (let j = 0; j < tracks.length; j++) {
-          if (j !== i && (tracks[j].kind === 'subtitles' || tracks[j].kind === 'captions')) {
-            tracks[j].mode = 'disabled'; // never double captions
-          }
+
+    /* Show exactly one track and disable every other
+       subtitle/captions track — captions never double. */
+    function showOnly(track) {
+      for (let j = 0; j < tracks.length; j++) {
+        if (tracks[j] !== track && (tracks[j].kind === 'subtitles' || tracks[j].kind === 'captions')) {
+          tracks[j].mode = 'disabled';
         }
-        track.mode = 'showing';
-        prefApplied.set(video, pref);
-        return;
+      }
+      track.mode = 'showing';
+      prefApplied.set(video, selectionKey);
+    }
+
+    // 1) the user's preferred language always wins
+    if (pref) {
+      for (let i = 0; i < tracks.length; i++) {
+        const track = tracks[i];
+        if ((track.kind === 'subtitles' || track.kind === 'captions') && trackMatchesPref(track, pref)) {
+          showOnly(track);
+          return;
+        }
       }
     }
+
+    // 2) anime playback: subtitles default ON — first valid track
+    if (animeMode) {
+      for (let i = 0; i < tracks.length; i++) {
+        const track = tracks[i];
+        if (track.kind === 'subtitles' || track.kind === 'captions') {
+          showOnly(track);
+          return;
+        }
+      }
+    }
+
+    // 3) no preference, not anime (or no tracks at all): untouched
+  }
+
+  /* Anime flag — set by watch.js when the loaded title's TMDB
+     genres include Animation (16). Re-applies to every video so
+     an already-present player picks the track up immediately. */
+  function setAnimeMode(on) {
+    animeMode = !!on;
+    applyToAllVideos();
   }
 
   /* "On any video play" hook — tracks and cues often appear
@@ -203,10 +250,10 @@ window.ZEUS = window.ZEUS || {};
     applyToAllVideos(); // re-select on every video right now (guard is per-pref)
   }
 
-  // Expose small API for the settings UI to call
+  // Expose small API for the settings UI + watch page to call
   window.ZEUS.subtitles = {
     getColor, getOffset, saveColor, saveOffset, applyColor, applyToAllVideos,
-    getPref, savePref
+    getPref, savePref, setAnimeMode
   };
 
   // Boot

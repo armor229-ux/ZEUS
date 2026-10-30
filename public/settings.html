@@ -25,7 +25,7 @@
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap">
 
   <!-- Styles -->
-  <link rel="stylesheet" href="style.css?v=2.19">
+  <link rel="stylesheet" href="style.css?v=2.22">
   <link rel="stylesheet" href="settings.css?v=1.0">
 
   <!-- Smooth menu transitions: arrived via an in-site nav? hide the black loader from first paint -->
@@ -34,7 +34,7 @@
   <!-- Apply saved appearance settings before first paint (no theme flash) -->
   <script>try{var __zs=JSON.parse(localStorage.getItem('zeus_settings')||'{}');if(__zs.theme&&__zs.theme!=='dark')document.documentElement.dataset.theme=__zs.theme;if(__zs.accent&&__zs.accent!=='gold')document.documentElement.dataset.accent=__zs.accent;if(__zs.reduceMotion)document.documentElement.dataset.reduceMotion='1';if(__zs.subtitleSize)document.documentElement.style.setProperty('--zeus-sub-size',__zs.subtitleSize/100);var __zc=localStorage.getItem('zeus_sub_color');if(__zc)document.documentElement.style.setProperty('--zeus-sub-color',__zc);}catch(e){}</script>
   <!-- Subtitle colour + timing preferences (saved locally, applied globally) -->
-  <script src="subtitle-prefs.js?v=1.1" defer></script>
+  <script src="subtitle-prefs.js?v=1.3" defer></script>
 </head>
 <body>
 
@@ -76,11 +76,11 @@
     </a>
 
     <nav class="zeus-navpill zeus-glass" aria-label="Main navigation">
-      <a href="index.html" class="zeus-nav-item">Home</a>
-      <a href="browse.html?genre=16" class="zeus-nav-item">Anime</a>
-      <a href="browse.html" class="zeus-nav-item">Discover</a>
+      <a href="/" class="zeus-nav-item">Home</a>
+      <a href="/anime" class="zeus-nav-item">Anime</a>
+      <a href="/discover" class="zeus-nav-item">Discover</a>
       <a href="watchlist.html" class="zeus-nav-item">Library</a>
-      <a href="index.html#section-genres" class="zeus-nav-item">Genre</a>
+      <a href="/genre" class="zeus-nav-item">Genre</a>
       <a href="index.html#section-arabic" class="zeus-nav-item">Arabic</a>
       <a href="index.html#section-turkish" class="zeus-nav-item">Turkish</a>
       <a href="search.html" class="zeus-nav-item zeus-nav-search">
@@ -596,13 +596,13 @@
   </button>
 
   <!-- Scripts -->
-  <script src="config.js?v=2.7"></script>
-  <script src="api.js?v=2.8"></script>
+  <script src="config.js?v=2.8"></script>
+  <script src="api.js?v=2.10"></script>
   <script src="watchlist.js?v=2.7"></script>
   <script src="auth.js?v=3.1"></script>
   <script src="settings.js?v=1.1"></script>
   <script src="header-autohide.js?v=1.5"></script>
-  <script src="zeus-modals.js?v=1.0"></script>
+  <script src="zeus-modals.js?v=1.1"></script>
   <!-- ZEUS safe-top: feeds --zeus-safe-top from the fixed disclaimer banner (banner-aware header) -->
   <script>
   (function(){

@@ -1,5 +1,20 @@
 /* ============================================================
-   ZEUS — zeus-modals.js  (v1.0)
+   ZEUS — zeus-modals.js  (v1.1)
+   ------------------------------------------------------------
+   v1.1 — LOGIN CARD UPDATE (board spec):
+   • Centered brand block at the TOP MIDDLE of the login card —
+     the gold bolt logo icon (favicon.svg) over the ZEUS name,
+     above the Login title. Close button untouched.
+   • One-click "Create local account" button under Sign In:
+     typed email/password are used, anything missing is generated;
+     the account is created + signed in instantly (100% local via
+     auth.js — no server), the modal closes and the header avatar
+     updates. Generated credentials are surfaced once in a
+     credentials note (8s copy window) — plaintext is never
+     stored anywhere.
+   • afterAuth(user, remember, opts) — additive opts (message /
+     toast / closeDelay); omitted opts reproduce v1.0 behavior
+     byte-for-byte.
    ------------------------------------------------------------
    GOLD UPDATE (Task 9): Login & Settings open premium POPUP
    CARDS on the current page instead of navigating away.
@@ -67,6 +82,13 @@
   var LOGIN_HTML = ''
     + '<div class="zeus-modal zeus-glass" role="dialog" aria-modal="true" aria-labelledby="zeus-login-title">'
     +   '<button class="zeus-modal-close" type="button" aria-label="Close">\u00d7</button>'
+
+    /* centered brand block — top middle of the card (v1.1) */
+    +   '<div class="zeus-login-brand">'
+    +     '<img src="favicon.svg" alt="" class="zeus-login-brand-logo" decoding="async">'
+    +     '<div class="zeus-login-brand-name">ZEUS</div>'
+    +   '</div>'
+
     +   '<h2 class="zeus-modal-title" id="zeus-login-title">Login</h2>'
     +   '<p class="zeus-modal-sub">Local account — stored in this browser only, nothing is uploaded.</p>'
 
@@ -79,6 +101,11 @@
     +     '<button class="btn btn-outline zeus-login-signout" type="button">Sign out</button>'
     +   '</div>'
 
+    /* credentials note — shown only by the one-click flow when a
+       password and/or email was generated (visible in the signed-in
+       state; rendered once, cleared on next open) */
+    +   '<p class="zeus-login-credentials" hidden></p>'
+
     +   '<form class="zeus-login-form" id="zeus-login-signin" novalidate>'
     +     '<label class="zeus-field">'
     +       '<span class="zeus-field-label">Email</span>'
@@ -90,6 +117,11 @@
     +     '</label>'
     +     '<label class="zeus-remember"><input type="checkbox" checked> Remember me</label>'
     +     '<button type="submit" class="zeus-login-submit">Sign In</button>'
+    /* one-click local account — secondary, under Sign In (v1.1) */
+    +     '<button type="button" class="zeus-login-local">'
+    +       '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13 2 4.5 13.5h5.2L8.6 22l8.9-11.8h-5.4L13 2z"/></svg>'
+    +       'Create local account'
+    +     '</button>'
     +     '<div class="zeus-login-links">'
     +       '<a href="#" class="zeus-forgot-link">Forgot password?</a>'
     +     '</div>'
@@ -420,6 +452,10 @@
   function openLogin() {
     build();
     renderLoginState();
+    /* fresh credentials note on every open (shown only by the
+       one-click flow; never persists across opens) */
+    var credEl = loginCard.querySelector('.zeus-login-credentials');
+    if (credEl) { credEl.hidden = true; credEl.textContent = ''; }
     openBackdrop(loginBackdrop);
     var email = loginCard.querySelector('#zeus-login-signin input[type="email"]');
     if (!loginCard.querySelector('.zeus-login-signedin').hidden) {
@@ -526,19 +562,39 @@
     }
   }
 
-  function afterAuth(user, remember) {
+  function afterAuth(user, remember, opts) {
+    opts = opts || {};
     if (!remember) {
       try { localStorage.setItem('zeus_signout_on_exit', '1'); } catch (e) { /* blocked */ }
     }
     renderLoginState();
     var signin = loginCard.querySelector('#zeus-login-signin');
     var signup = loginCard.querySelector('#zeus-login-signup');
-    msg(signin.querySelector('.zeus-login-message'), 'Signed in as ' + user.email + '.', 'success');
+    var text = opts.message || ('Signed in as ' + user.email + '.');
+    msg(signin.querySelector('.zeus-login-message'), text, 'success');
     msg(signup.querySelector('.zeus-login-message'));
-    if (typeof showToast === 'function') showToast('Signed in as ' + user.email + '.', 'success');
+    var toastText = opts.toast || text;
+    if (typeof showToast === 'function') showToast(toastText, 'success');
     setTimeout(function () {
       if (!loginBackdrop.classList.contains('zeus-modal-closing')) hideModal(loginBackdrop);
-    }, 900);
+    }, opts.closeDelay || 900);
+  }
+
+  /* random password for the one-click flow (typed email, blank
+     password field) — never stored in plaintext, only shown once */
+  function zmRandomPassword(len) {
+    var chars = 'abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789';
+    var n = len || 14;
+    var out = '';
+    var i;
+    if (window.crypto && window.crypto.getRandomValues) {
+      var values = new Uint32Array(n);
+      window.crypto.getRandomValues(values);
+      for (i = 0; i < n; i++) out += chars.charAt(values[i] % chars.length);
+    } else {
+      for (i = 0; i < n; i++) out += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return out;
   }
 
   function bindLogin() {
@@ -609,6 +665,78 @@
       if (typeof authSignOut === 'function') authSignOut();
       renderLoginState();
       if (typeof showToast === 'function') showToast('Signed out.', 'success');
+    });
+
+    /* ---- one-click "Create local account" (v1.1) ----
+       Board flow: whatever the user already typed is used; anything
+       missing is generated. 100% browser-local (auth.js — no server,
+       no upload), signed in instantly, the modal closes and the
+       header avatar updates via the existing zeus-auth-change event. */
+    loginCard.querySelector('.zeus-login-local').addEventListener('click', function (e) {
+      e.preventDefault();
+      var btn = e.currentTarget;
+      if (btn.disabled) return;
+      var mEl = signin.querySelector('.zeus-login-message');
+      if (typeof authSignUp !== 'function' || typeof authGenerateLocalAccount !== 'function') {
+        msg(mEl, 'Local account creation is unavailable on this page.', 'error');
+        return;
+      }
+      var email = (signin.querySelector('input[type="email"]').value || '').trim();
+      var password = signin.querySelector('input[type="password"]').value || '';
+      var remember = !!signin.querySelector('.zeus-remember input').checked;
+
+      /* decision tree — use the typed values, generate the rest */
+      var run;
+      if (email === '') {
+        /* nothing typed — instant demo account (existing generator) */
+        run = authGenerateLocalAccount().then(function (r) {
+          return { user: r.user, showEmail: r.email, showPassword: r.password };
+        });
+      } else if (password !== '' && password.length < 8) {
+        run = Promise.reject(new Error('Password must be at least 8 characters — or leave it blank and one will be generated for you.'));
+      } else if (password === '') {
+        /* typed email, blank password — the email is used, a strong
+           password is generated and shown once */
+        var genPw = zmRandomPassword(14);
+        run = authSignUp(email, genPw).then(function (user) {
+          return { user: user, showEmail: null, showPassword: genPw };
+        });
+      } else {
+        /* everything typed — used as-is (the user knows the password) */
+        run = authSignUp(email, password).then(function (user) {
+          return { user: user, showEmail: null, showPassword: null };
+        });
+      }
+
+      btn.disabled = true;
+      run.then(function (r) {
+        btn.disabled = false;
+        if (r.showEmail || r.showPassword) {
+          /* a credential was generated — surface it ONCE (plaintext is
+             never stored) with an 8s copy window before auto-close */
+          var credEl = loginCard.querySelector('.zeus-login-credentials');
+          if (credEl) {
+            var lines = [];
+            if (r.showEmail) lines.push('Email <code>' + esc(r.showEmail) + '</code>');
+            if (r.showPassword) lines.push('Password <code>' + esc(r.showPassword) + '</code>');
+            credEl.innerHTML =
+              lines.join('<br>') +
+              '<span class="zeus-login-credentials-hint">Copy these now — the password is shown only here, never stored.</span>';
+            credEl.hidden = false;
+          }
+          afterAuth(r.user, remember, {
+            toast: 'Local account created — signed in',
+            closeDelay: 8000
+          });
+        } else {
+          afterAuth(r.user, remember, {
+            toast: 'Account created — signed in'
+          });
+        }
+      }).catch(function (err) {
+        btn.disabled = false;
+        msg(mEl, (err && err.message) || 'Could not create the account.', 'error');
+      });
     });
   }
 

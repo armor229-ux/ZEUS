@@ -96,18 +96,6 @@
 
   const ZEUSLibrary = {
 
-    SECTIONS: SECTIONS,
-
-    /** Storage key for a user id (spec: zeus_user_library_<USER_ID>). */
-    keyFor: function (userId) {
-      return LIBRARY_KEY_PREFIX + userId;
-    },
-
-    /** Whether a user is signed in (libraries are per-user). */
-    isEnabled: function () {
-      return !!currentUser();
-    },
-
     /** Whole library for the current (or given) user. */
     getLibrary: function (userId) {
       const user = userId ? { id: userId } : currentUser();
@@ -119,14 +107,6 @@
     getSection: function (section, userId) {
       if (!validSection(section)) return [];
       return this.getLibrary(userId)[section] || [];
-    },
-
-    /** Is an id+type already in a section? */
-    has: function (section, id, type) {
-      if (!validSection(section)) return false;
-      const user = currentUser();
-      if (!user) return false;
-      return readLibrary(user.id)[section].some((entry) => itemMatches(entry, id, type));
     },
 
     /**

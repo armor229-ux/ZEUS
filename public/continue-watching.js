@@ -337,16 +337,8 @@
     begin: function (entry) {
       try { upsert(entry); } catch (e) { /* never break playback */ }
     },
-    /** Called by the homepage. No-op when the row is absent. */
-    renderHomepage: function () {
-      try { renderHomepage(); } catch (e) { /* never break the homepage */ }
-    },
     /** All resumable entries, newest first (used by tests/tools). */
-    list: visibleEntries,
-    /** Remove one entry by key ('movie/123' | 'tv/123'). */
-    remove: function (key) {
-      save(load().filter(function (e) { return e.key !== key; }));
-    }
+    list: visibleEntries
   };
 
   /* ---------------- boot ---------------- */

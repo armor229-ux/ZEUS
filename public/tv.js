@@ -10,7 +10,6 @@
 
 let currentTVId = null;
 let tvSeasons = [];       // [{ season_number, ... }]
-let currentSeason = null; // selected season number
 
 document.addEventListener('DOMContentLoaded', () => {
   initCommonUI();
@@ -240,8 +239,6 @@ function renderSeasons(seasons) {
 }
 
 function selectSeason(seasonNumber) {
-  currentSeason = seasonNumber;
-
   // Sync UI states
   const select = $('#season-select');
   if (select) select.value = String(seasonNumber);

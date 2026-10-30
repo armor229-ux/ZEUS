@@ -39,11 +39,19 @@
 
 'use strict';
 
-/* ---------------- Server URL map (the 9 sources) ----------------
+/* ---------------- Server URL map (the 10 sources) ----------------
    One builder per server: (id, season, episode, type) ->
    embed URL. Keys match the data-server attributes of the
-   static #server-list markup in watch.html. */
+   static #server-list markup in watch.html.
+
+   ATLANTIC UPDATE (Part 3): atlantic.st joins as an ADDITIONAL
+   source — its official authorized embed endpoints only,
+   exactly as published. No scraping, no proxying, no bypassing:
+   the iframe points straight at the provider's own player.
+   Movie: https://atlantic.st/embed/movie/{tmdbId}
+   TV:    https://atlantic.st/embed/tv/{tmdbId}/{season}/{episode} */
 const SERVER_URLS = {
+  atlantic: (id, s, e, type) => type === 'tv' ? `https://atlantic.st/embed/tv/${id}/${s}/${e}` : `https://atlantic.st/embed/movie/${id}`,
   vidcore: (id, s, e, type) => type === 'tv' ? `https://vidcore.org/embed/tv/${id}/${s}/${e}` : `https://vidcore.org/embed/movie/${id}`,
   superembed: (id, s, e, type) => type === 'tv' ? `https://superembed.stream/tv/${id}/${s}-${e}` : `https://superembed.stream/movie/${id}`,
   vidlinkpro: (id, s, e, type) => type === 'tv' ? `https://vidlink.pro/tv/${id}/${s}/${e}` : `https://vidlink.pro/movie/${id}`,
@@ -179,8 +187,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Accept both season/episode and s/e URL styles
     const season = parseInt(getUrlParam('season') || getUrlParam('s'), 10);
     const episode = parseInt(getUrlParam('episode') || getUrlParam('e'), 10);
-    currentSeason = Number.isFinite(season) && season > 0 ? season : 1;
-    currentEpisode = Number.isFinite(episode) && episode > 0 ? episode : 1;
+    const hasSeason = Number.isFinite(season) && season > 0;
+    const hasEpisode = Number.isFinite(episode) && episode > 0;
+    currentSeason = hasSeason ? season : 1;
+    currentEpisode = hasEpisode ? episode : 1;
+    // ATLANTIC UPDATE (Part 3): TV opened with NO episode selected
+    // in the URL -> resume the last watched episode (Continue
+    // Watching), else the first episode. Applies to every source
+    // (Atlantic included) because buildServerUrl() reads these two
+    // values. Explicit season/episode links are never overridden.
+    if (!hasSeason && !hasEpisode) applyLastWatchedEpisode();
   }
 
   restoreAutoMode();
@@ -213,6 +229,26 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }
 });
+
+/* ============================================================
+   TV DEFAULT EPISODE (Atlantic update, Part 3)
+   When a TV watch URL carries no season/episode, start from the
+   user's last watched episode (Continue Watching public API),
+   else stay on S1E1. Read-only — it never writes CW storage and
+   never touches an explicit season/episode link.
+   ============================================================ */
+function applyLastWatchedEpisode() {
+  try {
+    if (!window.ZeusCW || typeof window.ZeusCW.list !== 'function') return;
+    const entry = window.ZeusCW.list()
+      .find((e) => e && e.type === 'tv' && String(e.id) === String(watchId));
+    if (!entry) return; // nothing watched yet -> first episode
+    const s = parseInt(entry.season, 10);
+    const ep = parseInt(entry.episode, 10);
+    if (Number.isFinite(s) && s > 0) currentSeason = s;
+    if (Number.isFinite(ep) && ep > 0) currentEpisode = ep;
+  } catch (e) { /* corrupt storage — keep the S1E1 default */ }
+}
 
 /* ============================================================
    PLAYER CHROME (top bar — floating controls): back + title on
@@ -336,7 +372,6 @@ function restoreAutoNext() {
           ? 'AutoNext on — next episode plays automatically'
           : 'AutoNext off', 'info');
       }
-      console.log('[ZEUS] autoNextToggle', autoNextEnabled ? 'on' : 'off');
     });
   }
 }
@@ -371,7 +406,6 @@ async function autoNextAdvance(trigger) {
   updateEpisodeNavButtons();
   loadWatchInfo();
   window.scrollTo({ top: 0, behavior: 'smooth' });
-  console.log('[ZEUS] autoNext', { trigger, season: currentSeason, episode: currentEpisode });
   if (typeof showToast === 'function') {
     showToast(`AutoNext: playing S${currentSeason} E${currentEpisode}`, 'info');
   }
@@ -399,7 +433,6 @@ window.addEventListener('message', (event) => {
     const t = String(d.type || d.event || d.action || (d.data && d.data.type) || '')
       .toLowerCase().replace(/[^a-z]/g, '');
     if (t !== 'ended' && t !== 'videoend' && t !== 'playerended' && t !== 'end') return;
-    console.log('[ZEUS] playerEvent', 'video-ended');
     autoNextAdvance('video-ended');
   } catch (e) { /* foreign message — ignore */ }
 });
@@ -865,7 +898,6 @@ async function runEngineTests(servers) {
       recordEngineHint(server.id, ok);
       checked += 1;
       updateSourceCheckProgress(checked, total);
-      console.log('[ZEUS] testResult', server.id, ok ? 'loaded' : 'timeout (hint only)');
     }
   }
 
@@ -935,7 +967,6 @@ async function autoSelectBestServer({ viaFallback = false } = {}) {
   autoSelectAbort = () => { userTookOver = true; };
   try {
     if (typeof showToast === 'function') showToast('AUTO: selecting best source…', 'info');
-    console.log('[ZEUS] autoSelect', { servers: candidates.map((s) => s.id) });
     showSourceCheckOverlay(candidates.length);
     for (let i = 0; i < candidates.length; i++) {
       const server = candidates[i];
@@ -987,7 +1018,6 @@ async function testServersForActiveTab() {
     btn.classList.add('testing');
   }
   if (typeof showToast === 'function') showToast('Testing servers…', 'info');
-  console.log('[ZEUS] testServers', { servers: servers.map((s) => s.id) });
 
   let currentServerFailed = false;
   try {
@@ -1026,7 +1056,6 @@ function reportCurrentServer() {
   if (!activeServer || !SERVER_URLS[activeServer.id]) return;
   const reported = activeServer;
   recordServerResult(reported.id, false); // also hard-fails for the session
-  console.log('[ZEUS] serverFAIL', reported.id, 'user-report');
   if (typeof showToast === 'function') {
     showToast('Reported. Switching server…', 'info');
   }
@@ -1077,8 +1106,6 @@ async function setActiveServer(server, viaFallback = false, reason = 'manual') {
   const url = buildServerUrl(server);
   if (!url) return false;
 
-  console.log('[ZEUS] switchServer', { serverKey: server.id, url, reason });
-
   // A manual server click shows the "Checking sources…"
   // progress overlay while the iframe loads (hidden on
   // confirm/fail)
@@ -1104,7 +1131,6 @@ async function setActiveServer(server, viaFallback = false, reason = 'manual') {
     showPlayerLoading(false);
     recordServerResult(server.id, true);
     setLastGoodEngine(watchType, server.id);
-    console.log('[ZEUS] serverOK', server.id);
     return true;
   }
 
@@ -1113,7 +1139,6 @@ async function setActiveServer(server, viaFallback = false, reason = 'manual') {
   // automatically move to the next servers
   recordServerResult(server.id, false);
   finishManualSourceCheck();
-  console.log('[ZEUS] serverFAIL', server.id, 'load-timeout');
   if (reason !== 'auto' && !autoSelectRunning) {
     if (fallbacksUsed < MAX_AUTO_FALLBACKS) {
       fallbacksUsed += 1;
@@ -1150,7 +1175,6 @@ function resetServerStats() {
   SESSION_HARD_FAIL.clear();
   Object.keys(engineHintMemory).forEach((k) => delete engineHintMemory[k]);
   updateServerDots();
-  console.log('[ZEUS] serverStatsReset');
   if (typeof showToast === 'function') {
     showToast('Server status reset', 'success');
   }
@@ -1221,6 +1245,16 @@ async function loadWatchInfo() {
     const title = getMediaTitle(data);
     const year = getMediaYear(data);
     const rating = data.vote_average ? data.vote_average.toFixed(1) : 'N/A';
+
+    // ANIME SUBTITLE DEFAULT (board fix): TMDB genre 16 =
+    // Animation. Flag the playback so subtitle-prefs.js turns
+    // subtitles ON by default for anime — preferred language
+    // first, otherwise the first available subtitle track.
+    // Sources without any subtitle track are never touched.
+    if (window.ZEUS && window.ZEUS.subtitles && typeof window.ZEUS.subtitles.setAnimeMode === 'function') {
+      const isAnime = !!(data.genres && data.genres.some((g) => g && g.id === 16));
+      window.ZEUS.subtitles.setAnimeMode(isAnime);
+    }
 
     // Continue Watching (GOLD UPDATE): seed/refresh this viewing
     // session's resume entry. localStorage only — no backend.

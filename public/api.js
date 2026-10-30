@@ -33,36 +33,51 @@ function buildTMDBUrl(endpoint, params = {}) {
  * error payloads and network failures, always rejecting with
  * a readable Error message.
  */
+/* In-session GET memo: several pages request the same TMDB
+   endpoint more than once (e.g. the homepage hero and the
+   trending row share /trending/all/week). Caching by URL —
+   including in-flight requests — turns those duplicate network
+   round-trips into one shared request. */
+const tmdbGetCache = new Map();
+
 async function fetchFromTMDB(endpoint, params = {}) {
   const url = buildTMDBUrl(endpoint, params);
-  let response;
-  try {
-    response = await fetch(url);
-  } catch (networkError) {
-    throw new Error('Network error — please check your internet connection.');
-  }
-
-  if (!response.ok) {
-    let message = `Request failed with status ${response.status}`;
+  const cached = tmdbGetCache.get(url);
+  if (cached) return cached;
+  const request = (async () => {
+    let response;
     try {
-      const errorBody = await response.json();
-      if (errorBody && errorBody.status_message) {
-        message = errorBody.status_message; // e.g. "Invalid API key: ..."
-        if (response.status === 401) {
-          message += ' — add your TMDB API key in config.js';
-        }
-      }
-    } catch (parseError) {
-      /* response was not JSON, keep default message */
+      response = await fetch(url);
+    } catch (networkError) {
+      throw new Error('Network error — please check your internet connection.');
     }
-    throw new Error(message);
-  }
 
-  try {
-    return await response.json();
-  } catch (parseError) {
-    throw new Error('Received an invalid response from TMDB.');
-  }
+    if (!response.ok) {
+      let message = `Request failed with status ${response.status}`;
+      try {
+        const errorBody = await response.json();
+        if (errorBody && errorBody.status_message) {
+          message = errorBody.status_message; // e.g. "Invalid API key: ..."
+          if (response.status === 401) {
+            message += ' — add your TMDB API key in config.js';
+          }
+        }
+      } catch (parseError) {
+        /* response was not JSON, keep default message */
+      }
+      throw new Error(message);
+    }
+
+    try {
+      return await response.json();
+    } catch (parseError) {
+      throw new Error('Received an invalid response from TMDB.');
+    }
+  })();
+  tmdbGetCache.set(url, request);
+  // Failed requests are evicted so a later call can retry fresh.
+  request.catch(() => tmdbGetCache.delete(url));
+  return request;
 }
 
 /* ============================================================
@@ -147,11 +162,6 @@ async function searchMovies(query, page = 1) {
 /** Movie genre catalog. */
 async function getGenres() {
   return fetchFromTMDB('/genre/movie/list');
-}
-
-/** TV genre catalog. */
-async function getTVGenres() {
-  return fetchFromTMDB('/genre/tv/list');
 }
 
 /** Discover movies by genre, sorted by popularity. */
@@ -1325,7 +1335,6 @@ function confirmCardHover(card) {
   // Baseline "alive" state from the very first moment of the
   // dwell — the card never sits frozen, even offline.
   applyCardKenBurns(card);
-  console.log('TRAILER HOVER OK', item.id, getMediaType(item));
 
   const mediaType = getMediaType(item);
   // Titles whose trailer embed already failed this session skip
@@ -1453,7 +1462,6 @@ function playCardTrailer(card, trailerKey, item) {
     }
     settled = true;
     if (watchdog) { clearTimeout(watchdog); watchdog = null; }
-    console.log('TRAILER VIDEO PLAYING', item.id, iframe.src);
     // The moving picture replaces the Ken Burns pan.
     removeCardKenBurns(card);
     card.classList.add('trailer-playing');
@@ -1474,7 +1482,6 @@ function playCardTrailer(card, trailerKey, item) {
       // Loaded but silent -> walled/blocked embed: swap the frozen
       // shell for the living Ken Burns artwork zoom.
       cleanupYTVerification();
-      console.log('TRAILER EMBED SILENT -> KEN BURNS', item.id);
       cardTrailerEmbedFailed.add(trailerCacheKey(item.id, mediaType));
       card.classList.remove('trailer-playing');
       layer.classList.remove('playing');
@@ -1822,7 +1829,12 @@ function initSmoothNavigation() {
       return;
     }
     if (url.origin !== window.location.origin) return;
-    if (!/\.html?$/i.test(url.pathname)) return;
+    // ZEUS FULL UPDATE (Part 1): the nav pill's clean routes (/, /anime,
+    // /genre, /discover) join the .html routes so in-site tab switches
+    // keep the same fade + no-loader transition. Everything else is
+    // untouched.
+    const isCleanRoute = /^(\/(anime|genre|discover)?)\/?$/.test(url.pathname);
+    if (!isCleanRoute && !/\.html?$/i.test(url.pathname)) return;
 
     event.preventDefault();
 

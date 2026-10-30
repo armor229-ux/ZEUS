@@ -33,7 +33,9 @@
   <link rel="dns-prefetch" href="https://iv.ggtyler.dev">
   <link rel="dns-prefetch" href="https://invidious.f5.si">
   <link rel="dns-prefetch" href="https://iv.melmac.space">
-  <link rel="dns-prefetch" href="https://api.themoviedb.org">
+  <link rel="preconnect" href="https://api.themoviedb.org">
+  <link rel="dns-prefetch" href="https://pl31074978.profitableratecpmnetwork.com">
+  <link rel="dns-prefetch" href="https://pl31074980.profitableratecpmnetwork.com">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 
@@ -41,17 +43,12 @@
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap">
 
   <!-- Styles -->
-  <link rel="stylesheet" href="style.css?v=2.19">
+  <link rel="stylesheet" href="style.css?v=2.22">
 
   <!-- Smooth menu transitions: arrived via an in-site nav? hide the black loader from first paint -->
   <script>try{if(sessionStorage.getItem('zeus_nav_transition')==='1')document.documentElement.classList.add('no-page-loader')}catch(e){}</script>
-  <!-- Adsterra Social Bar -->
-  <script src="https://pl31074978.profitableratecpmnetwork.com/5b/7f/22/5b7f22ede7d8a6ba8985f7ae6f0fee5d.js"></script>
-
-  <!-- Adsterra Popunder -->
-  <script src="https://pl31074980.profitableratecpmnetwork.com/53/a6/6e/53a66e7f76455d567a95800c6705deda.js"></script>
   <!-- Subtitle colour + timing preferences (saved locally, applied globally) -->
-  <script src="subtitle-prefs.js?v=1.1" defer></script>
+  <script src="subtitle-prefs.js?v=1.3" defer></script>
 </head>
 <body>
 
@@ -93,11 +90,11 @@
     </a>
 
     <nav class="zeus-navpill zeus-glass" aria-label="Main navigation">
-      <a href="index.html" class="zeus-nav-item">Home</a>
-      <a href="browse.html?genre=16" class="zeus-nav-item">Anime</a>
-      <a href="browse.html" class="zeus-nav-item active">Discover</a>
+      <a href="/" class="zeus-nav-item">Home</a>
+      <a href="/anime" class="zeus-nav-item">Anime</a>
+      <a href="/discover" class="zeus-nav-item active">Discover</a>
       <a href="watchlist.html" class="zeus-nav-item">Library</a>
-      <a href="index.html#section-genres" class="zeus-nav-item">Genre</a>
+      <a href="/genre" class="zeus-nav-item">Genre</a>
       <a href="index.html#section-arabic" class="zeus-nav-item">Arabic</a>
       <a href="index.html#section-turkish" class="zeus-nav-item">Turkish</a>
       <a href="search.html" class="zeus-nav-item zeus-nav-search">
@@ -238,14 +235,14 @@
   </button>
 
   <!-- Scripts -->
-  <script src="config.js?v=2.7"></script>
-  <script src="api.js?v=2.8"></script>
+  <script src="config.js?v=2.8"></script>
+  <script src="api.js?v=2.10"></script>
   <script src="watchlist.js?v=2.7"></script>
   <script src="browse.js?v=2.7"></script>
   <script src="auth.js?v=3.1"></script>
-  <script src="library.js?v=3.0"></script>
+  <script src="library.js?v=3.1"></script>
   <script src="header-autohide.js?v=1.5"></script>
-  <script src="zeus-modals.js?v=1.0"></script>
+  <script src="zeus-modals.js?v=1.1"></script>
   <!-- ZEUS safe-top: feeds --zeus-safe-top from the fixed disclaimer banner (banner-aware header) -->
   <script>
   (function(){
@@ -265,5 +262,8 @@
     new MutationObserver(updateSafeTop).observe(document.body, {childList:true, subtree:true, attributes:true});
   })();
   </script>
+  <!-- Adsterra Social Bar + Popunder (end of body: ads never block first paint) -->
+  <script src="https://pl31074978.profitableratecpmnetwork.com/5b/7f/22/5b7f22ede7d8a6ba8985f7ae6f0fee5d.js"></script>
+  <script src="https://pl31074980.profitableratecpmnetwork.com/53/a6/6e/53a66e7f76455d567a95800c6705deda.js"></script>
 </body>
 </html>

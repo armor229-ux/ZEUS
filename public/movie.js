@@ -7,8 +7,6 @@
 
 'use strict';
 
-let currentMovieId = null;
-
 document.addEventListener('DOMContentLoaded', () => {
   initCommonUI();
 
@@ -19,7 +17,6 @@ document.addEventListener('DOMContentLoaded', () => {
     if (skeletonEl) skeletonEl.remove();
     return;
   }
-  currentMovieId = id;
   loadMovie(id);
 });
 

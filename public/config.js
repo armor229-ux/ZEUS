@@ -1,7 +1,8 @@
 /* ============================================================
    ZEUS - config.js
-   Central configuration: TMDB API credentials, image sizes,
-   streaming servers and genre catalog.
+   Central configuration: TMDB API credentials, image sizes
+   and genre catalog.
+   (Active streaming servers live in watch.js SERVER_URLS.)
    ============================================================ */
 
 'use strict';
@@ -19,68 +20,6 @@ const BACKDROP_SIZE = 'original';  // Hero banners & detail backdrops
 const BACKDROP_MD_SIZE = 'w780';   // Medium backdrops (episodes stills pages)
 const PROFILE_SIZE = 'w185';       // Actor profile photos
 const STILL_SIZE = 'w300';         // Episode still images
-
-/* ---------------- Site Info ---------------- */
-const SITE_NAME = 'ZEUS';
-const SITE_TAGLINE = 'Stream the gods of cinema';
-const SITE_URL = 'https://zeus.example.com'; // change to your domain
-
-/* ---------------- Streaming Servers ----------------
-   Six high-reliability, tested embed providers only.
-   Each button carries a quality badge: 1080p / 4K / Multi-sub.
-   TV format: /tv/{tmdb_id}/{season}/{episode}
-   NOTE: servers change frequently — if one goes down,
-   the player auto-falls back to the next one (8s) and
-   users can always switch manually.                 */
-const SERVERS = [
-  {
-    id: 'vidsrc-to',
-    label: '1080p',
-    name: 'VidSrc To',
-    movie: (id) => `https://vidsrc.to/embed/movie/${id}`,
-    tv: (id, season, episode) => `https://vidsrc.to/embed/tv/${id}/${season}/${episode}`
-  },
-  {
-    id: 'vidsrc-cc',
-    label: '1080p',
-    name: 'VidSrc CC',
-    movie: (id) => `https://vidsrc.cc/v2/embed/movie/${id}`,
-    tv: (id, season, episode) => `https://vidsrc.cc/v2/embed/tv/${id}/${season}/${episode}`
-  },
-  {
-    id: 'embed-su',
-    label: '4K',
-    name: 'EmbedSu',
-    movie: (id) => `https://embed.su/embed/movie/${id}`,
-    tv: (id, season, episode) => `https://embed.su/embed/tv/${id}/${season}/${episode}`
-  },
-  {
-    id: 'videasy',
-    label: '4K · Multi-sub',
-    name: 'Videasy',
-    movie: (id) => `https://player.videasy.net/movie/${id}?color=e50914`,
-    tv: (id, season, episode) => `https://player.videasy.net/tv/${id}/${season}/${episode}?color=e50914`
-  },
-  {
-    id: 'superembed',
-    label: 'Multi-sub',
-    name: 'SuperEmbed',
-    movie: (id) => `https://multiembed.mov/?video_id=${id}&tmdb=1`,
-    tv: (id, season, episode) => `https://multiembed.mov/?video_id=${id}&tmdb=1&s=${season}&e=${episode}`
-  },
-  {
-    id: 'autoembed',
-    label: '1080p',
-    name: 'AutoEmbed',
-    movie: (id) => `https://player.autoembed.cc/embed/movie/${id}`,
-    tv: (id, season, episode) => `https://player.autoembed.cc/embed/tv/${id}/${season}/${episode}`
-  }
-];
-
-/* ---------------- Player Tuning ---------------- */
-const PLAYER_CONFIG = {
-  serverFallbackMs: 8000 // auto-switch to the next server after this long without a load event
-};
 
 /* ---------------- Genre Catalog (TMDB Genre IDs) ---------------- */
 const GENRE_LIST = [

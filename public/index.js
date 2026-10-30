@@ -784,7 +784,6 @@ function startHeroTrailer(item, videoKey) {
     onSourceDead: noteSourceDead,
     onResolved(src) {
       rememberTrailerSource(item.id, mediaType, src);
-      if (src) console.log('HERO TRAILER PLAYING', item.id, src);
     },
     onPlaying() {
       // Slide changed while the stream was connecting

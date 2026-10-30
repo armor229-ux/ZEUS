@@ -1,0 +1,7 @@
+# ZEUS — clean routes (ZEUS FULL UPDATE, Part 1)
+# Status 200 = serve the file at the clean URL (no visible change).
+# These mirror the next.config.ts rewrites used by the dev server.
+# Query strings are passed through automatically (e.g. /discover?genre=28).
+/anime     /anime.html    200
+/genre     /genre.html    200
+/discover  /browse.html   200
