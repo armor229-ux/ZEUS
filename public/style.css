@@ -7859,3 +7859,77 @@ body.zeus-modal-lock{ overflow: hidden; }
     transition: none;
   }
 }
+
+/* ============================================================
+   42. ZEUS LOGO — NO BOX, ONLY THE BIG LOGO
+   ------------------------------------------------------------
+   Board spec: "Remove the dark/black box around the logo,
+   leave only the logo itself visible, make it larger and
+   clearer. Do NOT change anything else." Pure append, nothing
+   above is modified.
+
+   • 42A strips EVERY trace of container chrome off
+     .zeus-logo-btn (the frosted pill look came from .zeus-glass
+     + §31/§34 padding · min-width · radius · height). The
+     anchor keeps its fixed top-left pin, z-index, hover
+     brightness and focus ring — only the visible box dies.
+   • 42B enlarges the wordmark. The board's square 54×54 box
+     assumes an icon logo; ZEUS's logo.svg is a 360×84 WORDMARK,
+     so it is sized by height (aspect 4.29:1). Tiers are the
+     largest sizes with a guaranteed ≥10px clearance to the
+     centered nav pill on every measured viewport band
+     (pill left edge: 202px @941-950 · 179px @641-940 ·
+     155px @≤640; wordmark right edge: 192 · 166 · 140):
+       >940px : 42px tall (~180px wide, +17% vs the old 36px)
+       ≤940px : 36px tall (~154px wide, +20% vs the old 30px)
+       ≤640px : 30px tall (~129px wide, +15% vs the old 26px)
+   • 42C optional premium glow — on the LOGO ITSELF only
+     (drop-shadow on the image, stacking with .nav-logo's
+     lightning treatment), never a box.
+   • Footer logo (.nav-logo without .zeus-logo-btn), the nav
+     pill, settings gear, login — all untouched.
+   ============================================================ */
+
+/* ---------- 42A. the wrapper becomes invisible ---------------------- */
+
+.zeus-logo-btn{
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  padding: 0 !important;
+  width: auto !important;
+  min-width: 0 !important;
+  height: auto !important;
+  border-radius: 0 !important;
+  display: flex !important;
+  align-items: center;
+  justify-content: flex-start;
+}
+
+/* ---------- 42B. bigger, clearer wordmark --------------------------- */
+
+.zeus-logo-btn .zeus-logo-img{
+  height: 42px;                /* >940px — largest safe size (see header note) */
+  width: auto;                 /* 360×84 wordmark — sized by height */
+  display: block;
+}
+
+@media (max-width: 940px){
+  .zeus-logo-btn .zeus-logo-img{
+    height: 36px;              /* 641-940px band */
+  }
+}
+
+@media (max-width: 640px){
+  .zeus-logo-btn .zeus-logo-img{
+    height: 30px;              /* phones */
+  }
+}
+
+/* ---------- 42C. premium glow on the logo itself -------------------- */
+
+.zeus-logo-btn .zeus-logo-img{
+  filter: drop-shadow(0 0 10px rgba(255, 220, 90, 0.35));
+}
