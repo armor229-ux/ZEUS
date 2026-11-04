@@ -1,0 +1,34 @@
+ZEUS — Cloudflare Pages deployment
+==================================
+
+Cloudflare Pages settings (EXACT)
+---------------------------------
+Framework preset       : None
+Build command          : (empty — leave blank)
+Root directory         : (empty — leave blank)
+Build output directory : public
+
+How to deploy
+-------------
+Option A — Git integration (recommended):
+  1. Push the repo as-is (public/ stays at the repo root).
+  2. Cloudflare Pages -> Create a project -> Connect to Git -> pick the repo.
+  3. Enter the exact settings above. Pages publishes ONLY the contents of
+     public/ at the domain root ("/" serves public/index.html).
+
+Option B — Direct upload:
+  1. Extract ZEUS-public.zip (it contains exactly the public/ folder).
+  2. Cloudflare Pages -> Create a project -> Direct upload -> drag the
+     extracted "public" folder onto the page.
+
+Notes
+-----
+- public/index.html is the homepage; public/style.css is the main stylesheet.
+- All internal links are relative, so the site also works under a sub-path.
+- Watch Party rooms need the party backend deployed once (separate Worker,
+  not part of this static upload):
+      cd party-worker && npx wrangler deploy
+  Then open any party page, paste the worker URL
+  (https://zeus-party.<your-subdomain>.workers.dev) into the
+  "Party backend URL" field and press Save. It is stored per browser in
+  localStorage under the key "zeus_party_backend".

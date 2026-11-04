@@ -1,0 +1,37 @@
+ZEUS — static site build for Cloudflare Pages
+=============================================
+
+Build date/time : 2026-09-01 17:23 (Europe/Paris) / 2026-09-01 15:23 UTC
+Build           : "public-only Cloudflare Pages" release
+
+What's in this build
+--------------------
+- The complete static ZEUS website, served entirely from this public/
+  folder: all HTML pages (index, browse, movie, tv, watch, search,
+  watchlist, login, account, party, privacy, terms, dmca), all page
+  JavaScript (config.js, api.js, index.js, browse.js, movie.js, tv.js,
+  watch.js, search.js, watchlist.js, login.js, account.js, auth.js,
+  library.js, legal.js, watchparty.js, party.js), all stylesheets
+  (style.css, auth.css, account.css, party.css) and assets
+  (logo.svg, favicon.svg, robots.txt).
+- Watch Party: party.html / party.js / party.css room client plus the
+  "Watch Party" button on watch.html (watchparty.js). The room backend is
+  the separate Cloudflare Worker in party-worker/ (deploy it with
+  `npx wrangler deploy`, then paste its workers.dev URL into the party
+  page's "Party backend URL" field once — remembered per browser).
+- All internal references are RELATIVE (style.css, watch.js, party.js,
+  href="watch.html", …). No /public/... paths, no absolute /... paths,
+  no localhost references. The site works with public/ as the site root,
+  including sub-path deployments.
+
+Changes in this build
+---------------------
+- watchparty.js: the Watch Party button now opens the room via a relative
+  URL ("party.html?url=…" — was "/party.html?…") so the hand-off works
+  from any deploy path.
+- watch.html: watchparty.js cache-buster bumped v=3.1 -> v=3.2.
+- Added this VERSION.txt and DEPLOYMENT.txt.
+
+Deploy
+------
+See DEPLOYMENT.txt for the exact Cloudflare Pages settings.

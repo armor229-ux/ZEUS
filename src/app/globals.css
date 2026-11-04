@@ -1,0 +1,342 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --color-gold: var(--gold);
+  --color-gold-bright: var(--gold-bright);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+:root {
+  --radius: 0.625rem;
+  --background: oklch(0.145 0 0);
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.205 0 0);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.205 0 0);
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.922 0 0);
+  --primary-foreground: oklch(0.205 0 0);
+  --secondary: oklch(0.269 0 0);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.269 0 0);
+  --muted-foreground: oklch(0.708 0 0);
+  --accent: oklch(0.269 0 0);
+  --accent-foreground: oklch(0.985 0 0);
+  --destructive: oklch(0.704 0.191 22.216);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.556 0 0);
+  --gold: #d4a017;
+  --gold-bright: #f5c542;
+  --chart-1: oklch(0.646 0.222 41.116);
+  --chart-2: oklch(0.6 0.118 184.704);
+  --chart-3: oklch(0.398 0.07 227.392);
+  --chart-4: oklch(0.828 0.189 84.429);
+  --chart-5: oklch(0.769 0.188 70.08);
+  --sidebar: oklch(0.205 0 0);
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-primary: oklch(0.488 0.243 264.376);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.269 0 0);
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: oklch(0.556 0 0);
+}
+
+.dark {
+  --background: oklch(0.145 0 0);
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.205 0 0);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.205 0 0);
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.922 0 0);
+  --primary-foreground: oklch(0.205 0 0);
+  --secondary: oklch(0.269 0 0);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.269 0 0);
+  --muted-foreground: oklch(0.708 0 0);
+  --accent: oklch(0.269 0 0);
+  --accent-foreground: oklch(0.985 0 0);
+  --destructive: oklch(0.704 0.191 22.216);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.556 0 0);
+  --gold: #d4a017;
+  --gold-bright: #f5c542;
+}
+
+/* Light mode kept available for the Settings theme toggle */
+html:not(.dark) {
+  --background: oklch(0.985 0.005 90);
+  --foreground: oklch(0.205 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.205 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.205 0 0);
+  --primary: oklch(0.205 0 0);
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.96 0.004 90);
+  --secondary-foreground: oklch(0.205 0 0);
+  --muted: oklch(0.96 0.004 90);
+  --muted-foreground: oklch(0.5 0 0);
+  --accent: oklch(0.96 0.004 90);
+  --accent-foreground: oklch(0.205 0 0);
+  --border: oklch(0.9 0.01 90);
+  --input: oklch(0.9 0.01 90);
+  --ring: oklch(0.75 0.1 85);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    /* Scroll perf: momentum scrolling on touch devices */
+    -webkit-overflow-scrolling: touch;
+    /* Prevent scroll chaining jank on the document scroller */
+    overscroll-behavior-y: none;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* Smooth, flicker-free scrolling without hijacking wheel input */
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+/* ============================================================
+   PART 1 — GPU ACCELERATION & PAINT CONTAINMENT UTILITIES
+   ============================================================ */
+
+/* Promote element to its own compositor layer (GPU). Applied sparingly
+   to the page wrapper, header, nav pill, and hero. */
+.gpu-layer {
+  transform: translateZ(0);
+  will-change: transform;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+/* Long offscreen content (card grids, rows, footer) skips layout/paint
+   entirely until near-viewport — this is the single biggest scroll win
+   on catalog pages with dozens of cards. */
+.perf-contain {
+  content-visibility: auto;
+  contain-intrinsic-size: 1px 300px;
+  contain: layout style paint;
+}
+
+/* Isolated rendering layer for the hero banner + backdrop glow so their
+   heavy gradients never repaint the main scroll layer. */
+.iso-layer {
+  isolation: isolate;
+  transform: translateZ(0);
+}
+
+/* Frosted glass — blur strength is CONSTANT (never animated per-frame).
+   During high-velocity scroll the hook below toggles [data-scroll-fast],
+   swapping blur for a pre-composited translucent backdrop: zero blur
+   cost while dragging the scrollbar, identical visual language. */
+.frost {
+  backdrop-filter: blur(16px) saturate(1.4);
+  -webkit-backdrop-filter: blur(16px) saturate(1.4);
+  background: color-mix(in srgb, var(--background) 62%, transparent);
+}
+
+html[data-scroll-fast] .frost,
+html[data-scrolling] .frost {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  /* visually equivalent solid-ish glass without runtime blur */
+  background: color-mix(in srgb, var(--background) 88%, transparent);
+}
+
+/* Header background changes animate via OPACITY of a pre-rendered layer,
+   never via backdrop-filter or background color transitions. */
+.header-veil {
+  opacity: 0;
+  transition: opacity 220ms ease-out;
+  will-change: opacity;
+}
+
+html[data-scrolled] .header-veil {
+  opacity: 1;
+}
+
+/* ============================================================
+   SCROLL SNAP ROWS (horizontal carousels)
+   ============================================================ */
+.snap-row {
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x proximity;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.snap-row::-webkit-scrollbar {
+  display: none;
+}
+
+.snap-row > * {
+  scroll-snap-align: start;
+}
+
+/* ============================================================
+   CUSTOM SCROLLBAR (document + library grid)
+   ============================================================ */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--gold) 45%, transparent) transparent;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--gold) 40%, transparent);
+  border-radius: 8px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in srgb, var(--gold) 70%, transparent);
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+/* ============================================================
+   NAV PILL — animated STRICTLY with transform + opacity
+   (never left/top/margin; width is set on discrete click only)
+   ============================================================ */
+.nav-pill-indicator {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  transform: translate3d(0, 0, 0);
+  transition: transform 320ms cubic-bezier(0.32, 0.72, 0, 1), width 320ms cubic-bezier(0.32, 0.72, 0, 1);
+  will-change: transform;
+  pointer-events: none;
+}
+
+/* ============================================================
+   CARD HOVER — transform & opacity ONLY (no reflow / no shadow
+   re-paint; the glow is a pre-rendered layer whose opacity fades in)
+   ============================================================ */
+.zeus-card {
+  transform: translateZ(0);
+  transition: transform 260ms cubic-bezier(0.32, 0.72, 0, 1);
+  will-change: auto;
+}
+
+.zeus-card:hover,
+.zeus-card:focus-visible {
+  transform: translate3d(0, -6px, 0) scale(1.035);
+  will-change: transform;
+}
+
+.zeus-card .card-glow {
+  opacity: 0;
+  transition: opacity 220ms ease-out;
+}
+
+.zeus-card:hover .card-glow,
+.zeus-card:focus-visible .card-glow {
+  opacity: 1;
+}
+
+/* While actively scrolling fast, suppress hover transforms entirely so
+   the compositor never rasterizes card zoom states mid-fling. */
+html[data-scroll-fast] .zeus-card {
+  transition: none;
+}
+
+html[data-scroll-fast] .zeus-card:hover {
+  transform: translateZ(0);
+}
+
+/* ============================================================
+   TYPOGRAPHY & THEME EXTRAS
+   ============================================================ */
+.gold-text {
+  color: var(--gold);
+}
+
+.text-shadow-hero {
+  text-shadow: 0 2px 24px rgb(0 0 0 / 0.55), 0 1px 3px rgb(0 0 0 / 0.7);
+}
+
+/* Respect users who prefer reduced motion: kill all transforms */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  .nav-pill-indicator,
+  .zeus-card,
+  .header-veil {
+    transition: none !important;
+  }
+
+  .zeus-card:hover,
+  .zeus-card:focus-visible {
+    transform: none;
+  }
+}
+
+/* Selection color */
+::selection {
+  background: color-mix(in srgb, var(--gold) 40%, transparent);
+}
