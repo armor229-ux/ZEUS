@@ -15,8 +15,9 @@ const API_BASE_URL = 'https://api.themoviedb.org/3';
 const IMAGE_BASE_URL = 'https://image.tmdb.org/t/p/';
 
 /* ---------------- Image Sizes ---------------- */
-const POSTER_SIZE = 'w500';        // Movie / TV posters
-const BACKDROP_SIZE = 'original';  // Hero banners & detail backdrops
+const POSTER_SIZE = 'w500';        // Movie / TV posters (detail pages)
+const POSTER_CARD_SIZE = 'w342';   // Grid/row card posters — board standard, never oversized
+const BACKDROP_SIZE = 'w1280';     // Hero banners & detail backdrops — was 'original' (raw multi-MB)
 const BACKDROP_MD_SIZE = 'w780';   // Medium backdrops (episodes stills pages)
 const PROFILE_SIZE = 'w185';       // Actor profile photos
 const STILL_SIZE = 'w300';         // Episode still images

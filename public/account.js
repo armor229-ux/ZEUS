@@ -80,7 +80,7 @@
     const year = item.year ? '<span>' + esc(item.year) + '</span>' : '';
     row.innerHTML =
       '<a class="account-item-poster" href="' + detailHref(item) + '" tabindex="-1" aria-hidden="true">' +
-        '<img src="' + esc(posterSrc(item)) + '" alt="" loading="lazy" decoding="async" data-fallback="poster" onerror="handleImageError(this)">' +
+        '<img src="' + esc(posterSrc(item)) + '" alt="" loading="lazy" decoding="async" fetchpriority="low" data-fallback="poster" onerror="handleImageError(this)">' +
       '</a>' +
       '<div class="account-item-info">' +
         '<a class="account-item-title" href="' + detailHref(item) + '" title="' + esc(item.title) + '">' + esc(item.title) + '</a>' +

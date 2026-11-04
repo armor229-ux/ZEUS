@@ -81,8 +81,8 @@
   function posterUrl(entry) {
     var path = entry.posterPath || entry.backdropPath;
     if (!path) return (typeof FALLBACK_POSTER === 'string') ? FALLBACK_POSTER : '';
-    if (typeof IMAGE_BASE_URL === 'string' && typeof POSTER_SIZE === 'string') {
-      return IMAGE_BASE_URL + POSTER_SIZE + path;
+    if (typeof IMAGE_BASE_URL === 'string' && typeof POSTER_CARD_SIZE === 'string') {
+      return IMAGE_BASE_URL + POSTER_CARD_SIZE + path;
     }
     return 'https://image.tmdb.org/t/p/w342' + path;
   }
@@ -132,7 +132,7 @@
       +   '<a class="card-link" href="' + esc(watchHref(entry)) + '" title="' + esc(title) + ' — resume">'
       +     '<div class="poster-wrap">'
       +       '<img class="poster-img" src="' + esc(art) + '" alt="' + esc(title) + ' poster"'
-      +            ' loading="lazy" decoding="async"'
+      +            ' loading="lazy" decoding="async" fetchpriority="low"'
       +            (typeof handleImageError === 'function' ? ' onerror="handleImageError(this)"' : '')
       +            ' data-fallback="poster">'
       +       '<div class="cw-progress" role="progressbar" aria-valuenow="' + Math.round(pct * 100) + '"'
@@ -178,6 +178,11 @@
     }
 
     row.innerHTML = items.map(cardHtml).join('');
+
+    // silky poster fade-in (api.js) — same behaviour as createMovieCard
+    if (typeof silkyImage === 'function') {
+      Array.prototype.forEach.call(row.querySelectorAll('.poster-img'), silkyImage);
+    }
 
     // remove buttons
     Array.prototype.forEach.call(row.querySelectorAll('.cw-remove'), function (btn) {

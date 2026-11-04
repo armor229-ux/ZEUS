@@ -273,6 +273,20 @@ function renderAnimeHeroSlides() {
 
   hero.insertAdjacentHTML('afterbegin', slidesHtml);
 
+  /* BOARD Part 2: hero backdrop preload hint — first (active) slide
+     only, high priority (CSS background-image cannot carry the
+     fetchpriority attribute; see index.js hero for the full note). */
+  try {
+    if (animeHeroSlides[0] && animeHeroSlides[0].backdrop_path) {
+      const heroPreload = document.createElement('link');
+      heroPreload.rel = 'preload';
+      heroPreload.as = 'image';
+      heroPreload.fetchPriority = 'high';
+      heroPreload.href = imageUrl(animeHeroSlides[0].backdrop_path, BACKDROP_SIZE, FALLBACK_STILL);
+      document.head.appendChild(heroPreload);
+    }
+  } catch (heroPreloadError) { /* older engines: default priority is fine */ }
+
   // Build dots
   const dotsContainer = $('#hero-dots');
   if (dotsContainer) {

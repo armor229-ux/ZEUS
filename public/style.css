@@ -122,7 +122,9 @@ h2,
 }
 
 /* GPU acceleration for the animated hot paths */
-.movie-card,
+/* (.movie-card deliberately NOT listed — see §10: a permanent
+   composited layer per card (× every card on the page) made the
+   layer tree heavy and stalled scrollbar drags/rasterization.) */
 .hero,
 .trailer-video {
   will-change: transform;
@@ -1758,7 +1760,10 @@ body.banner-visible {
   position: relative;
   border-radius: 10px; /* compact cards (was 16px) */
   transition: transform 0.25s var(--ease-buttery);
-  will-change: transform;
+  /* will-change: transform intentionally REMOVED — a permanent
+     composited layer per card (× every card on the page) made the
+     layer tree heavy and slowed scroll rasterization. The hover
+     lift still promotes the card only while it animates. */
 }
 /* Apple hover: the card lifts — artwork, heart and caption as one object */
 .movie-card:hover,
@@ -1815,6 +1820,21 @@ body.banner-visible {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  /* Silky film-card load: artwork starts invisible and fades in
+     once its bitmap is ready (api.js silkyImage adds .is-loaded)
+     instead of popping in abruptly mid-scroll. Opacity-only =
+     compositor work, no layout. */
+  opacity: 0;
+  transition: opacity 0.45s ease;
+}
+.poster-img.is-loaded {
+  opacity: 1;
+}
+@media (prefers-reduced-motion: reduce) {
+  .poster-img {
+    opacity: 1;
+    transition: none;
+  }
 }
 
 /* HD badge — sleek solid pill */
@@ -8270,18 +8290,20 @@ html {
   -webkit-overflow-scrolling: touch;
 }
 
-/* main is the page content wrapper. It is GPU-promoted
-   (translateZ + will-change: transform) per the board — it has
-   no fixed-position descendants (topbar / modals / toasts /
-   lightning overlays all mount on <body> directly), so the
-   promotion cannot break the Nav Pill, popups or ambient layers.
-   contain: layout style keeps its internals from leaking
-   layout invalidations into the rest of the document. */
+/* main is the page content wrapper. Its GPU layer promotion
+   (translateZ + will-change: transform) is REMOVED — promoting the
+   entire page wrapper to ONE giant composited layer forced the
+   compositor to retain and raster thousands of pixels of tiles on
+   every scrollbar drag across the full page height (the same
+   layer-tree tax §10 removed from the cards; long pages are worst).
+   Root scrolling is compositor-driven by itself, so nothing is lost.
+   contain: layout style stays — it keeps internals from leaking
+   layout invalidations into the rest of the document without any
+   compositing cost. (main has no fixed-position descendants:
+   topbar / modals / toasts / lightning overlays all mount on
+   <body> directly, and no z-index:-1 layer lives inside main.) */
 main {
-  transform: translateZ(0);
-  will-change: transform;
   contain: layout style;
-  backface-visibility: hidden;
 }
 
 /* ---------- 46B. Containment for rows + card grids ------------- */
@@ -8310,7 +8332,10 @@ main {
    whenever the card is offscreen — is used instead). */
 .movies-grid > .movie-card {
   content-visibility: auto;
-  contain-intrinsic-size: auto 300px;
+  /* 348px ≈ real height of a 2:3 card at the grid's 155-220px
+     columns (poster ×1.5 + caption) — a closer first estimate
+     means fewer layout corrections as cards scroll into view. */
+  contain-intrinsic-size: auto 348px;
 }
 
 /* Genre tile grid — same treatment (hover glow stays intact). */
@@ -8470,7 +8495,8 @@ body[data-scroll-fast="1"] .zeus-navpill {
   opacity: 0;
   transition: opacity .25s ease;
   pointer-events: none;
-  will-change: opacity;
+  /* will-change: opacity removed — same layer-tree tax as the
+     card's own will-change; the hover transition promotes it. */
 }
 .movie-card.wide::after {
   aspect-ratio: 16 / 9;
@@ -8544,3 +8570,144 @@ body[data-scroll-fast="1"] .movie-card::before {
     animation: none;
   }
 }
+
+/* ============================================================
+   47. SILKY FILM-CARD ENTRANCE
+   ------------------------------------------------------------
+   Film cards no longer snap from skeleton to fully-rendered:
+   each card rises 14px + fades in over 0.5s with a tiny 35ms
+   per-card stagger, so rows and grids land like a dealt hand of
+   cards. Transform/opacity only — pure compositor work, zero
+   reflow. Delays cap at 10 cards per surface; cards deeper in a
+   grid (content-visibility: auto) start their clock when they
+   first render, so below-the-fold cards gently fade in as they
+   arrive while scrolling. Disabled under prefers-reduced-motion.
+   ============================================================ */
+@keyframes zeusCardIn {
+  from { opacity: 0; transform: translateY(14px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.movies-row > .movie-card,
+.movies-grid > .movie-card {
+  animation: zeusCardIn 0.5s var(--ease-out) backwards;
+}
+
+/* Scrollbar-drag / fast-fling guard — same pattern as §46E/§46F:
+   while body[data-scroll-fast] is active (set by the rAF velocity
+   module in header-autohide.js during scrollbar drags and flings),
+   cards streaming past skip the entrance animation — dozens of
+   staggered 0.5s animations firing per dragged screenful is pure
+   scroll tax. Cards that first render AFTER the drag settles
+   (~140ms) still get the full silky entrance. Zero change at rest. */
+body[data-scroll-fast="1"] .movies-row > .movie-card,
+body[data-scroll-fast="1"] .movies-grid > .movie-card {
+  animation: none;
+}
+
+.movies-row > .movie-card:nth-child(2),
+.movies-grid > .movie-card:nth-child(2) { animation-delay: 35ms; }
+.movies-row > .movie-card:nth-child(3),
+.movies-grid > .movie-card:nth-child(3) { animation-delay: 70ms; }
+.movies-row > .movie-card:nth-child(4),
+.movies-grid > .movie-card:nth-child(4) { animation-delay: 105ms; }
+.movies-row > .movie-card:nth-child(5),
+.movies-grid > .movie-card:nth-child(5) { animation-delay: 140ms; }
+.movies-row > .movie-card:nth-child(6),
+.movies-grid > .movie-card:nth-child(6) { animation-delay: 175ms; }
+.movies-row > .movie-card:nth-child(7),
+.movies-grid > .movie-card:nth-child(7) { animation-delay: 210ms; }
+.movies-row > .movie-card:nth-child(8),
+.movies-grid > .movie-card:nth-child(8) { animation-delay: 245ms; }
+.movies-row > .movie-card:nth-child(9),
+.movies-grid > .movie-card:nth-child(9) { animation-delay: 280ms; }
+.movies-row > .movie-card:nth-child(10),
+.movies-grid > .movie-card:nth-child(10) { animation-delay: 315ms; }
+.movies-row > .movie-card:nth-child(n+11),
+.movies-grid > .movie-card:nth-child(n+11) { animation-delay: 315ms; }
+
+@media (prefers-reduced-motion: reduce) {
+  .movies-row > .movie-card,
+  .movies-grid > .movie-card {
+    animation: none;
+  }
+}
+
+/* ============================================================
+   48. SCROLL INPUT ENGINE — HOVER/SPAM SUPPRESSION (BOARD)
+   ------------------------------------------------------------
+   While ANY page scroll is in motion (body[data-scrolling="1"],
+   set change-guarded by the rAF velocity module in
+   header-autohide.js and released ~140ms after the gesture
+   settles), pointer-events switch OFF everywhere:
+
+     • zero hover-state recalculation / repaint churn while the
+       scrollbar thumb is dragged or content flies under the
+       cursor (wheel + momentum),
+     • hover-driven previews (trailer pop-ins, zoom overlays)
+       cannot START mid-scroll,
+     • the first click AFTER the gesture lands normally —
+       pointer-events restore the instant the attribute clears.
+
+   Zero visual change: pointer-events never alters rendering.
+   (The scrollbar itself is browser chrome, outside the DOM —
+   dragging it stays fully responsive.)
+   ============================================================ */
+body[data-scrolling="1"] * {
+  pointer-events: none !important;
+}
+
+/* Root overscroll: kills the pull-to-refresh glow / scroll-chain
+   bounce so fast edge flicks never trigger a re-raster. Desktop
+   rendering identical. (Board Part 1, corrected property spelling
+   — `overscroll-behavior-y`. `overflow-y: scroll` on body is
+   deliberately NOT forced: the root scroller already exists and a
+   forced classic gutter would change macOS visuals.) */
+html {
+  overscroll-behavior-y: none;
+}
+
+/* ============================================================
+   49. PAGE CROSS-FADE — 0.15s opacity transitions (BOARD P3)
+   ------------------------------------------------------------
+   The board's tab-switch transition, now wired end to end:
+
+   ENTER — one-shot 150ms cubic-bezier keyframe on <body>, run
+     on every real page load (a back/forward-cache restore
+     replays the finished state instantly — no re-fade).
+   EXIT — body.page-exit (set by header-autohide.js §4 on a
+     qualified same-origin link click) transitions opacity to 0;
+     navigation fires at the 150ms mark.
+
+   Why there is no white flash: <body> carries no background of
+   its own here — its --bg propagates to the root canvas, which
+   KEEPS that color while body itself fades. The frame fades
+   content only, over an identical backdrop; layout, metrics and
+   the hero are untouched (opacity creates neither containing
+   blocks nor layout — fixed header/modals stay viewport-anchored).
+
+   Both halves are disabled under prefers-reduced-motion, and the
+   pageshow handler in header-autohide.js §4 strips page-exit on
+   bfcache restores so BACK can never land on an invisible page.
+   ============================================================ */
+@keyframes zeusPageIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+body {
+  animation: zeusPageIn 150ms cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+body.page-exit {
+  opacity: 0;
+  transition: opacity 150ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+@media (prefers-reduced-motion: reduce) {
+  body {
+    animation: none;
+  }
+  body.page-exit {
+    opacity: 1;
+    transition: none;
+  }
+}
+

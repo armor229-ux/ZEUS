@@ -1,8 +1,23 @@
 # ZEUS — clean routes (ZEUS FULL UPDATE, Part 1)
 # Status 200 = serve the file at the clean URL (no visible change).
 # These mirror the next.config.ts rewrites used by the dev server.
-# Query strings are passed through automatically (e.g. /discover?genre=28).
-/anime     /anime.html    200
-/genre     /genre.html    200
-/discover  /browse.html   200
-/*         /index.html    200
+# Query strings are passed through automatically (e.g. /discover?genre=28,
+# /movie?id=123). Explicit entries come FIRST; the /* fallback only
+# catches unknown paths so deep links always land on the right page.
+/anime      /anime.html      200
+/genre      /genre.html      200
+/discover   /browse.html     200
+/search     /search.html     200
+/watchlist  /watchlist.html  200
+/library    /watchlist.html  200
+/settings   /settings.html   200
+/account    /account.html    200
+/login      /login.html      200
+/movie      /movie.html      200
+/tv         /tv.html         200
+/watch      /watch.html      200
+/party      /party.html      200
+/terms      /terms.html      200
+/privacy    /privacy.html    200
+/dmca       /dmca.html       200
+/*          /index.html      200

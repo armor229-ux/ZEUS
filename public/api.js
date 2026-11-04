@@ -823,7 +823,7 @@ function createMovieCard(item, { wide = false, rank = null, badge = null, metaNo
     ? (item.backdrop_path || item.poster_path)
     : (item.poster_path || item.backdrop_path);
   const artSrc = artPath
-    ? IMAGE_BASE_URL + (wide ? BACKDROP_MD_SIZE : POSTER_SIZE) + artPath
+    ? IMAGE_BASE_URL + (wide ? BACKDROP_MD_SIZE : POSTER_CARD_SIZE) + artPath
     : FALLBACK_POSTER;
 
   const rankHtml = rank
@@ -855,6 +855,7 @@ function createMovieCard(item, { wide = false, rank = null, badge = null, metaNo
              alt="${escapeHtml(title)} ${wide ? 'backdrop' : 'poster'}"
              loading="lazy"
              decoding="async"
+             fetchpriority="low"
              data-fallback="${wide ? 'still' : 'poster'}"
              onerror="handleImageError(this)">
       </div>
@@ -876,6 +877,7 @@ function createMovieCard(item, { wide = false, rank = null, badge = null, metaNo
       </p>
     </div>
   `;
+  silkyImage(card.querySelector('.poster-img'));
   return card;
 }
 
@@ -889,6 +891,7 @@ function createCastCard(person) {
            alt="${escapeHtml(person.name)}"
            loading="lazy"
            decoding="async"
+           fetchpriority="low"
            data-fallback="profile"
            onerror="handleImageError(this)">
     </div>
@@ -897,7 +900,26 @@ function createCastCard(person) {
       <p class="cast-character" title="${escapeHtml(person.character || '')}">${escapeHtml(person.character || '')}</p>
     </div>
   `;
+  silkyImage(card.querySelector('.cast-photo img'));
   return card;
+}
+
+/**
+ * Silky poster fade-in: the artwork starts invisible and fades
+ * in over ~0.45s the moment its bitmap is ready — no abrupt
+ * pop-in while a fresh row/grid fills in. Cache-safe: if the
+ * image is already complete (memory/disk cache) the class is
+ * applied synchronously; a poster that swaps to its fallback via
+ * handleImageError still fades in when the fallback bitmap
+ * arrives (the once-listener only fires on successful loads).
+ */
+function silkyImage(img) {
+  if (!img) return;
+  if (img.complete && img.naturalWidth > 0) {
+    img.classList.add('is-loaded');
+    return;
+  }
+  img.addEventListener('load', () => img.classList.add('is-loaded'), { once: true });
 }
 
 /** Escape user/API text before injecting into HTML. */
@@ -2154,7 +2176,9 @@ function initDisclaimerBanner() {
 function initVisibilityPerf() {
   // The player page: decorative background animation stays off
   // so the video decoder owns the compositor + main thread.
-  if (/^\/watch\.html/i.test(window.location.pathname)) {
+  // (Matches BOTH entry URLs: the clean route /watch and the
+  // direct /watch.html — the route rewrites serve both.)
+  if (/^\/watch(\.html)?\/?$/i.test(window.location.pathname)) {
     document.body.classList.add('zeus-player-active');
   }
 
@@ -2181,7 +2205,8 @@ const PREFETCH_PAGES = ['/', '/anime', '/discover', '/genre', 'watchlist.html', 
 
 function initIdlePagePrefetch() {
   // Never contend with the player's network budget
-  if (/^\/watch\.html/i.test(window.location.pathname)) return;
+  // (clean route /watch and direct /watch.html both count)
+  if (/^\/watch(\.html)?\/?$/i.test(window.location.pathname)) return;
 
   // Respect data-saver / very slow connections
   try {
@@ -2196,9 +2221,12 @@ function initIdlePagePrefetch() {
     : (cb) => window.setTimeout(cb, 1800);
 
   const warm = () => {
-    const here = window.location.pathname.replace(/\/+$/, '') || '/';
+    // Normalize both sides (strip .html + trailing slashes) so the
+    // "skip current page" check works on clean routes (/watchlist)
+    // AND direct .html URLs (watchlist.html) alike.
+    const here = window.location.pathname.replace(/\.html$/i, '').replace(/\/+$/, '') || '/';
     PREFETCH_PAGES.forEach((page) => {
-      const path = page.replace(/\/+$/, '') || '/';
+      const path = page.replace(/\.html$/i, '').replace(/\/+$/, '') || '/';
       if (path === here) return; // current page is already loaded
       const link = document.createElement('link');
       link.rel = 'prefetch';

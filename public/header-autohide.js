@@ -47,6 +47,13 @@
         variant would loop: setAttribute fires mutation records
         even for identical values). CSS 39 fades the golden
         layers in/out off this attribute.
+
+   PAGE CROSS-FADE (v1.7, BOARD P3) — §4 below fades the page out
+   over 150ms (body.page-exit, CSS §49) on qualified same-origin
+   link clicks, then navigates; the enter half is a one-shot body
+   keyframe in CSS §49. bfcache-safe, reduced-motion-safe, and
+   cannot trap a click (navigation fires from a timer even if the
+   transition is skipped).
    ============================================================ */
 (function () {
   /* intentionally empty — the ZEUS header is always visible */
@@ -244,6 +251,20 @@
   var lastY = window.scrollY || 0;
   var lastTs = 0;
   var settleTimer;
+  var scrolling = false;
+
+  /* BOARD Part 1 — body[data-scrolling] marks ANY active page scroll
+     (wheel / touch / scrollbar drag), change-guarded so a steady
+     gesture performs ZERO DOM writes after the first. CSS §48
+     switches pointer-events off while it is set, which freezes
+     hover-state recalculation/repaint spam mid-drag; it releases
+     ~140ms after the last scroll event (settle timer below). */
+  function setScrolling(on) {
+    if (on === scrolling) return;
+    scrolling = on;
+    if (on) document.body.setAttribute('data-scrolling', '1');
+    else document.body.removeAttribute('data-scrolling');
+  }
 
   function frame(ts) {
     ticking = false;
@@ -269,6 +290,7 @@
     // events (scrollbar drag release, trackpad stop).
     if (settleTimer) clearTimeout(settleTimer);
     settleTimer = setTimeout(function () {
+      setScrolling(false);
       if (fast) {
         fast = false;
         document.body.removeAttribute('data-scroll-fast');
@@ -277,8 +299,10 @@
   }
 
   function onScroll() {
-    // passive + rAF: this function only schedules — no reads,
-    // no writes, no allocations on the input thread.
+    // passive + rAF: this function only schedules — no reads, no
+    // allocations on the input thread. setScrolling is change-
+    // guarded: one attribute write per gesture, not per event.
+    setScrolling(true);
     if (!ticking) {
       ticking = true;
       window.requestAnimationFrame(frame);
@@ -289,4 +313,71 @@
 
   // Initial state (e.g. page restored mid-scroll by the browser)
   frame(performance.now ? performance.now() : Date.now());
+})();
+
+/* ============================================================
+   4. PAGE CROSS-FADE — exit half (v1.7, BOARD P3)
+   ------------------------------------------------------------
+   Enter half = the one-shot body keyframe in CSS §49 (runs
+   automatically on every real load). This module adds the exit
+   half: a qualified same-origin link click fades the page out
+   (body.page-exit → CSS §49 transition, 150ms cubic-bezier)
+   and navigation fires at the 150ms mark — the board's
+   opacity cross-fade between tabs, with no white flash (the
+   root canvas keeps --bg while body fades).
+
+   Safety rails:
+   • left-clicks only, no modifier keys — middle/ctrl/shift
+     clicks, target=_blank, downloads and special protocols
+     fall through to the browser untouched;
+   • in-page anchors (#…) and true reloads never fade;
+   • pageshow ALWAYS strips body.page-exit — a back/forward
+     cache restore can never land on an invisible page;
+   • prefers-reduced-motion users navigate instantly (no exit
+     listener is registered at all);
+   • navigation fires from a plain 150ms timer, so even if the
+     CSS transition is skipped the click can never be trapped.
+   ============================================================ */
+(function () {
+  'use strict';
+
+  var reduced = false;
+  try {
+    reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  } catch (e) { /* older engines — fade applies */ }
+
+  /* bfcache / restore safety: never arrive on a faded-out page.
+     Runs for persisted back/forward restores and fresh loads. */
+  window.addEventListener('pageshow', function () {
+    document.body.classList.remove('page-exit');
+  });
+
+  if (reduced) return; // reduced motion: instant navigation only
+
+  document.addEventListener('click', function (e) {
+    if (e.defaultPrevented) return;
+    if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    var a = e.target && e.target.closest ? e.target.closest('a[href]') : null;
+    if (!a) return;
+    var href = a.getAttribute('href') || '';
+    if (!href || href.charAt(0) === '#') return;
+    if (a.target && a.target !== '_self') return;
+    if (a.hasAttribute('download')) return;
+    if (/^(mailto:|tel:|javascript:)/i.test(href)) return;
+
+    var url;
+    try { url = new URL(href, window.location.href); } catch (err) { return; }
+    if (url.origin !== window.location.origin) return;
+    if (url.href === window.location.href) return; /* true reload */
+    /* in-page anchor on the same page — let the browser scroll */
+    if (url.pathname === window.location.pathname &&
+        url.hash && url.hash !== window.location.hash) return;
+
+    e.preventDefault();
+    document.body.classList.add('page-exit');
+    window.setTimeout(function () {
+      try { window.location.assign(url.href); }
+      catch (err) { window.location.href = url.href; }
+    }, 150);
+  });
 })();

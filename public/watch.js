@@ -488,7 +488,14 @@ function initServerList() {
       closeServerModal();
     });
   });
-  if (!activeServer && SERVER_LIST.length) activeServer = SERVER_LIST[0];
+  if (!activeServer && SERVER_LIST.length) {
+    /* ATLANTIC FIX — atlantic.st buffers heavily and its slow
+       origin weighed the whole watch page down. Atlantic stays
+       in the Servers modal (Official group, still manually
+       selectable at any time), but the DEFAULT pick for fresh
+       visitors now starts on the first community embed. */
+    activeServer = SERVER_LIST.find((s) => s.id !== 'atlantic') || SERVER_LIST[0];
+  }
   restoreServerPreference();
   highlightActiveServers();
   updateServerDots();
@@ -522,6 +529,12 @@ function restoreServerPreference() {
   try {
     const saved = JSON.parse(localStorage.getItem(SERVER_PREF_KEY) || 'null');
     if (!saved || !saved.id) return;
+    /* ATLANTIC FIX — a saved 'atlantic' preference is ignored:
+       earlier versions auto-saved EVERY AUTO pick under this key,
+       so many visitors carry an Atlantic default they never
+       chose, and it buffers heavily. Picking Atlantic manually
+       still plays it for the current visit. */
+    if (saved.id === 'atlantic') return;
     const server = findServerById(saved.id);
     if (server) activeServer = server;
   } catch (e) { /* corrupt entry — keep the first server */ }
@@ -703,9 +716,15 @@ function buildServerUrl(server) {
  *  A dead pick is handled by the load timeout + the AUTO
  *  fallback pass. */
 async function initSmartServerSelection() {
+  /* ATLANTIC FIX — atlantic.st buffers heavily, so the quiet
+     smart pick never STARTS on it: last-good memory and health
+     scores below consider only the community embeds (Atlantic
+     remains manually selectable, and step (3)'s failed-server
+     escape hatch can still land on it if it is the only healthy
+     source). */
   // (1) last good server — only when it is not failed
   const lastGood = getLastGoodEngine(watchType);
-  if (lastGood) {
+  if (lastGood && lastGood !== 'atlantic') {
     const server = findServerById(lastGood);
     if (server && !isEngineFailed(server.id)) {
       activeServer = server;
@@ -715,7 +734,7 @@ async function initSmartServerSelection() {
   // (2) highest score (only switches when it actually beats the
   //     current pick — fresh users keep the default: the first
   //     server in the list)
-  const best = highestScoreServer(SERVER_LIST);
+  const best = highestScoreServer(SERVER_LIST.filter((s) => s.id !== 'atlantic'));
   if (best && activeServer && best.id !== activeServer.id) {
     const currentScore = getEngineStats(activeServer.id)
       ? engineScore(activeServer.id)
@@ -1053,12 +1072,20 @@ async function autoSelectBestServer({ viaFallback = false } = {}) {
   autoSelectAbort = () => { userTookOver = true; };
   try {
     if (typeof showToast === 'function') showToast('AUTO: selecting best source…', 'info');
-    showSourceCheckOverlay(candidates.length);
-    for (let i = 0; i < candidates.length; i++) {
-      const server = candidates[i];
+    /* ATLANTIC FIX — the rotation tries the community embeds
+       FIRST and atlantic.st LAST: its iframe fires 'load' (which
+       counts as success) long before its video plays smoothly,
+       so first-position picks read as constant buffering. As the
+       final fallback it is still reachable when everything else
+       fails. Stable sort — equal keys keep the DOM order. */
+    const ordered = candidates.sort((a, b) =>
+      (a.id === 'atlantic' ? 1 : 0) - (b.id === 'atlantic' ? 1 : 0));
+    showSourceCheckOverlay(ordered.length);
+    for (let i = 0; i < ordered.length; i++) {
+      const server = ordered[i];
       // load the candidate into the iframe — success = iframe LOADS
       const ok = await setActiveServer(server, viaFallback || i > 0, 'auto');
-      updateSourceCheckProgress(i + 1, candidates.length);
+      updateSourceCheckProgress(i + 1, ordered.length);
       if (userTookOver) return false; // the user picked a server — their pick wins
       if (ok) {
         hideSourceCheckOverlay();
@@ -1074,9 +1101,9 @@ async function autoSelectBestServer({ viaFallback = false } = {}) {
     // every server failed — AutoNext hops to the next episode
     // instead of giving up (TV, when enabled)
     if (await autoNextAdvance('sources-failed')) return true;
-    if (candidates[0]) {
+    if (ordered[0]) {
       if (typeof showToast === 'function') showToast('AUTO: using fallback server', 'info');
-      await setActiveServer(candidates[0], true, 'auto');
+      await setActiveServer(ordered[0], true, 'auto');
     }
     closeServerModal();
     return false;

@@ -647,6 +647,21 @@ function renderHeroSlides() {
 
   hero.insertAdjacentHTML('afterbegin', slidesHtml);
 
+  /* BOARD Part 2: the top visible hero image is the page's largest
+     single asset and a CSS background-image cannot carry the
+     fetchpriority attribute — a preload link boosts the FIRST
+     (active) slide's backdrop to high priority. One hint, one image. */
+  try {
+    if (heroSlides[0] && heroSlides[0].backdrop_path) {
+      const heroPreload = document.createElement('link');
+      heroPreload.rel = 'preload';
+      heroPreload.as = 'image';
+      heroPreload.fetchPriority = 'high';
+      heroPreload.href = imageUrl(heroSlides[0].backdrop_path, BACKDROP_SIZE, FALLBACK_STILL);
+      document.head.appendChild(heroPreload);
+    }
+  } catch (heroPreloadError) { /* older engines: default priority is fine */ }
+
   // Build dots
   const dotsContainer = $('#hero-dots');
   if (dotsContainer) {

@@ -111,6 +111,7 @@ function renderTVDetails(show) {
            alt="${escapeHtml(show.name || 'TV show')} poster"
            loading="lazy"
            decoding="async"
+           fetchpriority="low"
            data-fallback="poster"
            onerror="handleImageError(this)">
       <span class="quality-badge">HD</span>
@@ -213,6 +214,7 @@ function renderSeasons(seasons) {
              alt="${escapeHtml(season.name || `Season ${season.season_number}`)} poster"
              loading="lazy"
              decoding="async"
+             fetchpriority="low"
              data-fallback="poster"
              onerror="handleImageError(this)">
         <span class="card-play" aria-hidden="true">
@@ -293,6 +295,7 @@ async function loadEpisodes(tvId, seasonNumber) {
                alt="${escapeHtml(episode.name || `Episode ${episode.episode_number}`)} still"
                loading="lazy"
                decoding="async"
+               fetchpriority="low"
                data-fallback="still"
                onerror="handleImageError(this)">
           <span class="episode-num">${episode.episode_number}</span>

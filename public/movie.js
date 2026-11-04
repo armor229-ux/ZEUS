@@ -101,6 +101,7 @@ function renderMovieDetails(movie) {
            alt="${escapeHtml(movie.title || 'Movie')} poster"
            loading="lazy"
            decoding="async"
+           fetchpriority="low"
            data-fallback="poster"
            onerror="handleImageError(this)">
       <span class="quality-badge">HD</span>
