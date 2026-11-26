@@ -49,7 +49,7 @@
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap">
 
   <!-- Styles -->
-  <link rel="stylesheet" href="style.css?v=2.36">
+  <link rel="stylesheet" href="style.css?v=2.37">
 
   <!-- Smooth menu transitions: arrived via an in-site nav? hide the black loader from first paint -->
   <script>try{if(sessionStorage.getItem('zeus_nav_transition')==='1')document.documentElement.classList.add('no-page-loader')}catch(e){}</script>
@@ -57,6 +57,9 @@
   <script src="subtitle-prefs.js?v=1.3" defer></script>
 </head>
 <body>
+
+  <!-- Keyboard navigation: jump straight past the chrome to the content -->
+  <a class="skip-link" href="#main-content">Skip to content</a>
 
   <!-- Ambient lighting — blurred colour glow behind everything,
        painted with the featured title's backdrop (Apple TV+
@@ -131,7 +134,7 @@
   </div>
 
   <!-- ==================== WATCH PAGE ==================== -->
-  <main class="watch-page">
+  <main class="watch-page" id="main-content" tabindex="-1">
     <div class="container watch-container" id="watch-container">
 
       <!-- ============ PREMIUM PLAYER SHELL (Netplayz / Movy style) ============

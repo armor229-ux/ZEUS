@@ -25,7 +25,7 @@
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap">
 
   <!-- Styles -->
-  <link rel="stylesheet" href="style.css?v=2.36">
+  <link rel="stylesheet" href="style.css?v=2.37">
   <link rel="stylesheet" href="settings.css?v=1.0">
 
   <!-- Smooth menu transitions: arrived via an in-site nav? hide the black loader from first paint -->
@@ -37,6 +37,9 @@
   <script src="subtitle-prefs.js?v=1.3" defer></script>
 </head>
 <body>
+
+  <!-- Keyboard navigation: jump straight past the chrome to the content -->
+  <a class="skip-link" href="#main-content">Skip to content</a>
 
   <!-- Ambient lighting — blurred colour glow behind everything,
        painted with the featured title's backdrop (Apple TV+
@@ -111,7 +114,7 @@
   </div>
 
   <!-- ==================== SETTINGS PAGE ==================== -->
-  <main class="settings-page">
+  <main class="settings-page" id="main-content" tabindex="-1">
     <div class="container">
 
       <div class="settings-header">

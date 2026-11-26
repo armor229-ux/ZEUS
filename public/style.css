@@ -188,6 +188,38 @@ select {
   border-radius: 4px;
 }
 
+/* ---------------- Skip to content (keyboard navigation) ----------------
+   First Tab stop on every page: visually hidden until focused, then it
+   appears above all chrome. main[tabindex="-1"] is the landing target —
+   its programmatic focus ring is suppressed (children keep their own).
+   The global prefers-reduced-motion rule disables the slide-in. */
+.skip-link {
+  position: fixed;
+  top: 12px;
+  left: 12px;
+  z-index: 10010;
+  padding: 10px 18px;
+  border-radius: 10px;
+  background: #fff;
+  color: #111;
+  font-weight: 700;
+  font-size: 14px;
+  text-decoration: none;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.45);
+  transform: translateY(-72px);
+  opacity: 0;
+  transition: transform 0.18s ease, opacity 0.18s ease;
+  pointer-events: none;
+}
+.skip-link:focus {
+  transform: translateY(0);
+  opacity: 1;
+  pointer-events: auto;
+}
+main[tabindex="-1"]:focus {
+  outline: none;
+}
+
 /* Attribute-hidden wins over everything */
 [hidden] {
   display: none !important;
