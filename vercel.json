@@ -1,0 +1,21 @@
+{
+  "rewrites": [
+    { "source": "/anime", "destination": "/anime.html" },
+    { "source": "/genre", "destination": "/genre.html" },
+    { "source": "/discover", "destination": "/browse.html" },
+    { "source": "/search", "destination": "/search.html" },
+    { "source": "/watchlist", "destination": "/watchlist.html" },
+    { "source": "/library", "destination": "/watchlist.html" },
+    { "source": "/settings", "destination": "/settings.html" },
+    { "source": "/account", "destination": "/account.html" },
+    { "source": "/login", "destination": "/login.html" },
+    { "source": "/movie", "destination": "/movie.html" },
+    { "source": "/tv", "destination": "/tv.html" },
+    { "source": "/watch", "destination": "/watch.html" },
+    { "source": "/party", "destination": "/party.html" },
+    { "source": "/terms", "destination": "/terms.html" },
+    { "source": "/privacy", "destination": "/privacy.html" },
+    { "source": "/dmca", "destination": "/dmca.html" },
+    { "source": "/", "destination": "/index.html" }
+  ]
+}
