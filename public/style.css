@@ -597,8 +597,10 @@ body.nav-leaving .nav-menu.open {
   transition: opacity 0.15s ease, transform 0.4s var(--ease-out);
 }
 
-/* Arrived via an in-site transition: the black loader never shows */
-html.no-page-loader #page-loader {
+/* A previous visit (or unavailable storage) skips both entrances
+   before the page is painted, including direct visits to Watch. */
+html.no-page-loader #page-loader,
+html.no-page-loader #cine-overlay {
   display: none !important;
 }
 
@@ -5397,9 +5399,10 @@ body.server-modal-open { overflow: hidden; }
   from { opacity: 0; transform: translateY(14px); }
   to   { opacity: 1; transform: translateY(0); }
 }
-/* Reduced motion: entrance never plays */
+/* Reduced motion: hide both entrances before scripts initialize. */
 @media (prefers-reduced-motion: reduce) {
-  .cine-overlay { display: none; }
+  .page-loader,
+  .cine-overlay { display: none !important; }
 }
 
 /* ============================================================
@@ -8686,28 +8689,12 @@ body[data-scroll-fast="1"] .movies-grid > .movie-card {
 }
 
 /* ============================================================
-   48. SCROLL INPUT ENGINE — HOVER/SPAM SUPPRESSION (BOARD)
+   48. ROOT OVERSCROLL
    ------------------------------------------------------------
-   While ANY page scroll is in motion (body[data-scrolling="1"],
-   set change-guarded by the rAF velocity module in
-   header-autohide.js and released ~140ms after the gesture
-   settles), pointer-events switch OFF everywhere:
-
-     • zero hover-state recalculation / repaint churn while the
-       scrollbar thumb is dragged or content flies under the
-       cursor (wheel + momentum),
-     • hover-driven previews (trailer pop-ins, zoom overlays)
-       cannot START mid-scroll,
-     • the first click AFTER the gesture lands normally —
-       pointer-events restore the instant the attribute clears.
-
-   Zero visual change: pointer-events never alters rendering.
-   (The scrollbar itself is browser chrome, outside the DOM —
-   dragging it stays fully responsive.)
+   Pointer events remain native during scrolling. Toggling them
+   on every descendant caused full-page style recalculations on
+   long pages and could interfere with interactive content.
    ============================================================ */
-body[data-scrolling="1"] * {
-  pointer-events: none !important;
-}
 
 /* Root overscroll: kills the pull-to-refresh glow / scroll-chain
    bounce so fast edge flicks never trigger a re-raster. Desktop

@@ -1274,25 +1274,35 @@ function playCineEntrance() {
   const overlay = $('#cine-overlay');
   if (!overlay) return;
 
-  // The entrance IS the loader on this page — hide the generic one.
-  const pageLoader = $('#page-loader');
-  if (pageLoader) pageLoader.style.display = 'none';
-  document.documentElement.classList.add('no-page-loader');
-
-  // Reduced motion: skip straight to the content
-  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+  // The head check also hides this overlay before paint on revisits
+  // (and fails open if both forms of storage are unavailable).
+  if (document.documentElement.classList.contains('no-page-loader') || hasSeenIntro()) {
+    document.documentElement.classList.add('no-page-loader');
     hideCineOverlay(true);
     return;
   }
 
+  // Reduced motion: skip straight to the content and remember the choice.
+  if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    markIntroSeen();
+    hideCineOverlay(true);
+    return;
+  }
+
+  // Save at the start, so a refresh or navigation during the cinematic
+  // will not replay it on the next page.
+  const remembered = markIntroSeen();
   overlay.classList.add('cine-playing');
+  const finishEntrance = () => {
+    if (overlay.classList.contains('cine-done')) return;
+    if (!remembered) markIntroSeen(); // storage might have recovered
+    hideCineOverlay();
+  };
 
-  // Click anywhere skips the show
-  overlay.addEventListener('click', () => hideCineOverlay(), { once: true });
-
-  // Timed sequence: sweep 0.1–1.4s, flash ~0.5s, title 0.7s,
-  // overlay fades at 1.35s + 0.45s fade = 1.8s total
-  window.setTimeout(() => hideCineOverlay(), 1350);
+  // Click anywhere skips the show; the existing sequence otherwise
+  // fades out at 1.35s and finishes at about 1.8s.
+  overlay.addEventListener('click', finishEntrance, { once: true });
+  window.setTimeout(finishEntrance, 1350);
 }
 
 /** Fade the overlay out; the player shell scales 0.98 → 1. */
@@ -1302,7 +1312,7 @@ function hideCineOverlay(instant = false) {
   overlay.classList.add('cine-done');
 
   const shell = $('#player-shell');
-  if (shell) {
+  if (shell && !instant) {
     shell.classList.add('shell-enter');
     window.setTimeout(() => shell.classList.remove('shell-enter'), 700);
   }

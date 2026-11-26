@@ -1436,25 +1436,34 @@ function onCardHoverMouseOver(event) {
   }
 }
 
-/** Mouse arrived on a new card — glow now, trailer after 800ms. */
+/** Mouse arrived on a new card — glow now, trailer after a dwell. */
 function startCardHover(card) {
   endCardHover();
   hoverTrailerState.card = card;
 
-  // The ambient glow reacts immediately (no dwell delay).
-  ambientBackdrop.show(cardItemData.get(card));
+  // Cards can move under a stationary pointer while scrolling. Defer
+  // the full-screen ambient repaint until the gesture has settled,
+  // while keeping ordinary hover feedback immediate at rest.
+  const deferAmbient = document.body.hasAttribute('data-scroll-fast');
+  if (!deferAmbient) ambientBackdrop.show(cardItemData.get(card));
 
-  hoverTrailerState.dwellTimer = setTimeout(() => confirmCardHover(card), CARD_TRAILER_DELAY_MS);
+  hoverTrailerState.dwellTimer = setTimeout(() => confirmCardHover(card, deferAmbient), CARD_TRAILER_DELAY_MS);
 }
 
 /** Hover confirmed after the dwell delay: the card comes
     alive IMMEDIATELY (Ken Burns on the artwork) while the
     trailer stream connects; if a stream starts it fades in
     over the artwork, otherwise the pan/zoom simply continues. */
-function confirmCardHover(card) {
+function confirmCardHover(card, deferAmbient = false) {
   if (hoverTrailerState.card !== card || !card.isConnected) return;
   const item = cardItemData.get(card);
   if (!item) return;
+
+  if (document.body.hasAttribute('data-scroll-fast')) {
+    hoverTrailerState.dwellTimer = setTimeout(() => confirmCardHover(card, deferAmbient), CARD_HOVER_GRACE_MS);
+    return;
+  }
+  if (deferAmbient) ambientBackdrop.show(item);
 
   // Baseline "alive" state from the very first moment of the
   // dwell — the card never sits frozen, even offline.
@@ -1466,14 +1475,20 @@ function confirmCardHover(card) {
   if (cardTrailerEmbedFailed.has(trailerCacheKey(item.id, mediaType))) return;
 
   getTrailerKey(item.id, mediaType).then((videoKey) => {
-    // User may have left while the key was resolving
-    if (hoverTrailerState.card !== card || !card.isConnected) return;
-    if (!videoKey) {
-      // No trailer at all -> Ken Burns artwork fallback stays.
-      return;
-    }
-    playCardTrailer(card, videoKey, item);
+    if (!videoKey) return; // Ken Burns artwork fallback stays.
+    playCardTrailerWhenSettled(card, videoKey, item);
   });
+}
+
+// The trailer lookup can finish after a fast scroll has already begun.
+// Wait to mount the iframe until scrolling settles, and cancel on leave.
+function playCardTrailerWhenSettled(card, videoKey, item) {
+  if (hoverTrailerState.card !== card || !card.isConnected) return;
+  if (document.body.hasAttribute('data-scroll-fast')) {
+    hoverTrailerState.dwellTimer = setTimeout(() => playCardTrailerWhenSettled(card, videoKey, item), CARD_HOVER_GRACE_MS);
+    return;
+  }
+  playCardTrailer(card, videoKey, item);
 }
 
 /** Ken Burns fallback: the artwork slowly pans/zooms while the
@@ -1692,102 +1707,123 @@ function cancelCardHoverTeardown() {
   }
 }
 
-/** Page loading animation — POWER RANGERS sky-to-ground ⚡ entrance.
-    Dark prelude with volumetric god-rays and floating electric
-    dust (0–1s), then a massive jagged SVG bolt cracks down the
-    full screen in 0.2s with branching tendrils (1.0–1.2s) while
-    the screen flashes, the camera shakes and shockwave rings
-    burst from the impact core. The metallic ZEUS resolves out
-    of the afterglow (1.3–2.8s), then the overlay dissolves
-    slowly into the site (1s scale + blur + fade) while the page
-    content gently scales in. Majestic ~3.8s total; click
-    anywhere to skip instantly. */
+// Shared by the generic entrance, the watch entrance, and each page's
+// early <head> check. Record when an entrance starts so even an interrupted
+// first visit cannot replay it on refresh. Session storage is a fallback.
+const INTRO_SEEN_KEY = 'zeus_intro_seen_v1';
+
+function hasSeenIntro() {
+  try {
+    if (window.localStorage.getItem(INTRO_SEEN_KEY) === '1') return true;
+  } catch (storageError) { /* try the session fallback */ }
+  try {
+    return window.sessionStorage.getItem(INTRO_SEEN_KEY) === '1';
+  } catch (storageError) {
+    return false;
+  }
+}
+
+function markIntroSeen() {
+  for (const storageName of ['localStorage', 'sessionStorage']) {
+    try {
+      const storage = window[storageName];
+      storage.setItem(INTRO_SEEN_KEY, '1');
+      if (storage.getItem(INTRO_SEEN_KEY) === '1') return true;
+    } catch (storageError) { /* try the next storage, or fail open */ }
+  }
+  return false;
+}
+
+// A page restored from the back/forward cache may have been frozen
+// mid-intro. Hide either entrance immediately and release the content
+// hold on restore or when another tab records that it has been seen.
+function syncSeenIntro() {
+  if (!hasSeenIntro()) return;
+  document.documentElement.classList.add('no-page-loader');
+  document.body.classList.remove('cine-hold');
+  const loader = document.getElementById('page-loader');
+  if (loader) loader.remove();
+  const overlay = document.getElementById('cine-overlay');
+  if (overlay) {
+    overlay.classList.add('cine-done');
+    overlay.style.display = 'none';
+  }
+}
+
+/** Page loading animation — the existing lightning entrance plays on
+    the first visit and can still be skipped by clicking the overlay. */
 function initPageLoader() {
   const loader = $('#page-loader');
   if (!loader) return;
 
-  // Arriving via an in-site navigation transition: skip the
-  // cinematic entrance entirely — the content reveal (now with a
-  // gentle scale) takes over, so menu clicks read as one smooth
-  // crossfade with no reload flash.
-  let viaTransition = false;
-  try {
-    viaTransition = sessionStorage.getItem('zeus_nav_transition') === '1';
-    if (viaTransition) sessionStorage.removeItem('zeus_nav_transition');
-  } catch (storageError) {
-    /* private mode — fall through to the branded entrance */
+  window.addEventListener('pageshow', (event) => {
+    if (event.persisted) syncSeenIntro();
+  });
+  window.addEventListener('storage', (event) => {
+    if (event.key === INTRO_SEEN_KEY && event.newValue === '1') syncSeenIntro();
+  });
+
+  // The head check hides the entrance before paint for returning visitors
+  // and fails open if neither storage can remember the visit.
+  if (document.documentElement.classList.contains('no-page-loader') || hasSeenIntro()) {
+    document.documentElement.classList.add('no-page-loader');
+    loader.remove();
+    return;
   }
-  if (viaTransition) {
+
+  // Watch owns its separate entrance. Removing the generic loader here
+  // also leaves invalid watch URLs visible when no entrance is started.
+  if (document.getElementById('cine-overlay')) {
     loader.remove();
     return;
   }
 
   const reducedMotion = window.matchMedia
     && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (reducedMotion) {
+    markIntroSeen();
+    loader.remove();
+    return;
+  }
 
+  // Record the visit before the animation begins, not only after it ends:
+  // a reload or navigation halfway through must not play the intro again.
+  const remembered = markIntroSeen();
   let dismissed = false;
   const dismissLoader = () => {
     if (dismissed) return;
     dismissed = true;
-    loader.classList.add('hidden');            // blur + scale + fade out
-    document.body.classList.remove('cine-hold'); // content scales in below
+    if (!remembered) markIntroSeen(); // storage might have recovered
+    loader.classList.add('hidden');
+    document.body.classList.remove('cine-hold');
     setTimeout(() => loader.remove(), 1100);
     loader.removeEventListener('click', dismissLoader);
   };
 
-  // Click anywhere on the overlay to skip instantly
   loader.addEventListener('click', dismissLoader);
+  spawnLoaderParticles(loader);
+  injectSkyBolt(loader);
+  // Arm the existing choreography in one frame, then reveal the content
+  // when the name animation ends (or the visitor clicks to skip).
+  loader.classList.add('pr-go');
+  document.body.classList.add('cine-hold');
 
-  // The watch page runs its own cinematic overlay (#cine-overlay)
-  // and hides this loader at DOMContentLoaded — leave its entrance
-  // untouched (no bolt, no particles, no content hold).
-  const watchOwnsEntrance = !!document.getElementById('cine-overlay');
-
-  if (!watchOwnsEntrance) {
-    spawnLoaderParticles(loader);
-    injectSkyBolt(loader);
-    // Arm the sequence: .pr-go starts every timed animation (shake,
-    // bolt crack, flash, rings, ZEUS reveal, bar) in this same
-    // frame, so the choreography always plays in lockstep —
-    // regardless of how late first paint or parsing happened.
-    loader.classList.add('pr-go');
-    // Hold the page content at scale(0.97)/opacity(0) behind the
-    // opaque overlay; removing this class triggers zeusPageIn at
-    // the exact moment the loader starts dissolving.
-    document.body.classList.add('cine-hold');
-
-    if (reducedMotion) {
-      // Quiet, fast path: brief static hold, then straight out.
-      setTimeout(dismissLoader, 250);
+  const nameEl = loader.querySelector('.loader-name');
+  const onRevealEnd = (event) => {
+    if (event.animationName === 'name-reveal') dismissLoader();
+  };
+  if (nameEl) {
+    const reveal = typeof nameEl.getAnimations === 'function'
+      ? nameEl.getAnimations().find((animation) => animation.animationName === 'name-reveal')
+      : null;
+    if (reveal && reveal.playState === 'finished') {
+      dismissLoader();
     } else {
-      // Master handoff: the ZEUS name-reveal animation starts at
-      // the loader's first rendered frame and ends at exactly
-      // 1.45s delay + 1.35s duration = 2.8s — the precise moment
-      // the dissolution should begin. Keying the exit to this
-      // animationend (not navigationStart, not script-run time)
-      // keeps the ~3.8s entrance perfectly synced to the CSS
-      // clock no matter how late first paint happens.
-      const nameEl = loader.querySelector('.loader-name');
-      const onRevealEnd = (e) => {
-        if (e.animationName === 'name-reveal') dismissLoader();
-      };
-      if (nameEl) {
-        const reveal = typeof nameEl.getAnimations === 'function'
-          ? nameEl.getAnimations().find((a) => a.animationName === 'name-reveal')
-          : null;
-        if (reveal && reveal.playState === 'finished') {
-          // Parsing was so slow the reveal already completed before
-          // this script ran — dissolve right away.
-          dismissLoader();
-        } else {
-          nameEl.addEventListener('animationend', onRevealEnd);
-        }
-      }
-      // Safety net: if the reveal animation never completes (exotic
-      // engines, hard tab throttling), leave anyway.
-      setTimeout(dismissLoader, 6000);
+      nameEl.addEventListener('animationend', onRevealEnd);
     }
   }
+  // Safety net for throttled tabs or engines that never emit animationend.
+  setTimeout(dismissLoader, 6000);
 }
 
 /** Floating electric dust field for the cinematic loader —
@@ -1921,10 +1957,9 @@ function injectSkyBolt(loader) {
    Internal links (nav menu, genre dropdown, Top IMDB, Watchlist,
    footer, cards) fade the page content out — the navbar and the
    dark surface stay on screen — then navigate. The destination
-   page detects the transition, skips its black loading screen,
-   and fades the new content in. Modified clicks (new tab /
-   window), external URLs, anchors and the lightning-flash Play
-   CTAs are never intercepted.
+   skips the intro once it has been seen. Modified clicks
+   (new tab / window), external URLs, anchors and the lightning-
+   flash Play CTAs are never intercepted.
    ============================================================ */
 const NAV_FADE_MS = 150; // content cross-fade before navigating (0.15s — board spec)
 
@@ -1961,10 +1996,6 @@ function initSmoothNavigation() {
     if (!isCleanRoute && !/\.html?$/i.test(url.pathname)) return;
 
     event.preventDefault();
-
-    // Flag the arrival page (its <head> script + initPageLoader
-    // consume this) so the black loader never flashes there.
-    try { sessionStorage.setItem('zeus_nav_transition', '1'); } catch (storageError) { /* private mode */ }
 
     const go = () => { window.location.href = url.href; };
     if (reducedMotion) {
