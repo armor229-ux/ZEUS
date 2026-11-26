@@ -33,7 +33,6 @@
 
   <!-- Performance: warm connections to external origins -->
   <link rel="preconnect" href="https://image.tmdb.org">
-  <link rel="dns-prefetch" href="https://vidsrc.xyz">
   <link rel="dns-prefetch" href="https://inv.nadeko.net">
   <link rel="dns-prefetch" href="https://yewtu.be">
   <link rel="dns-prefetch" href="https://invidious.nerdvpn.de">
@@ -250,13 +249,13 @@
          #section-arabic / #section-turkish still resolve (same ids, new
          targets inside Genre). No empty containers, no duplicated content. -->
 
-    <!-- NEW: Streaming Provider Tabs (brand-coloured) -->
-  <section class="content-section provider-section" id="provider-section" data-brand="netflix" aria-labelledby="provider-title">
+    <!-- NEW: Streaming Provider Tabs (Vidora is the only provider) -->
+  <section class="content-section provider-section" id="provider-section" data-brand="vidora" aria-labelledby="provider-title">
     <div class="container">
       <div class="section-header">
           <div class="section-heading">
-            <h2 class="section-title" id="provider-title"><span class="title-bar"></span>Only on <span class="brand-name">Netflix</span></h2>
-            <p class="section-subtitle">Popular movies &amp; shows on this streaming service</p>
+            <h2 class="section-title" id="provider-title"><span class="title-bar"></span>Only on <span class="brand-name">Vidora</span></h2>
+            <p class="section-subtitle">Popular movies &amp; shows served by Vidora, the only streaming provider</p>
           </div>
           <div class="section-controls">
             <button class="scroll-btn prev" data-target="#provider-row" aria-label="Scroll provider titles left">
@@ -268,35 +267,8 @@
           </div>
         </div>
         <div class="provider-tabs" id="provider-tabs" role="tablist" aria-label="Streaming providers">
-          <button class="provider-tab provider-tab--netflix active" type="button" role="tab" aria-selected="true" data-provider="8" data-name="Netflix">
-            <span class="provider-label">NETFLIX</span>
-          </button>
-          <button class="provider-tab provider-tab--prime" type="button" role="tab" aria-selected="false" data-provider="9" data-name="Prime Video">
-            <span class="provider-label">
-              <span class="pw-p">prime</span><span class="pw-v">video</span>
-              <span class="pw-smile" aria-hidden="true"><svg viewBox="0 0 72 10" preserveAspectRatio="none"><path d="M1.5 1.5 C 14 9.5, 58 9.5, 66 3.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M60.5 1.2 L67.5 3.9 L63.9 8.6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
-            </span>
-          </button>
-          <button class="provider-tab provider-tab--hbo" type="button" role="tab" aria-selected="false" data-provider="1899" data-name="Max">
-            <span class="provider-label">max</span>
-          </button>
-          <button class="provider-tab provider-tab--disney" type="button" role="tab" aria-selected="false" data-provider="337" data-name="Disney+">
-            <span class="provider-label">
-              <span class="provider-ico provider-ico--sparkle" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 2l1.8 6.2L20 10l-6.2 1.8L12 18l-1.8-6.2L4 10l6.2-1.8L12 2z"/></svg></span>
-              Disney<span class="pw-plus">+</span>
-            </span>
-          </button>
-          <button class="provider-tab provider-tab--apple" type="button" role="tab" aria-selected="false" data-provider="350" data-name="Apple TV+">
-            <span class="provider-label">
-              <svg class="pw-apple" viewBox="0 0 24 24" aria-hidden="true"><path d="M16.7 12.9c0-2.4 2-3.6 2.1-3.7-1.1-1.7-2.9-1.9-3.5-1.9-1.5-.2-2.9.9-3.7.9-.8 0-1.9-.9-3.2-.9-1.6 0-3.2 1-4 2.5-1.7 3-.4 7.4 1.2 9.8.8 1.2 1.8 2.5 3.1 2.4 1.2-.05 1.7-.8 3.2-.8 1.5 0 1.9.8 3.2.8 1.3-.02 2.2-1.2 3-2.4.9-1.4 1.3-2.7 1.3-2.8-.03-.01-2.6-1-2.7-3.9zM14.4 5.6c.7-.8 1.1-1.9 1-3-1 .04-2.2.66-2.9 1.5-.6.7-1.2 1.9-1 3 1.1.1 2.2-.6 2.9-1.5z"/></svg>
-              <span>tv+</span>
-            </span>
-          </button>
-          <button class="provider-tab provider-tab--paramount" type="button" role="tab" aria-selected="false" data-provider="531" data-name="Paramount+">
-            <span class="provider-label">PARAMOUNT<span class="pw-plus">+</span></span>
-          </button>
-          <button class="provider-tab provider-tab--hulu" type="button" role="tab" aria-selected="false" data-provider="15" data-name="Hulu">
-            <span class="provider-label">hulu</span>
+          <button class="provider-tab provider-tab--vidora active" type="button" role="tab" aria-selected="true" data-provider="vidora" data-name="Vidora">
+            <span class="provider-label">Vidora</span>
           </button>
         </div>
         <div class="movies-row" id="provider-row"></div>

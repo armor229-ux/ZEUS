@@ -6,7 +6,7 @@
   <title>Watch Online Free - ZEUS</title>
 
   <!-- SEO Meta Tags -->
-  <meta name="description" content="Watch movies and TV shows online free in HD on ZEUS with multiple streaming servers.">
+  <meta name="description" content="Watch movies and TV shows online free in HD on ZEUS with Vidora as the only streaming provider.">
   <meta name="robots" content="noindex, follow">
   <meta name="theme-color" content="#000000">
 
@@ -25,14 +25,10 @@
 
 
   <!-- Performance: warm connections to external origins.
-       ATLANTIC FIX: no atlantic.st hints here — its slow origin
-       was dialled on every watch-page load even when unused.
-       warmEmbedOrigin() (watch.js) warms whichever embed origin
-       is actually being loaded, right before the iframe
-       navigates to it. -->
+       Vidora is the only streaming provider on this site; its
+       embed origin is warmed by warmEmbedOrigin() (watch.js)
+       right before the iframe navigates to it. -->
   <link rel="preconnect" href="https://image.tmdb.org">
-  <link rel="dns-prefetch" href="https://vidlink.pro">
-  <link rel="dns-prefetch" href="https://vidsrc.xyz">
   <link rel="dns-prefetch" href="https://inv.nadeko.net">
   <link rel="dns-prefetch" href="https://yewtu.be">
   <link rel="dns-prefetch" href="https://invidious.nerdvpn.de">
@@ -326,65 +322,15 @@
           Servers include multi-language subtitles and up to 1080p quality. AUTO Best picks the first server that responds.
         </p>
         <div id="server-list" class="server-list">
-          <!-- ATLANTIC UPDATE (Part 3): official licensed embed joins
-               as an ADDITIONAL source — first group in the list.
-               ATLANTIC FIX (buffering): the AUTO rotation and the
-               default pick now try the community embeds FIRST and
-               reach Atlantic only as a manual choice / last
-               fallback. No existing source was removed. -->
+          <!-- Vidora is the ONLY streaming provider — the site plays
+               every movie and TV show through Vidora's documented
+               iframe endpoints (https://vidora.ac/movie/{tmdbId},
+               https://vidora.ac/tv/{tmdbId}/{season}/{episode}). -->
           <div class="server-group">
-            <div class="server-group-title">Official</div>
-            <button class="server-item" data-server="atlantic" data-name="Atlantic">
-              <span class="server-name">Atlantic</span>
-              <span class="server-badge">Licensed • HD</span>
-            </button>
-          </div>
-
-          <div class="server-group">
-            <div class="server-group-title">Recommended</div>
-            <button class="server-item" data-server="vidcore" data-name="VidCore">
-              <span class="server-name">VidCore</span>
-              <span class="server-badge">Subs • 4K</span>
-            </button>
-            <button class="server-item" data-server="superembed" data-name="SuperEmbed">
-              <span class="server-name">SuperEmbed</span>
-              <span class="server-badge">Multi-source • Subs</span>
-            </button>
-            <button class="server-item" data-server="vidlinkpro" data-name="VidLink Pro">
-              <span class="server-name">VidLink Pro</span>
-              <span class="server-badge">Stable • Subs</span>
-            </button>
-            <button class="server-item" data-server="embedlc" data-name="Embed.lc">
-              <span class="server-name">Embed.lc</span>
-              <span class="server-badge">Clean • Subs</span>
-            </button>
-          </div>
-
-          <div class="server-group">
-            <div class="server-group-title">Reliable</div>
-            <button class="server-item" data-server="autoembed" data-name="AutoEmbed">
-              <span class="server-name">AutoEmbed</span>
-              <span class="server-badge">Subs</span>
-            </button>
-            <button class="server-item" data-server="vidsrcto" data-name="VidSrc.to">
-              <span class="server-name">VidSrc.to</span>
-              <span class="server-badge">Multi-host • Subs</span>
-            </button>
-            <button class="server-item" data-server="vidsrccc" data-name="VidSrc.cc">
-              <span class="server-name">VidSrc.cc</span>
-              <span class="server-badge">Fast • Subs</span>
-            </button>
-            <button class="server-item" data-server="2embedcc" data-name="2Embed.cc">
-              <span class="server-name">2Embed.cc</span>
-              <span class="server-badge">Fallback • Subs</span>
-            </button>
-          </div>
-
-          <div class="server-group">
-            <div class="server-group-title">Asian dramas</div>
-            <button class="server-item" data-server="nontongo" data-name="Nontongo.win">
-              <span class="server-name">Nontongo.win</span>
-              <span class="server-badge">K/C/J • Multi-sub</span>
+            <div class="server-group-title">Providers</div>
+            <button class="server-item" data-server="vidora" data-name="Vidora">
+              <span class="server-name">Vidora</span>
+              <span class="server-badge">HD</span>
             </button>
           </div>
         </div>

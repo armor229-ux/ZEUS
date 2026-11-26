@@ -2446,6 +2446,20 @@ body.banner-visible {
   text-transform: lowercase;
 }
 
+/* ===== 8. VIDORA — Vidora's wordmark, white on a premium
+   gradient; the only streaming provider on this site. ===== */
+.provider-tab--vidora {
+  --tab-color: #fff;
+  --tab-active-bg: linear-gradient(135deg, #1D2B4E 0%, #7FA0D8 100%);
+  --tab-active-color: #fff;
+  --tab-active-border: #C3D8F3;
+  --tab-glow: rgba(143, 166, 211, 0.5);
+  font-family: 'Poppins', Arial, sans-serif;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 0.1px;
+}
+
 /* ===== Brand gradient wash — the whole section bathes in the
    hovered/active provider's signature glow. --wash is a
    REGISTERED custom property (<color>), so modern browsers
@@ -2500,6 +2514,11 @@ body.banner-visible {
   --brand-color: #1CE783;
   --brand-glow: rgba(28, 231, 131, 0.45);
   --wash: rgba(28, 231, 131, 0.14);
+}
+.provider-section[data-brand="vidora"] {
+  --brand-color: #C3D8F3;
+  --brand-glow: rgba(143, 166, 211, 0.5);
+  --wash: rgba(143, 166, 211, 0.14);
 }
 
 /* Brand name in the section title — soft glowing pulse, written
@@ -4347,6 +4366,7 @@ footer {
   .provider-tab--hbo,
   .provider-tab--disney { font-size: 17px; }
   .provider-tab--hulu { font-size: 15.5px; }
+  .provider-tab--vidora { font-size: 15.5px; }
   .provider-tab--prime .pw-smile { bottom: -6px; height: 7px; }
   .genre-row {
     grid-auto-columns: 240px;

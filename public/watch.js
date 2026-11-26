@@ -39,28 +39,18 @@
 
 'use strict';
 
-/* ---------------- Server URL map (the 10 sources) ----------------
+/* ---------------- Server URL map (Vidora is the only streaming provider) ----------------
    One builder per server: (id, season, episode, type) ->
    embed URL. Keys match the data-server attributes of the
-   static #server-list markup in watch.html.
-
-   ATLANTIC UPDATE (Part 3): atlantic.st joins as an ADDITIONAL
-   source — its official authorized embed endpoints only,
-   exactly as published. No scraping, no proxying, no bypassing:
-   the iframe points straight at the provider's own player.
-   Movie: https://atlantic.st/embed/movie/{tmdbId}
-   TV:    https://atlantic.st/embed/tv/{tmdbId}/{season}/{episode} */
+   static #server-list markup in watch.html. Vidora is the ONLY
+   streaming provider on this site, using its documented
+   endpoints as published (vidora.ac, "API Documentation"):
+   Movies: https://vidora.ac/movie/{tmdbId}
+   Shows:  https://vidora.ac/tv/{tmdbId}/{season}/{episode}
+   The TV form requires non-empty season/episode; buildServerUrl
+   always passes currentSeason/currentEpisode, which default to 1. */
 const SERVER_URLS = {
-  atlantic: (id, s, e, type) => type === 'tv' ? `https://atlantic.st/embed/tv/${id}/${s}/${e}` : `https://atlantic.st/embed/movie/${id}`,
-  vidcore: (id, s, e, type) => type === 'tv' ? `https://vidcore.org/embed/tv/${id}/${s}/${e}` : `https://vidcore.org/embed/movie/${id}`,
-  superembed: (id, s, e, type) => type === 'tv' ? `https://superembed.stream/tv/${id}/${s}-${e}` : `https://superembed.stream/movie/${id}`,
-  vidlinkpro: (id, s, e, type) => type === 'tv' ? `https://vidlink.pro/tv/${id}/${s}/${e}` : `https://vidlink.pro/movie/${id}`,
-  embedlc: (id, s, e, type) => type === 'tv' ? `https://embed.lc/tv/${id}/${s}/${e}` : `https://embed.lc/movie/${id}`,
-  autoembed: (id, s, e, type) => type === 'tv' ? `https://autoembed.co/tv/tmdb/${id}-${s}-${e}` : `https://autoembed.co/movie/tmdb/${id}`,
-  vidsrcto: (id, s, e, type) => type === 'tv' ? `https://vidsrc.to/embed/tv/${id}/${s}/${e}` : `https://vidsrc.to/embed/movie/${id}`,
-  vidsrccc: (id, s, e, type) => type === 'tv' ? `https://vidsrc.cc/embed/tv/${id}/${s}/${e}` : `https://vidsrc.cc/embed/movie/${id}`,
-  '2embedcc': (id, s, e, type) => type === 'tv' ? `https://2embed.cc/embed/tv/${id}/${s}/${e}` : `https://2embed.cc/embed/movie/${id}`,
-  nontongo: (id, s, e, type) => type === 'tv' ? `https://nontongo.win/embed/tv/${id}/${s}/${e}` : `https://nontongo.win/embed/movie/${id}`,
+  vidora: (id, s, e, type) => type === 'tv' ? `https://vidora.ac/tv/${id}/${s}/${e}` : `https://vidora.ac/movie/${id}`
 };
 
 /* localStorage keys (independent of the watchlist storage) */
@@ -191,11 +181,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     const hasEpisode = Number.isFinite(episode) && episode > 0;
     currentSeason = hasSeason ? season : 1;
     currentEpisode = hasEpisode ? episode : 1;
-    // ATLANTIC UPDATE (Part 3): TV opened with NO episode selected
-    // in the URL -> resume the last watched episode (Continue
-    // Watching), else the first episode. Applies to every source
-    // (Atlantic included) because buildServerUrl() reads these two
-    // values. Explicit season/episode links are never overridden.
+    // TV opened with NO episode selected in the URL -> resume the
+    // last watched episode (Continue Watching), else the first
+    // episode. buildServerUrl() reads these two values, and
+    // explicit season/episode links are never overridden.
     if (!hasSeason && !hasEpisode) applyLastWatchedEpisode();
   }
 
@@ -232,7 +221,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 /* ============================================================
-   TV DEFAULT EPISODE (Atlantic update, Part 3)
+   TV DEFAULT EPISODE
    When a TV watch URL carries no season/episode, start from the
    user's last watched episode (Continue Watching public API),
    else stay on S1E1. Read-only — it never writes CW storage and
@@ -489,12 +478,9 @@ function initServerList() {
     });
   });
   if (!activeServer && SERVER_LIST.length) {
-    /* ATLANTIC FIX — atlantic.st buffers heavily and its slow
-       origin weighed the whole watch page down. Atlantic stays
-       in the Servers modal (Official group, still manually
-       selectable at any time), but the DEFAULT pick for fresh
-       visitors now starts on the first community embed. */
-    activeServer = SERVER_LIST.find((s) => s.id !== 'atlantic') || SERVER_LIST[0];
+    /* Vidora is the only streaming provider — the default pick
+       is its single server entry. */
+    activeServer = SERVER_LIST[0];
   }
   restoreServerPreference();
   highlightActiveServers();
@@ -529,12 +515,6 @@ function restoreServerPreference() {
   try {
     const saved = JSON.parse(localStorage.getItem(SERVER_PREF_KEY) || 'null');
     if (!saved || !saved.id) return;
-    /* ATLANTIC FIX — a saved 'atlantic' preference is ignored:
-       earlier versions auto-saved EVERY AUTO pick under this key,
-       so many visitors carry an Atlantic default they never
-       chose, and it buffers heavily. Picking Atlantic manually
-       still plays it for the current visit. */
-    if (saved.id === 'atlantic') return;
     const server = findServerById(saved.id);
     if (server) activeServer = server;
   } catch (e) { /* corrupt entry — keep the first server */ }
@@ -716,15 +696,9 @@ function buildServerUrl(server) {
  *  A dead pick is handled by the load timeout + the AUTO
  *  fallback pass. */
 async function initSmartServerSelection() {
-  /* ATLANTIC FIX — atlantic.st buffers heavily, so the quiet
-     smart pick never STARTS on it: last-good memory and health
-     scores below consider only the community embeds (Atlantic
-     remains manually selectable, and step (3)'s failed-server
-     escape hatch can still land on it if it is the only healthy
-     source). */
   // (1) last good server — only when it is not failed
   const lastGood = getLastGoodEngine(watchType);
-  if (lastGood && lastGood !== 'atlantic') {
+  if (lastGood) {
     const server = findServerById(lastGood);
     if (server && !isEngineFailed(server.id)) {
       activeServer = server;
@@ -734,7 +708,7 @@ async function initSmartServerSelection() {
   // (2) highest score (only switches when it actually beats the
   //     current pick — fresh users keep the default: the first
   //     server in the list)
-  const best = highestScoreServer(SERVER_LIST.filter((s) => s.id !== 'atlantic'));
+  const best = highestScoreServer(SERVER_LIST);
   if (best && activeServer && best.id !== activeServer.id) {
     const currentScore = getEngineStats(activeServer.id)
       ? engineScore(activeServer.id)
@@ -1072,14 +1046,9 @@ async function autoSelectBestServer({ viaFallback = false } = {}) {
   autoSelectAbort = () => { userTookOver = true; };
   try {
     if (typeof showToast === 'function') showToast('AUTO: selecting best source…', 'info');
-    /* ATLANTIC FIX — the rotation tries the community embeds
-       FIRST and atlantic.st LAST: its iframe fires 'load' (which
-       counts as success) long before its video plays smoothly,
-       so first-position picks read as constant buffering. As the
-       final fallback it is still reachable when everything else
-       fails. Stable sort — equal keys keep the DOM order. */
-    const ordered = candidates.sort((a, b) =>
-      (a.id === 'atlantic' ? 1 : 0) - (b.id === 'atlantic' ? 1 : 0));
+    // Vidora is the only provider — the AUTO rotation tries the
+    // visible servers in list order and keeps the first that loads.
+    const ordered = candidates.slice();
     showSourceCheckOverlay(ordered.length);
     for (let i = 0; i < ordered.length; i++) {
       const server = ordered[i];

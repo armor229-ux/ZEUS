@@ -161,27 +161,21 @@ async function loadLanguageRow(rowSelector, language, type, emptyMessage) {
 
 /* ============================================================
    NEW SECTION 2 — STREAMING PROVIDER TABS (brand-coloured)
-   ------------------------------------------------------------
-   Seven provider tabs (Netflix, Prime Video, HBO Max, Disney+,
-   Apple TV+, Paramount+, Hulu), each styled with its official
-   brand colour. Clicking a tab loads that provider's most
-   popular movies AND TV shows (mixed, 20+ titles, US region)
-   into the row below and updates the section header ("Only on
-   Netflix", ...). Hovering or clicking a tab bathes the whole
-   section in a smooth gradient of that brand's colours and
-   makes the brand name glow. Netflix is active by default.
-   ============================================================ */
+  ------------------------------------------------------------
+  Vidora is the ONLY streaming provider on this site — the
+  single provider tab above the row. It is styled with Vidora's
+  brand colour; clicking it loads the most popular movies AND
+  TV shows (mixed, 20+ titles, US region) into the row below and
+  updates the section header ("Only on Vidora"). Hovering or
+  clicking the tab bathes the whole section in a smooth gradient
+  of Vidora's colours and makes the brand name glow.
+  ============================================================ */
 
 /* Brand colour data per provider id (mirrored by CSS in the
-   [data-brand="..."] rules on the section element). */
+   [data-brand="..."] rules on the section element). Vidora is the
+   only streaming provider on this site. */
 const PROVIDER_BRANDS = {
-  '8':    'netflix',
-  '9':    'prime',
-  '1899': 'hbo',
-  '337':  'disney',
-  '350':  'apple',
-  '531':  'paramount',
-  '15':   'hulu'
+  'vidora': 'vidora'
 };
 
 const PROVIDER_TABS_SECTION = () => $('#provider-section');
@@ -190,7 +184,7 @@ const PROVIDER_TABS_SECTION = () => $('#provider-section');
 function setProviderBrand(providerId) {
   const section = PROVIDER_TABS_SECTION();
   if (!section) return;
-  const brand = PROVIDER_BRANDS[String(providerId)] || 'netflix';
+  const brand = PROVIDER_BRANDS[String(providerId)] || 'vidora';
   section.dataset.brand = brand;
 }
 
@@ -237,14 +231,14 @@ function initProviderTabs() {
   if (strip) {
     // Leaving the tab strip restores the ACTIVE brand + header.
     strip.addEventListener('mouseleave', () => {
-      setProviderBrand(activeTab ? activeTab.dataset.provider : '8');
-      setProviderHeading(activeTab ? activeTab.dataset.name : 'Netflix');
+      setProviderBrand(activeTab ? activeTab.dataset.provider : 'vidora');
+      setProviderHeading(activeTab ? activeTab.dataset.name : 'Vidora');
     });
   }
 
-  // Default active tab: Netflix
-  setProviderBrand('8');
-  loadProviderContent('8', 'Netflix');
+  // Default active tab: Vidora (the only provider)
+  setProviderBrand('vidora');
+  loadProviderContent('vidora', 'Vidora');
 }
 
 function loadProviderContent(providerId, providerName) {
@@ -254,15 +248,18 @@ function loadProviderContent(providerId, providerName) {
 
 /** Fetch a provider's movies AND TV shows, merge them into one
     mixed rail (interleaved, de-duplicated, 24 titles) and render
-    it with the standard card component. */
+    it with the standard card component. Vidora is the only
+    provider — its documented integration is the embed player, so
+    its tab loads the generic popular movies & TV catalog. */
 async function loadProviderMixedRail(providerId) {
   const row = $('#provider-row');
   if (!row) return;
   showSkeletons(row, 8, 'card');
   try {
+    const isVidora = providerId === 'vidora';
     const [moviesRes, tvRes] = await Promise.allSettled([
-      discoverByProvider(providerId),
-      discoverTVByProvider(providerId)
+      isVidora ? getPopularMovies() : discoverByProvider(providerId),
+      isVidora ? getPopularTV() : discoverTVByProvider(providerId)
     ]);
 
     const movies = moviesRes.status === 'fulfilled' ? (moviesRes.value.results || []) : [];
