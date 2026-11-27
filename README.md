@@ -1,6 +1,6 @@
 # ZEUS — Static Movie & TV Streaming Front-End
 
-ZEUS is a fast, dependency-free streaming UI: browse trending movies & TV shows,
+ZEUS is a static streaming UI: browse trending movies & TV shows,
 anime, genres and search via the [TMDB API](https://www.themoviedb.org/), then
 watch through official third-party embeds. The entire site is plain
 HTML/CSS/JavaScript served verbatim from [`public/`](public/) — **no build step,
@@ -30,7 +30,8 @@ Then connect it to Cloudflare Pages for automated deploys (see
 | Path | What it is |
 | --- | --- |
 | `public/` | **The website.** All HTML pages, `style.css`, page scripts (`index.js`, `api.js`, `watch.js`, …), `config.js` (TMDB settings), assets and `_redirects` (clean-URL rules). This folder is the deployable site root. |
-| `party-worker/` | Watch Party backend — Cloudflare Worker + Durable Objects (WebSocket rooms, host sync, chat). Deploy once with `npx wrangler deploy`. |
+| `supabase/migrations/` | Schema, access rules and server-checked functions for the in-player Watch Party. |
+| `party-worker/` | Legacy Worker backend for the separate `party.html` client; not used by the in-player party. |
 | `party-server/` | Superseded Node/Socket.IO party backend. Dead code, kept for reference. |
 | `src/`, `next.config.ts`, … | Next.js dev-server wrapper used for local development. Rewrites serve `public/index.html` at `/` and map the clean routes (`/anime`, `/genre`, `/discover`) so local URLs match production. |
 | `worklog.md` | Detailed per-task development history. |
@@ -41,7 +42,8 @@ Home (`index.html`) · Anime (`anime.html`) · Discover/Browse (`browse.html`) �
 Movie & TV detail (`movie.html`, `tv.html`) · Watch (`watch.html`) · Search
 (`search.html`) · Genre (`genre.html`) · Watchlist (`watchlist.html`) · Login /
 Settings / Account (`login.html`, `settings.html`, `account.html`) · Watch Party
-(`party.html`) · Legal (`privacy.html`, `terms.html`, `dmca.html`).
+(in the `watch.html` player; `party.html` is the older, separate client) · Legal
+(`privacy.html`, `terms.html`, `dmca.html`).
 
 ## Local development
 
@@ -78,19 +80,62 @@ clean routes (`/anime`, `/genre`, `/discover` → their pages; everything else �
 
 Option B — **Direct upload:** upload the contents of `public/` as the site root.
 
-## Watch Party backend
+## In-player Watch Party
 
-Party rooms need the Cloudflare Worker deployed once:
+The **Watch Party** button on a movie or episode opens a panel in the player.
+A host can create a room, choose VidSpark or CineSrc, share an invite and drive
+play/pause/seek. Guests can join by code or link, view participants and chat;
+the server, not the UI, enforces the host role. Leaving restores ordinary
+Vidora viewing. Hosts can leave without ending the room (it pauses and they
+can rejoin in the same tab), or explicitly end it for everyone. Rooms expire
+12 hours after creation. The players are independent third parties: available
+sources, buffering, autoplay permissions and playback quality can vary. Click
+inside the iframe if playback is blocked. Episode changes made inside an embed
+are not shared; start a new room for another episode.
 
-```bash
-cd party-worker
-npx wrangler deploy
-```
+The configured ZEUS Supabase project already has this migration recorded and
+anonymous sign-ins enabled. For a fresh project or fork, complete these steps
+before creating rooms (do not reapply the migration to ZEUS):
 
-Then open any party page, paste the worker URL
-(`https://zeus-party.<your-subdomain>.workers.dev`) into the **Party backend
-URL** field and press Save — it is remembered per browser
-(`localStorage: zeus_party_backend`).
+1. Review and apply `supabase/migrations/20261127142027_watch_party.sql` to the
+   intended project. The migration creates room/member/chat tables with RLS,
+   checked RPC functions, and a private Realtime Broadcast read policy.
+2. Enable **Anonymous Sign-Ins** under Supabase Authentication providers. The
+   project's anonymous sign-in rate limits apply; before a public launch, add
+   CAPTCHA-token handling and appropriate quotas/abuse monitoring. Enabling a
+   CAPTCHA before the client handles its token will prevent guest sign-ins.
+3. Make sure Supabase Realtime and the Data API are available. The client uses
+   private channels and receives data-free wakeups; it fetches authorized room
+   snapshots through RPC and falls back to periodic checks if Realtime fails.
+4. `public/watchparty.js` contains this project's **publishable** URL/key. A fork
+   should use its own project and publishable key; never place a secret or
+   `service_role` key in the browser. The self-hosted Supabase JavaScript client
+   is version 2.119.2, with its license in `public/vendor/`.
+
+A room code is an invitation, so share it only with trusted people. The invite
+uses a URL fragment, and per-tab Supabase sessions keep host identity across a
+reload without making all tabs the same user. **Security note:** `watch.html`
+already loads third-party advertising scripts in the page's own JavaScript
+context. Such scripts can read the invitation and session storage and act as
+the viewer. Audit or isolate those scripts before treating rooms as private in
+production. Each room stores up to 200 chat messages and snapshots return the
+latest 50. Expired rooms and their messages
+are deleted lazily on new room creation, at least 12 hours after expiry. If no
+new room is created, cleanup is delayed: configure a trusted scheduled job if
+a firm deletion window is required. Supabase anonymous Auth users also need a
+separate administrative retention/cleanup policy; deleting the Auth identity
+prevents that session from rejoining as host. The migration and Auth settings
+must be in place before this is a working live feature; a player iframe loading
+alone does **not** prove that media or synchronization works.
+
+For regression checks, run `node --test tests/*.test.mjs`. The optional SQL
+test uses `@electric-sql/pglite` (set `ZEUS_PGLITE_MODULE` to its
+`dist/index.js`), and `tests/watchparty-browser.mjs` uses Playwright/Chromium
+specified via `ZEUS_PLAYWRIGHT_MODULE` and `ZEUS_CHROMIUM_PATH`. These latter
+checks use mocks, not real Supabase or third-party video playback.
+
+The older `party.html` page is a separate YouTube/direct-MP4 client and still
+requires the legacy Worker URL; the in-player Watch Party does not use it.
 
 ## Scroll performance architecture (the 60fps pipeline)
 

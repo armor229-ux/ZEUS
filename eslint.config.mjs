@@ -44,7 +44,8 @@ const eslintConfig = [...nextCoreWebVitals, ...nextTypescript, {
     "no-useless-escape": "off",
   },
 }, {
-  ignores: ["node_modules/**", ".next/**", "out/**", "build/**", "next-env.d.ts", "examples/**", "skills", "party-server/**", "party-worker/**", "upload/**", "db/**", "download/**", "mini-services/**"]
+  // Vendored, minified third-party code is distributed unchanged with its own license.
+  ignores: ["node_modules/**", ".next/**", "out/**", "build/**", "next-env.d.ts", "examples/**", "skills", "party-server/**", "party-worker/**", "upload/**", "db/**", "download/**", "mini-services/**", "public/vendor/**"]
 }];
 
 export default eslintConfig;
