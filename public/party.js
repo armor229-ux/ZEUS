@@ -259,7 +259,9 @@
     els.inviteCode.textContent = state.roomId || '------';
     els.roomCodeBadge.classList.toggle('is-visible', !!state.roomId);
     if (state.roomId) {
-      els.inviteLink.value = location.origin + location.pathname + '?room=' + state.roomId;
+      const params = new URLSearchParams();
+      params.set('room', state.roomId);
+      els.inviteLink.value = location.origin + location.pathname + '?' + params.toString();
     }
   }
 
@@ -1004,9 +1006,13 @@
     try { saved = localStorage.getItem('zeus_party_name') || ''; } catch (err) {}
     els.nameInput.value = saved || randomGuestName();
     els.backendInput.value = BACKEND; /* saved backend URL or the default worker URL */
-    els.joinMeta.innerHTML = paramRoom
-      ? 'Joining room <strong>' + paramRoom + '</strong>'
-      : 'A new room will be created for you.';
+    /* Room codes come from the URL, so never interpret them as markup. */
+    els.joinMeta.textContent = paramRoom ? 'Joining room ' : 'A new room will be created for you.';
+    if (paramRoom) {
+      const roomCode = document.createElement('strong');
+      roomCode.textContent = paramRoom;
+      els.joinMeta.appendChild(roomCode);
+    }
     resetStage();
     renderRoomBadges();
     setConn('connecting', 'Connecting…');
