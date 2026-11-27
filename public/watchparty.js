@@ -21,13 +21,14 @@
   const state = {
     client: null, channel: null, code: '', snapshot: null, isHost: false,
     generation: 0, loading: false, refreshing: false, refreshAgain: false,
-    refreshTimer: null, pollTimer: null, heartbeatTimer: null, statusTimer: null,
-    serverOffset: 0, provider: '', player: null, lastMessageKey: null,
+    refreshTimer: null, pollTimer: null, heartbeatTimer: null, statusTimer: null, displayTimer: null,
+    serverOffset: 0, provider: '', player: null, lastMessageKey: null, lastSnapshotAt: 0, connectionKind: '',
     hostQueue: Promise.resolve(), lastHostSync: 0, live: false,
     channelRetry: null, retryDelay: 2000,
     initialApplied: false, lastSeek: 0, lastPlayCommand: 0, playAttempts: 0,
     episodeChanged: false, switchingProvider: false, enforceSwitchPause: false, lastPlayerNotice: '',
-    sourcePending: null, sourceSyncChanging: false,
+    sourcePending: null, sourceSyncChanging: false, normalVidora: null, preservePlayer: false,
+    vidoraNeedsRetry: false, vidoraNeedsClear: false, vidoraClearTime: 0, lastVidoraRetry: 0, panelOpener: null,
   };
   let ui;
 
@@ -76,22 +77,26 @@
     ui.create.textContent = busy ? 'Connecting…' : 'Start a party';
   }
   function setConnection(label, kind) {
+    state.connectionKind = kind || '';
     ui.connection.textContent = label;
-    ui.connection.dataset.state = kind || '';
+    ui.connection.dataset.state = state.connectionKind;
   }
   function playerNotice(text) {
     if (state.lastPlayerNotice === text) return;
     state.lastPlayerNotice = text;
     ui.playerNotice.textContent = text;
   }
-  function setPanel(open) {
+  function setPanel(open, opener) {
+    if (open) state.panelOpener = opener || ui.button;
     ui.panel.hidden = !open;
     ui.button.setAttribute('aria-expanded', String(open));
+    ui.stageButton.setAttribute('aria-expanded', String(open));
     ui.workspace.classList.toggle('wp-open', open);
     if (open) {
       document.documentElement.classList.remove('zeus-scroll-lock');
       if (!state.code) ui.name.focus({ preventScroll: true });
-    } else ui.button.focus({ preventScroll: true });
+      else ui.partyTab.focus({ preventScroll: true });
+    } else if (state.panelOpener) state.panelOpener.focus({ preventScroll: true });
   }
   function tab(name) {
     const chat = name === 'chat';
@@ -234,10 +239,14 @@
     state.lastMessageKey = null;
     state.live = false;
     state.retryDelay = 2000;
-    bridge.enter();
+    state.preservePlayer = bridge.enter(snapshot.room.provider);
+    state.vidoraNeedsRetry = false;
+    state.vidoraNeedsClear = false;
     ui.welcome.hidden = true;
     ui.room.hidden = false;
     ui.button.classList.add('wp-active');
+    ui.stageButton.classList.add('wp-active');
+    syncFullscreenButton();
     setAddressCode(state.code);
     setConnection('Connecting…', 'connecting');
     applySnapshot(snapshot, Date.now(), Date.now());
@@ -245,6 +254,7 @@
     state.pollTimer = setInterval(() => refresh(), POLL_MS);
     state.heartbeatTimer = setInterval(() => heartbeat(), HEARTBEAT_MS);
     state.statusTimer = setInterval(() => checkPlayer(), STATUS_MS);
+    state.displayTimer = setInterval(() => renderVidoraGuide(), 1000);
     tab('party');
   }
   function subscribe() {
@@ -501,8 +511,87 @@
     }
   }
 
+  function hostOnline() {
+    return !!state.snapshot && Array.isArray(state.snapshot.members) &&
+      state.snapshot.members.some((member) => member.host && member.online);
+  }
+  function roomConnectionFresh(now) {
+    return state.connectionKind !== 'error' && !!state.lastSnapshotAt && now - state.lastSnapshotAt < 16000;
+  }
+  function renderVidoraGuide() {
+    const active = !!state.code && !!state.snapshot && state.provider === 'vidora';
+    ui.vidoraGuide.hidden = !active;
+    ui.stageStatus.hidden = !active;
+    if (!active) return;
+    const now = Date.now();
+    const room = state.snapshot.room;
+    const clock = players.vidoraClock(room, state.serverOffset, now);
+    const connected = roomConnectionFresh(now);
+    const online = hostOnline();
+    const usable = clock.status === 'ready' && connected && online;
+    const local = state.player;
+    let localTime = null;
+    if (local && !state.episodeChanged && local.time !== null) {
+      const age = Math.max(0, (now - local.lastTimeAt) / 1000);
+      if (local.paused === true) localTime = local.time;
+      else if (age <= 5) localTime = local.time + (local.paused === false ? age : 0);
+    }
+    ui.localClock.textContent = localTime === null ? 'Your Vidora: waiting for a player event' :
+      'Your Vidora: ' + (local.paused === true ? 'paused at ' : local.paused === false ? 'playing at ~' : 'at ~') + players.formatTime(localTime);
+    ui.resync.textContent = state.episodeChanged ? 'Reload room episode' : state.isHost
+      ? 'Reload my Vidora player' : usable ? 'Try reload at host time' : 'Reload my Vidora player';
+    ui.resync.disabled = false;
+
+    if (state.episodeChanged) {
+      ui.hostClock.textContent = 'This player’s media is not confirmed';
+      ui.stageStatus.textContent = 'Check media';
+      ui.vidoraAdvice.textContent = 'Return to the room’s movie or episode. Playback and server selection remain manual.';
+    } else if (typeof room.vidora_observed !== 'boolean') {
+      ui.hostClock.textContent = 'Progress sharing unavailable';
+      ui.stageStatus.textContent = 'Manual';
+      ui.vidoraAdvice.textContent = 'The party service needs its Vidora update. Each viewer can still control Vidora manually.';
+    } else if (!connected) {
+      ui.hostClock.textContent = 'Room connection interrupted';
+      ui.stageStatus.textContent = 'Reconnecting';
+      ui.vidoraAdvice.textContent = 'The last room update may be stale. Reconnecting; control Vidora manually.';
+    } else if (!online) {
+      ui.hostClock.textContent = 'Host is away';
+      ui.stageStatus.textContent = 'Host away';
+      ui.vidoraAdvice.textContent = 'Wait for the host to return and report their player again.';
+    } else if (clock.status === 'waiting') {
+      ui.hostClock.textContent = 'Waiting for the host’s Vidora player';
+      ui.stageStatus.textContent = 'Waiting for host';
+      ui.vidoraAdvice.textContent = state.isHost
+        ? 'Play or pause in Vidora to share your position. Guests follow manually.'
+        : 'Ask the host to play or pause in Vidora. You control your own player.';
+    } else if (clock.status === 'stale') {
+      ui.hostClock.textContent = 'Last host update: ' + players.formatTime(clock.time);
+      ui.stageStatus.textContent = 'Waiting for update';
+      ui.vidoraAdvice.textContent = 'Host progress has stopped updating. Do not rely on this time until a new event arrives.';
+    } else {
+      const time = players.formatTime(clock.time);
+      ui.hostClock.textContent = 'Host ' + (room.playing ? 'playing at ~' : 'paused at ') + time;
+      ui.stageStatus.textContent = (room.playing ? 'Host ~' : 'Paused ') + time;
+      if (state.isHost) {
+        ui.vidoraAdvice.textContent = 'Your player reports its time to the room. Guests must play, pause and seek manually.';
+      } else if (!local || localTime === null || local.paused === null) {
+        ui.vidoraAdvice.textContent = 'In Vidora, ' + (room.playing ? 'press play' : 'pause') + ' and seek to the host time. Times are approximate.';
+      } else if (room.playing && local.paused) {
+        ui.vidoraAdvice.textContent = 'The host is playing. Press play in Vidora and seek to the host time.';
+      } else if (!room.playing && !local.paused) {
+        ui.vidoraAdvice.textContent = 'The host paused. Pause Vidora and seek to the host time.';
+      } else if (Math.abs(localTime - clock.time) >= 3) {
+        ui.vidoraAdvice.textContent = 'Your player is about ' + Math.round(Math.abs(localTime - clock.time)) + ' seconds ' +
+          (localTime < clock.time ? 'behind' : 'ahead') + '. Seek manually to the host time.';
+      } else {
+        ui.vidoraAdvice.textContent = 'Times appear close. Vidora does not automatically keep them aligned.';
+      }
+    }
+  }
+
   function applySnapshot(snapshot, started, ended) {
     if (!snapshot || !snapshot.room || snapshot.room.code !== state.code) return;
+    state.lastSnapshotAt = ended;
     const serverNow = Date.parse(snapshot.server_now);
     if (Number.isFinite(serverNow)) state.serverOffset = serverNow - (started + ended) / 2;
     state.snapshot = snapshot;
@@ -517,7 +606,7 @@
     ui.provider.value = snapshot.room.provider;
     ui.provider.disabled = !state.isHost || state.sourceSyncChanging || state.switchingProvider;
     if (snapshot.room.provider === 'vidora') {
-      ui.providerHint.textContent = 'Vidora test: play, pause, seek and server selection are manual on each device. Saved progress can override the starting time.';
+      ui.providerHint.textContent = 'Vidora shares host progress, but play, pause, seek and server selection are manual on each device. Reloading tries a starting time; saved progress may override it.';
     } else if (snapshot.room.provider === 'vidspark') {
       ui.providerHint.textContent = 'VidSpark does not expose its internal server choice. ' +
         (state.isHost ? 'Changing party player pauses the room.' : 'Only the host controls the room.');
@@ -528,33 +617,53 @@
         ? 'Changing player pauses the room. Server matching is best-effort.'
         : 'Only the host can change the player or control the room.';
     }
-    ui.resync.hidden = snapshot.room.provider === 'vidora';
+    ui.resync.hidden = false;
+    if (snapshot.room.provider !== 'vidora') ui.resync.disabled = false;
     ui.end.hidden = !state.isHost;
     renderMembers(snapshot.members);
     renderMessages(snapshot.messages);
-    if (state.provider !== snapshot.room.provider) loadPlayer(snapshot.room);
-    else if (!state.isHost && snapshot.room.provider !== 'vidora') {
+    if (state.provider !== snapshot.room.provider) {
+      loadPlayer(snapshot.room, { preserve: state.preservePlayer && snapshot.room.provider === 'vidora' });
+      state.preservePlayer = false;
+    } else if (!state.isHost && snapshot.room.provider !== 'vidora') {
       reconcileGuestSource(snapshot.room);
       followHost(false);
     } else if (state.isHost && state.player && !state.episodeChanged) {
       // Also retries a source update after a transient network error.
       publishSource(state.player.source);
     }
-    if (snapshot.room.provider === 'vidora' && !state.episodeChanged) {
-      playerNotice('Vidora test: playback is not synchronized. Control each player manually.');
-    }
     renderSourceStatus();
+    renderVidoraGuide();
   }
 
-  function loadPlayer(room) {
+  function loadPlayer(room, options) {
+    const now = Date.now();
+    const frame = document.getElementById('player-frame');
+    const previous = state.provider === 'vidora' ? state.player : null;
+    const preserve = !!(options && options.preserve && room.provider === 'vidora');
+    const cached = preserve && state.normalVidora && state.normalVidora.frameSrc === frame.src ? state.normalVidora : null;
+    const clock = players.vidoraClock(room, state.serverOffset, now);
+    // startAt is just a request, not a seek: saved Vidora progress can win.
+    // Avoid projecting a disconnected or stale host clock into a new player.
+    let start = players.targetTime(room, state.serverOffset, now);
+    if (room.provider === 'vidora') {
+      const available = clock.status === 'ready' && hostOnline() && roomConnectionFresh(now);
+      start = state.isHost && previous && previous.time !== null ? previous.time :
+        available ? clock.time : previous && previous.time !== null ? previous.time : 0;
+    }
     state.enforceSwitchPause = !!state.provider && state.provider !== room.provider;
     if (state.provider !== room.provider) state.sourcePending = null;
     state.provider = room.provider;
     state.player = {
-      time: null, paused: null, lastTimeAt: 0, lastEventAt: 0, suppressedUntil: 0, startedAt: Date.now(),
+      time: cached ? cached.time : null, paused: cached ? cached.paused : null,
+      lastTimeAt: cached ? cached.lastTimeAt : 0, lastEventAt: cached ? cached.lastEventAt : 0,
+      suppressedUntil: 0, startedAt: now, vidoraReady: preserve, vidoraPublished: false, vidoraAwaitingTime: false,
       source: '', sourceReported: false, sourceRetryAt: 0, commandReady: false, errorNotice: '',
       sourceAttempt: room.source_sync ? players.normalizeSource(room.provider, room.source_id) : ''
     };
+    state.normalVidora = null;
+    state.vidoraNeedsRetry = false;
+    state.vidoraNeedsClear = false;
     state.initialApplied = false;
     state.episodeChanged = false;
     ui.resync.textContent = 'Resync my player';
@@ -563,14 +672,32 @@
     state.playAttempts = 0;
     state.lastHostSync = 0;
     playerNotice(room.provider === 'vidora'
-      ? 'Vidora test: playback is not synchronized. Control each player manually.'
+      ? 'Vidora playback is not automatically synchronized. Each viewer controls their own player.'
       : 'Waiting for ' + (players.LABELS[room.provider] || 'the player') + '. If needed, click inside the player.');
-    const frame = document.getElementById('player-frame');
     try {
-      frame.src = players.buildUrl(room, players.targetTime(room, state.serverOffset, Date.now()));
+      if (!preserve) {
+        if (room.provider === 'vidora') {
+          const player = state.player;
+          frame.addEventListener('load', () => {
+            if (state.player === player && state.provider === 'vidora') player.vidoraReady = true;
+          }, { once: true });
+        }
+        frame.src = players.buildUrl(room, start);
+      }
+      if (room.provider === 'vidora' && state.isHost) {
+        if (room.vidora_observed === true || previous) queueVidora('clear', start);
+        if (cached && cached.time !== null && cached.paused !== null &&
+            (cached.paused || now - cached.lastTimeAt < 5000)) {
+          const time = cached.time + (!cached.paused ? Math.max(0, now - cached.lastTimeAt) / 1000 : 0);
+          state.player.vidoraPublished = true;
+          state.lastHostSync = now;
+          queueVidora(cached.paused ? 'sync_pause' : 'sync_play', time);
+        }
+      }
     } catch (error) {
       playerNotice('This party player could not be loaded. Ask the host to choose another player.');
     }
+    renderVidoraGuide();
   }
   function command(action, time) {
     const frame = document.getElementById('player-frame');
@@ -622,8 +749,64 @@
       if (state.code === code) setConnection('Connection lost · retrying', 'error');
     });
   }
+  function queueVidora(action, time) {
+    if (!state.code || !state.isHost || !state.client || state.provider !== 'vidora' || !state.player) return;
+    const position = players.finiteTime(time);
+    if (position === null) return;
+    if (action === 'clear') state.vidoraClearTime = position;
+    const code = state.code;
+    const generation = state.generation;
+    const player = state.player;
+    state.hostQueue = state.hostQueue.catch(() => {}).then(async () => {
+      if (state.code !== code || state.generation !== generation || !state.isHost || state.provider !== 'vidora' ||
+          state.player !== player || (state.episodeChanged && action !== 'clear')) return;
+      await rpc(state.client, 'zeus_party_vidora_update', { p_code: code, p_action: action, p_time: position });
+      if (state.code === code && state.generation === generation && state.player === player) {
+        const recovered = state.vidoraNeedsRetry || state.vidoraNeedsClear;
+        state.vidoraNeedsRetry = false;
+        state.vidoraNeedsClear = false;
+        if (recovered) {
+          playerNotice(state.episodeChanged
+            ? 'Vidora’s media is not confirmed. Reload the room episode; playback is manual.'
+            : 'Vidora playback is not automatically synchronized. Each viewer controls their own player.');
+        }
+        scheduleRefresh();
+      }
+    }).catch(() => {
+      if (state.code === code && state.generation === generation && state.player === player && state.provider === 'vidora') {
+        if (action === 'clear') state.vidoraNeedsClear = true;
+        else state.vidoraNeedsRetry = true;
+        state.lastVidoraRetry = Date.now();
+        setConnection('Connection lost · retrying', 'error');
+        playerNotice('Could not share Vidora progress. Retrying; everyone still controls their own player.');
+      }
+    });
+  }
+
+  // Remember only documented, origin-checked observations from the normal
+  // Vidora player. Starting a Vidora room can then leave that iframe playing
+  // instead of interrupting it, and share a fresh known play/pause state.
+  function observeNormalVidora(event) {
+    const frame = document.getElementById('player-frame');
+    const received = players.readEvent(event, frame, 'vidora');
+    if (!received) return;
+    const media = bridge.getMedia();
+    if (players.vidoraMediaMatch(event.data.data, media) !== 'match') { state.normalVidora = null; return; }
+    const now = Date.now();
+    let cached = state.normalVidora;
+    if (!cached || cached.frameSrc !== frame.src) {
+      cached = { frameSrc: frame.src, time: null, paused: null, lastTimeAt: 0, lastEventAt: 0 };
+      state.normalVidora = cached;
+    }
+    if (received.time !== null) { cached.time = received.time; cached.lastTimeAt = now; }
+    else if (['play', 'pause', 'ended', 'seeked'].includes(received.kind)) { cached.time = null; cached.lastTimeAt = 0; }
+    if (received.paused !== null) cached.paused = received.paused;
+    if (received.time !== null || received.paused !== null) cached.lastEventAt = now;
+  }
+
   function onPlayerMessage(event) {
-    if (!state.code || !state.player || !state.snapshot) return;
+    if (!state.code) { observeNormalVidora(event); return; }
+    if (!state.player || !state.snapshot) return;
     const frame = document.getElementById('player-frame');
     const received = players.readEvent(event, frame, state.provider);
     if (!received) return;
@@ -672,21 +855,34 @@
       if (state.isHost) playerNotice('You control playback for the room.');
     }
     if (state.provider === 'vidora') {
-      const media = event.data.data;
-      const room = state.snapshot.room;
-      const different = (media.tmdbId != null && String(media.tmdbId) !== String(room.tmdb_id)) ||
-        (media.mediaType != null && media.mediaType !== room.media_type) ||
-        (room.media_type === 'tv' && ((media.season != null && Number(media.season) !== Number(room.season)) ||
-          (media.episode != null && Number(media.episode) !== Number(room.episode))));
-      if (different) {
+      if (!state.player.vidoraReady) return;
+      const identity = players.vidoraMediaMatch(event.data.data, state.snapshot.room);
+      if (identity !== 'match') {
+        if (!state.episodeChanged && state.isHost) {
+          queueVidora('clear', state.player.time ?? players.finiteTime(state.snapshot.room.position_seconds) ?? 0);
+        }
         state.episodeChanged = true;
         state.player.time = null;
-        playerNotice('Vidora changed episodes locally. Return to the room’s episode or start a new party. Playback is manual.');
+        state.player.paused = null;
+        state.player.lastTimeAt = 0;
+        state.player.vidoraPublished = false;
+        state.player.vidoraAwaitingTime = false;
+        playerNotice(identity === 'different'
+          ? 'Vidora changed media or episodes locally. Reload the room episode; playback is manual.'
+          : 'Vidora did not identify this movie or episode. Progress cannot be shared until it is confirmed.');
+        renderVidoraGuide();
         return;
       }
       if (state.episodeChanged) {
         state.episodeChanged = false;
-        playerNotice('Vidora test: playback is not synchronized. Control each player manually.');
+        state.player.time = null;
+        state.player.paused = null;
+        state.player.lastTimeAt = 0;
+        state.player.vidoraPublished = false;
+        state.player.vidoraAwaitingTime = false;
+      }
+      if (!state.vidoraNeedsRetry && !state.vidoraNeedsClear) {
+        playerNotice('Vidora playback is not automatically synchronized. Each viewer controls their own player.');
       }
     }
     const now = Date.now();
@@ -695,8 +891,30 @@
     if (received.time !== null) { state.player.time = received.time; state.player.lastTimeAt = now; }
     if (received.paused !== null) state.player.paused = received.paused;
     if (state.provider === 'vidora') {
-      // Outgoing events provide local progress for a later player switch.
-      // The room is deliberately not driven by unsupported Vidora controls.
+      // Share observations only. There is no documented inbound Vidora
+      // play/pause/seek command, so guests always control their own iframe.
+      if (received.time === null && ['play', 'pause', 'ended', 'seeked'].includes(received.kind)) {
+        // Never pair a new action with an old position if the provider omits
+        // its documented timestamp; wait for a valid subsequent event.
+        state.player.time = null;
+        state.player.lastTimeAt = 0;
+        state.player.vidoraAwaitingTime = true;
+        playerNotice('Vidora did not report a valid time. Waiting for another player event; playback remains manual.');
+      }
+      if (state.isHost && received.time !== null && state.player.paused !== null) {
+        const action = received.kind === 'play' ? 'play' :
+          received.kind === 'pause' || received.kind === 'ended' ? 'pause' :
+            received.kind === 'seeked' || !state.player.vidoraPublished || state.player.vidoraAwaitingTime
+              ? (state.player.paused ? 'sync_pause' : 'sync_play') : '';
+        if (action) {
+          state.player.vidoraPublished = true;
+          state.player.vidoraAwaitingTime = false;
+          state.lastHostSync = now;
+          queueVidora(action, received.time);
+        }
+      }
+      if (!state.isHost && received.time !== null) state.player.vidoraAwaitingTime = false;
+      renderVidoraGuide();
       return;
     }
     if (!state.initialApplied && (received.time !== null || received.paused !== null)) {
@@ -752,9 +970,31 @@
     }
   }
   function checkPlayer() {
-    if (!state.code || !state.player || !state.snapshot || state.episodeChanged || state.provider === 'vidora') return;
-    command('status');
+    if (!state.code || !state.player || !state.snapshot) return;
     const now = Date.now();
+    if (state.provider === 'vidora') {
+      renderVidoraGuide();
+      if (state.isHost && state.vidoraNeedsClear && now - state.lastVidoraRetry >= 5000) {
+        state.lastVidoraRetry = now;
+        queueVidora('clear', state.vidoraClearTime);
+      } else if (state.isHost && !state.episodeChanged && state.player.time !== null && state.player.paused !== null) {
+        const recent = state.player.paused || now - state.player.lastTimeAt < 5000;
+        const retry = state.vidoraNeedsRetry && now - state.lastVidoraRetry >= 5000;
+        const periodic = !state.player.paused && now - state.lastHostSync >= 8000;
+        if (recent && (retry || periodic)) {
+          state.lastHostSync = state.lastVidoraRetry = now;
+          const time = Math.min(86400, state.player.time + (!state.player.paused ? Math.max(0, now - state.player.lastTimeAt) / 1000 : 0));
+          queueVidora(state.player.paused ? 'sync_pause' : 'sync_play', time);
+        }
+      }
+      if (!state.episodeChanged && !state.vidoraNeedsRetry && !state.vidoraNeedsClear &&
+          !state.player.lastEventAt && now - state.player.startedAt > 14000) {
+        playerNotice('Vidora has not sent playback events. Try playing inside it; the source may be unavailable.');
+      }
+      return;
+    }
+    if (state.episodeChanged) return;
+    command('status');
     if (state.isHost && state.initialApplied && state.player.time !== null && state.player.paused !== null &&
         now - state.player.lastTimeAt < 5000 && now - state.lastHostSync > 8000 && now > state.player.suppressedUntil) {
       state.lastHostSync = now;
@@ -833,7 +1073,8 @@
     clearInterval(state.pollTimer);
     clearInterval(state.heartbeatTimer);
     clearInterval(state.statusTimer);
-    state.refreshTimer = state.pollTimer = state.heartbeatTimer = state.statusTimer = null;
+    clearInterval(state.displayTimer);
+    state.refreshTimer = state.pollTimer = state.heartbeatTimer = state.statusTimer = state.displayTimer = null;
     if (state.client && state.channel) state.client.removeChannel(state.channel);
     state.channel = null;
     state.code = '';
@@ -847,15 +1088,37 @@
     state.sourcePending = null;
     state.refreshAgain = false;
     state.hostQueue = Promise.resolve();
+    state.normalVidora = null;
+    state.vidoraNeedsRetry = state.vidoraNeedsClear = false;
+    state.lastSnapshotAt = 0;
     removeSession(ACTIVE_KEY);
     setAddressCode('');
     ui.room.hidden = true;
     ui.welcome.hidden = false;
     ui.panel.querySelector('.wp-panel-inner').scrollTop = 0;
     ui.button.classList.remove('wp-active');
+    ui.stageButton.classList.remove('wp-active');
+    ui.stageStatus.hidden = true;
+    ui.vidoraGuide.hidden = true;
+    syncFullscreenButton();
     ui.codeInput.value = '';
     showError(message);
     bridge.exit();
+  }
+
+  function syncFullscreenButton() {
+    const active = document.fullscreenElement === ui.shell;
+    ui.fullscreen.hidden = !active && (!state.code || typeof ui.shell.requestFullscreen !== 'function');
+    ui.fullscreen.setAttribute('aria-label', active ? 'Exit player fullscreen' : 'Open player fullscreen');
+    ui.fullscreen.title = active ? 'Exit player fullscreen' : 'Open ZEUS player fullscreen to keep the party overlay visible';
+  }
+  async function toggleFullscreen() {
+    try {
+      if (document.fullscreenElement === ui.shell) await document.exitFullscreen();
+      else if (typeof ui.shell.requestFullscreen === 'function') await ui.shell.requestFullscreen();
+    } catch (error) {
+      if (state.code) playerNotice('Fullscreen is unavailable on this device. The party panel still works on the page.');
+    }
   }
 
   function mount() {
@@ -875,6 +1138,15 @@
     workspace.className = 'wp-workspace';
     player.parentNode.insertBefore(workspace, player);
     workspace.appendChild(player);
+    // This is ZEUS chrome layered over the cross-origin iframe, not code
+    // injected into Vidora. The iframe's own fullscreen cannot show it.
+    const stageTools = document.createElement('div');
+    stageTools.className = 'wp-stage-tools';
+    stageTools.innerHTML = `<button class="wp-stage-button" type="button" aria-controls="wp-panel" aria-expanded="false">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM8 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm0 2c-2.3 0-7 1.2-7 3.5V19h14v-2.5C15 14.2 10.3 13 8 13Zm8 0c-.4 0-.7 0-1 .1 1.2.8 2 2 2 3.4V19h6v-2.5c0-2.3-4.7-3.5-7-3.5Z"/></svg>
+      <span>Party</span><span class="wp-stage-status" hidden></span></button>
+      <button class="wp-fullscreen" type="button" aria-label="Open player fullscreen" title="Open player fullscreen" hidden>⛶</button>`;
+    player.appendChild(stageTools);
     const panel = document.createElement('aside');
     panel.className = 'wp-panel';
     panel.id = 'wp-panel';
@@ -890,7 +1162,7 @@
           <p class="wp-error" role="status" hidden></p>
           <label for="wp-name">YOUR NAME</label><input id="wp-name" maxlength="32" autocomplete="nickname" placeholder="Enter your name">
           <label for="wp-create-provider">PARTY PLAYER</label>
-          <select id="wp-create-provider"><option value="vidspark">VidSpark</option><option value="cinesrc">CineSrc</option><option value="bingeapi">BingeAPI (experimental · up to 4K)</option><option value="vidora">Vidora (manual playback test)</option></select>
+          <select id="wp-create-provider"><option value="vidora">Vidora (manual follow)</option><option value="vidspark">VidSpark</option><option value="cinesrc">CineSrc</option><option value="bingeapi">BingeAPI (experimental · up to 4K)</option></select>
           <p class="wp-create-hint" role="status"></p>
           <button class="wp-primary wp-create" type="button">Start a party</button>
           <div class="wp-divider"><span>OR JOIN A PARTY</span></div>
@@ -906,6 +1178,12 @@
             <button class="wp-chat-tab" type="button" role="tab" aria-selected="false">Chat</button>
           </div>
           <p class="wp-player-notice" role="status">Waiting for the player…</p>
+          <div class="wp-vidora-guide" hidden>
+            <div class="wp-vidora-heading"><span>HOST PROGRESS</span><span>MANUAL FOLLOW</span></div>
+            <strong class="wp-host-clock">Waiting for the host…</strong>
+            <p class="wp-local-clock">Your Vidora: waiting for a player event</p>
+            <p class="wp-vidora-advice"></p>
+          </div>
           <div class="wp-party-view">
             <div class="wp-source-settings" hidden>
               <label class="wp-source-toggle"><input class="wp-source-sync" type="checkbox"><span>Match host’s streaming server</span></label>
@@ -916,7 +1194,7 @@
             <div class="wp-section-title"><span>IN THE PARTY</span><span><span class="wp-member-count">0</span> online</span></div>
             <ul class="wp-members" aria-label="Participants"></ul>
             <label for="wp-provider">PARTY PLAYER</label>
-            <select id="wp-provider"><option value="vidspark">VidSpark</option><option value="cinesrc">CineSrc</option><option value="bingeapi">BingeAPI (experimental · up to 4K)</option><option value="vidora">Vidora (manual playback test)</option></select>
+            <select id="wp-provider"><option value="vidora">Vidora (manual follow)</option><option value="vidspark">VidSpark</option><option value="cinesrc">CineSrc</option><option value="bingeapi">BingeAPI (experimental · up to 4K)</option></select>
             <p class="wp-provider-hint"></p>
             <button class="wp-resync wp-secondary" type="button">Resync my player</button>
             <div class="wp-actions"><button class="wp-leave wp-secondary" type="button">Leave party</button>
@@ -934,7 +1212,10 @@
     workspace.appendChild(panel);
     const q = (selector) => panel.querySelector(selector);
     ui = {
-      button, workspace, panel, name: q('#wp-name'), codeInput: q('#wp-code-input'),
+      shell, button, workspace, panel, stageButton: stageTools.querySelector('.wp-stage-button'),
+      stageStatus: stageTools.querySelector('.wp-stage-status'), fullscreen: stageTools.querySelector('.wp-fullscreen'),
+      name: q('#wp-name'), codeInput: q('#wp-code-input'),
+      vidoraGuide: q('.wp-vidora-guide'), hostClock: q('.wp-host-clock'), localClock: q('.wp-local-clock'), vidoraAdvice: q('.wp-vidora-advice'),
       createProvider: q('#wp-create-provider'), create: q('.wp-create'), join: q('.wp-join'),
       welcome: q('.wp-welcome'), room: q('.wp-room'), error: q('.wp-error'),
       connection: q('.wp-connection'), role: q('.wp-role'), roomCode: q('.wp-room-code'),
@@ -947,7 +1228,7 @@
     };
     function updateCreateHint() {
       ui.createHint.textContent = ui.createProvider.value === 'vidora'
-        ? 'Vidora test: play, pause, seek and servers must be controlled manually by each viewer.'
+        ? 'Vidora shares the host’s progress; play, pause, seek and servers are controlled manually by each viewer.'
         : ui.createProvider.value === 'bingeapi'
           ? 'Experimental: BingeAPI advertises up to 4K and subtitles; availability varies by title, server and language.'
           : '';
@@ -956,7 +1237,13 @@
     ui.name.value = savedName();
     updateCreateHint();
     ui.createProvider.addEventListener('change', updateCreateHint);
-    button.addEventListener('click', () => setPanel(ui.panel.hidden));
+    button.addEventListener('click', () => setPanel(ui.panel.hidden, button));
+    ui.stageButton.addEventListener('click', () => setPanel(ui.panel.hidden, ui.stageButton));
+    ui.fullscreen.addEventListener('click', toggleFullscreen);
+    document.addEventListener('fullscreenchange', syncFullscreenButton);
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape' && !ui.panel.hidden) setPanel(false);
+    });
     q('.wp-close').addEventListener('click', () => setPanel(false));
     ui.create.addEventListener('click', () => begin('create'));
     q('.wp-join-form').addEventListener('submit', (event) => { event.preventDefault(); begin('join'); });
@@ -971,6 +1258,13 @@
     });
     ui.resync.addEventListener('click', () => {
       if (!state.snapshot || !state.player) return;
+      if (state.provider === 'vidora') {
+        // This is a fresh embed URL with documented startAt, not a seek or a
+        // claim that Vidora accepted the requested time.
+        loadPlayer(state.snapshot.room);
+        refresh();
+        return;
+      }
       // Reload if the player failed or never responded. The host's room is
       // authoritative, so a host retry reloads instead of just requesting a
       // status (which would not recover a failed source).
@@ -991,6 +1285,10 @@
     ui.end.addEventListener('click', () => leave(true));
     q('.wp-chat-form').addEventListener('submit', sendChat);
     window.addEventListener('message', onPlayerMessage);
+    document.getElementById('player-frame').addEventListener('load', () => {
+      if (!state.code) state.normalVidora = null;
+    });
+    syncFullscreenButton();
     const invite = currentInviteCode();
     if (invite) {
       ui.codeInput.value = players.formatCode(invite);

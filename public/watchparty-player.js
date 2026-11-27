@@ -199,5 +199,47 @@
     return Math.min(86400, position + elapsed);
   }
 
-  return { ORIGINS, LABELS, normalizeCode, formatCode, finiteTime, supportsSource, normalizeSource, sourceLabel, buildUrl, commands, send, readEvent, targetTime };
+  // A Vidora event is useful only if it identifies the room's media. In TV
+  // rooms an omitted episode cannot establish that the host stayed on the
+  // shared episode; fail closed rather than publishing a different stream.
+  function vidoraMediaMatch(media, room) {
+    if (!media || !room) return 'unconfirmed';
+    const id = room.tmdb_id ?? room.id;
+    const type = room.media_type ?? room.type;
+    if (media.tmdbId != null && String(media.tmdbId) !== String(id)) return 'different';
+    if (media.mediaType != null && media.mediaType !== type) return 'different';
+    if (type === 'tv') {
+      if (media.season != null && Number(media.season) !== Number(room.season)) return 'different';
+      if (media.episode != null && Number(media.episode) !== Number(room.episode)) return 'different';
+      if (media.season == null || media.episode == null) return 'unconfirmed';
+    }
+    return media.tmdbId == null || media.mediaType == null ? 'unconfirmed' : 'match';
+  }
+
+  // Do not extrapolate a playing clock forever after the host player stops
+  // reporting events or the network drops. A paused observation can stay valid
+  // without timeupdate events; the UI separately checks host/room connectivity.
+  function vidoraClock(room, serverOffsetMs, nowMs) {
+    if (!room || room.vidora_observed !== true) return { status: 'waiting', time: null };
+    const position = finiteTime(room.position_seconds);
+    if (position === null) return { status: 'waiting', time: null };
+    if (!room.playing) return { status: 'ready', time: position };
+    const updated = Date.parse(room.state_updated_at);
+    const now = Number.isFinite(nowMs) ? nowMs : Date.now();
+    const age = Number.isFinite(updated) ? Math.max(0, now + (Number(serverOffsetMs) || 0) - updated) : Infinity;
+    if (age > 24000) return { status: 'stale', time: position };
+    return { status: 'ready', time: Math.min(86400, position + age / 1000) };
+  }
+
+  function formatTime(value) {
+    const time = finiteTime(value);
+    if (time === null) return '–:––';
+    const seconds = Math.floor(time);
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor(seconds % 3600 / 60);
+    const remainder = String(seconds % 60).padStart(2, '0');
+    return hours ? `${hours}:${String(minutes).padStart(2, '0')}:${remainder}` : `${minutes}:${remainder}`;
+  }
+
+  return { ORIGINS, LABELS, normalizeCode, formatCode, finiteTime, supportsSource, normalizeSource, sourceLabel, buildUrl, commands, send, readEvent, targetTime, vidoraMediaMatch, vidoraClock, formatTime };
 });
