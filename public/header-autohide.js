@@ -228,17 +228,14 @@
    • The handler NEVER reads layout — window.scrollY is a
      compositor-cached value (no offsetHeight /
      getBoundingClientRect → no forced synchronous reflow).
-   • Per-frame velocity (normalized to ~16ms frames) flips
-     body[data-scroll-fast] during fast flings AND while the
-     scrollbar thumb is dragged. CSS §46E/§46F then:
-       – swaps the header's backdrop-blur for a pre-mixed
-         translucent glass plate (zero per-frame re-filtering
-         over the moving content),
-       – suppresses card hover zoom/raster mid-fling.
-     The frosted blur + hovers return instantly (~140ms)
-     after the scroll settles — visuals 100% intact at rest.
-   • Writes are change-guarded: a steady scroll frame performs
-     ZERO DOM mutations.
+   • Per-frame velocity (normalized to ~16ms frames) enables
+     body[data-scroll-fast] during fast flings and scrollbar
+     drags. CSS §46E/§46F temporarily reduces expensive glass
+     and card effects. Once enabled, keep that state until the
+     gesture settles: switching it at every velocity threshold
+     crossing causes costly restyles across long card grids.
+   • Frosted blur and hovers return ~140ms after the last scroll;
+     no wheel, touch, or scrollbar input is intercepted.
    ============================================================ */
 (function () {
   'use strict';
@@ -251,20 +248,6 @@
   var lastY = window.scrollY || 0;
   var lastTs = 0;
   var settleTimer;
-  var scrolling = false;
-
-  /* BOARD Part 1 — body[data-scrolling] marks ANY active page scroll
-     (wheel / touch / scrollbar drag), change-guarded so a steady
-     gesture performs ZERO DOM writes after the first. CSS §48
-     switches pointer-events off while it is set, which freezes
-     hover-state recalculation/repaint spam mid-drag; it releases
-     ~140ms after the last scroll event (settle timer below). */
-  function setScrolling(on) {
-    if (on === scrolling) return;
-    scrolling = on;
-    if (on) document.body.setAttribute('data-scrolling', '1');
-    else document.body.removeAttribute('data-scrolling');
-  }
 
   function frame(ts) {
     ticking = false;
@@ -279,18 +262,17 @@
     lastTs = ts;
     var velocity = Math.abs(dy) * (16 / Math.min(Math.max(dt, 8), 64));
 
-    var nowFast = velocity > FAST_PX_PER_FRAME;
-    if (nowFast !== fast) {
-      fast = nowFast;
-      if (nowFast) document.body.setAttribute('data-scroll-fast', '1');
-      else document.body.removeAttribute('data-scroll-fast');
+    // Stay in fast mode until the gesture settles, rather than
+    // restyling every card when velocity oscillates around the threshold.
+    if (!fast && velocity > FAST_PX_PER_FRAME) {
+      fast = true;
+      document.body.setAttribute('data-scroll-fast', '1');
     }
 
     // Debounced release: the fling may end without further
     // events (scrollbar drag release, trackpad stop).
     if (settleTimer) clearTimeout(settleTimer);
     settleTimer = setTimeout(function () {
-      setScrolling(false);
       if (fast) {
         fast = false;
         document.body.removeAttribute('data-scroll-fast');
@@ -299,10 +281,13 @@
   }
 
   function onScroll() {
-    // passive + rAF: this function only schedules — no reads, no
-    // allocations on the input thread. setScrolling is change-
-    // guarded: one attribute write per gesture, not per event.
-    setScrolling(true);
+    // Cancel the pending idle release immediately: a delayed rAF
+    // must not let it flip the fast state between scroll events.
+    if (settleTimer) {
+      clearTimeout(settleTimer);
+      settleTimer = null;
+    }
+    // Passive + rAF: leave the actual scrolling to the browser.
     if (!ticking) {
       ticking = true;
       window.requestAnimationFrame(frame);

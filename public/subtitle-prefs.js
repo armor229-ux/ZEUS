@@ -48,6 +48,7 @@ window.ZEUS = window.ZEUS || {};
   const LS_PREF = 'zeus_sub_pref';
   const DEFAULT_COLOR = '#ffffff';
   const DEFAULT_OFFSET = 0;
+  const memoryPrefs = Object.create(null); // page-lifetime fallback if storage is blocked
   const originalTimes = new WeakMap(); // Map<VTTCue, {s:number,e:number}>
   const prefApplied = new WeakMap();   // Map<HTMLVideoElement, selection key already applied>
   const hookedVideos = new WeakSet();  // videos with play/load listeners attached
@@ -64,16 +65,33 @@ window.ZEUS = window.ZEUS || {};
     de: ['german', 'deutsch']
   };
 
+  function readPref(key) {
+    if (Object.prototype.hasOwnProperty.call(memoryPrefs, key)) return memoryPrefs[key];
+    try { return localStorage.getItem(key); } catch (err) { return null; }
+  }
+
+  function writePref(key, value) {
+    const text = String(value);
+    try {
+      localStorage.setItem(key, text);
+      if (localStorage.getItem(key) === text) {
+        delete memoryPrefs[key];
+        return;
+      }
+    } catch (err) { /* use the page-lifetime fallback */ }
+    memoryPrefs[key] = text;
+  }
+
   function getColor() {
-    return localStorage.getItem(LS_COLOR) || DEFAULT_COLOR;
+    return readPref(LS_COLOR) || DEFAULT_COLOR;
   }
 
   function getOffset() {
-    return parseInt(localStorage.getItem(LS_OFFSET) || DEFAULT_OFFSET, 10) || 0;
+    return parseInt(readPref(LS_OFFSET) || DEFAULT_OFFSET, 10) || 0;
   }
 
   function getPref() {
-    return (localStorage.getItem(LS_PREF) || '').toLowerCase();
+    return (readPref(LS_PREF) || '').toLowerCase();
   }
 
   /* Does a text track match the preferred language? Matches the
@@ -234,19 +252,17 @@ window.ZEUS = window.ZEUS || {};
   }
 
   function saveColor(hex) {
-    localStorage.setItem(LS_COLOR, hex);
+    writePref(LS_COLOR, hex);
     applyColor();
   }
 
   function saveOffset(ms) {
-    localStorage.setItem(LS_OFFSET, String(ms | 0));
+    writePref(LS_OFFSET, String(ms | 0));
     applyToAllVideos();
   }
 
   function savePref(code) {
-    try {
-      localStorage.setItem(LS_PREF, String(code || '').toLowerCase());
-    } catch (err) { /* storage blocked — preference stays for this page load */ }
+    writePref(LS_PREF, String(code || '').toLowerCase());
     applyToAllVideos(); // re-select on every video right now (guard is per-pref)
   }
 
