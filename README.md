@@ -109,10 +109,14 @@ local player reports the same server; mismatches are shown and **Resync my
 player** retries. If the host does not report a recognized server, matching
 cannot be confirmed. VidSpark and Vidora do not expose the needed server API.
 
-Click inside an iframe if autoplay is blocked. Episode changes made inside an
-embed are not shared; return to the room's episode or start a new room. A
-Realtime subscription being established is not proof of broadcast delivery;
-the client also checks the room periodically.
+Click inside an iframe if autoplay is blocked. If the party player reports an
+error or has not responded, **Resync my player** reloads it; the host's Resync
+also reloads the player to retry the source. A BingeAPI server event permits a
+command attempt but does not prove that the stream has loaded. Episode changes
+made inside an embed are not
+shared; return to the room's episode or start a new room. A Realtime
+subscription being established is not proof of broadcast delivery; the client
+also checks the room periodically.
 
 The configured ZEUS Supabase project has the migrations below recorded and
 anonymous sign-ins enabled. For a fresh project or fork, complete these steps
@@ -136,9 +140,11 @@ before creating rooms (do not reapply recorded migrations to ZEUS):
    is version 2.119.2, with its license in `public/vendor/`.
 
 A room code is an invitation, so share it only with trusted people. The invite
-uses a URL fragment, and per-tab Supabase sessions keep host identity across a
-reload without making all tabs the same user. **Security note:** `watch.html`
-already loads third-party advertising scripts in the page's own JavaScript
+uses a URL fragment, and the Supabase session survives a reload of the tab.
+Browsers may copy session storage to a duplicated tab or one opened with an
+opener, so use separate browsers/profiles or fresh tabs without an opener for
+independent viewers. **Security note:** `watch.html` already loads third-party
+advertising scripts in the page's own JavaScript
 context. Such scripts can read the invitation and session storage and act as
 the viewer. Audit or isolate those scripts before treating rooms as private in
 production. Each room stores up to 200 chat messages and snapshots return the
@@ -153,11 +159,12 @@ alone does **not** prove that media or synchronization works.
 
 For regression checks, run `node --test tests/*.test.mjs`. The optional SQL
 test uses `@electric-sql/pglite` (set `ZEUS_PGLITE_MODULE` to its
-`dist/index.js`), and `tests/watchparty-browser.mjs` uses Playwright/Chromium
-specified via `ZEUS_PLAYWRIGHT_MODULE` and `ZEUS_CHROMIUM_PATH`. The SQL test
-stubs Supabase Auth/Realtime; the browser test mocks Supabase and the player
-iframes. Passing them does **not** verify actual video, Realtime delivery, or
-two-viewer sync. To test those, open the preview in two independent browser
+`dist/index.js`). The optional `tests/watchparty-browser.mjs` and
+`tests/watchparty-startup-browser.mjs` use Playwright/Chromium specified via
+`ZEUS_PLAYWRIGHT_MODULE` and `ZEUS_CHROMIUM_PATH`. The SQL test stubs Supabase
+Auth/Realtime; both browser tests mock Supabase and the player iframes. Passing
+them does **not** verify actual video, Realtime delivery, or two-viewer sync.
+To test those, open the preview in two independent browser
 sessions, create a room and join it, then check host play/pause/seek, switch the
 host's internal server and compare both player menus and timestamps. Check the
 fallback warning if a server is unavailable, and test Vidora separately as a
