@@ -8302,28 +8302,23 @@ body.tab-idle *::after{
 }
 
 /* ============================================================
-   46. PERMANENT SCROLL PERFORMANCE FIX (ZEUS BOARD — 60FPS)
+   46. SCROLL PERFORMANCE (ZEUS BOARD)
    ------------------------------------------------------------
-   Appended performance plumbing ONLY — zero visual changes:
-   every rule below either (a) skips work the user can't see,
-   or (b) keeps the exact same rendered end-states while moving
-   the interpolation onto the compositor (transform/opacity).
-   Layout, colors, hero sizing, fonts, buttons, theme and
-   navigation are untouched. Frosted glass is NOT removed — it
-   is optimized so it never lags (46E).
+   Reduce work on long pages while keeping the site's design and
+   interactions. Offscreen content can be skipped and animated
+   transitions use transform/opacity. The soft gradient colors
+   approximate the original filtered appearance (46D); frosted
+   glass temporarily uses a cheaper plate during fast scrolls (46E).
 
    46A  Scroll container + page wrapper hardware acceleration.
    46B  CSS containment for long row grids + card lists
         (content-visibility: auto + contain: layout style paint).
    46C  Hero banner + backdrop glow layers promoted to isolated
         rendering layers (isolation: isolate).
-   46D  §39B gold scroll state re-implemented as a PRE-RENDERED
-        crossfade layer (.zeus-bg-blur::before): the blurred
-        background never re-rasterizes on the scroll threshold —
-        the golden wash fades in via opacity only. The ambient
-        drift (zeusBgShift) is redefined to a transform-only
-        translate3d drift: constant scale, so the blurred layer
-        rasterizes ONCE and the compositor moves it for free.
+   46D  §39B gold scroll state is an opacity crossfade layer
+        (.zeus-bg-blur::before). The soft gradient colors are
+        pre-mixed to avoid a full-screen filter during compositing;
+        the ambient drift still uses transform-only motion.
    46E  Frosted glass (header pill / topbar) survives fast
         flings + scrollbar drags: body[data-scroll-fast] swaps
         backdrop-blur for a visually equivalent translucent
@@ -8387,10 +8382,84 @@ main {
    whenever the card is offscreen — is used instead). */
 .movies-grid > .movie-card {
   content-visibility: auto;
-  /* 348px ≈ real height of a 2:3 card at the grid's 155-220px
-     columns (poster ×1.5 + caption) — a closer first estimate
-     means fewer layout corrections as cards scroll into view. */
+  /* Fallback for browsers without container units / typed math. */
   contain-intrinsic-size: auto 348px;
+}
+
+/* Estimate the poster-plus-caption height before a card is
+   rendered. A fixed 348px estimate made long grids shrink as each
+   row appeared, moving the scrollbar thumb under the pointer.
+   These match the grid minimums, gaps and caption line heights in
+   §11 and the responsive rules above. The auto prefix remembers
+   the real height once a card renders (e.g. with larger fonts). */
+@supports (container-type: inline-size) and
+          (contain-intrinsic-block-size: auto calc(100cqw / 2)) {
+  .movies-grid {
+    container-type: inline-size;
+    container-name: zeus-grid;
+    --zeus-grid-min: 155px;
+    --zeus-grid-gap: 24px;
+    --zeus-grid-caption: 51.225px;
+  }
+  @media (max-width: 768px) {
+    .movies-grid {
+      --zeus-grid-min: 138px;
+      --zeus-grid-gap: 14px;
+      --zeus-grid-caption: 45.375px;
+    }
+  }
+  @media (max-width: 480px) {
+    .movies-grid {
+      --zeus-grid-min: 124px;
+      --zeus-grid-gap: 12px;
+    }
+  }
+  .movies-grid > .movie-card {
+    --zeus-grid-columns: 1;
+    --zeus-grid-column-width: max(var(--zeus-grid-min),
+      calc((100cqw - (var(--zeus-grid-columns) - 1) * var(--zeus-grid-gap)) / var(--zeus-grid-columns)));
+    contain-intrinsic-block-size: auto calc(var(--zeus-grid-column-width) * 1.5 + var(--zeus-grid-caption));
+  }
+  .movies-grid > .movie-card.wide {
+    contain-intrinsic-block-size: auto calc(var(--zeus-grid-column-width) * 0.5625 + var(--zeus-grid-caption));
+  }
+
+  /* Modern typed math derives the track count for any grid width. */
+  @supports (width: round(down, 1px, 1px)) and
+            (contain-intrinsic-block-size: auto calc(1px / 1px * 1px)) {
+    .movies-grid > .movie-card {
+      --zeus-grid-columns: max(1, round(down,
+        calc((100cqw + var(--zeus-grid-gap)) / (var(--zeus-grid-min) + var(--zeus-grid-gap))), 1));
+    }
+  }
+
+  /* Browsers with container queries but not typed division use the
+     same track thresholds: n * min + (n - 1) * gap. Eight tracks
+     cover this site's 1540px maximum container width. */
+  @supports not ((width: round(down, 1px, 1px)) and
+                 (contain-intrinsic-block-size: auto calc(1px / 1px * 1px))) {
+    @container zeus-grid (min-width: 334px) { .movies-grid > .movie-card { --zeus-grid-columns: 2; } }
+    @container zeus-grid (min-width: 513px) { .movies-grid > .movie-card { --zeus-grid-columns: 3; } }
+    @container zeus-grid (min-width: 692px) { .movies-grid > .movie-card { --zeus-grid-columns: 4; } }
+    @container zeus-grid (min-width: 871px) { .movies-grid > .movie-card { --zeus-grid-columns: 5; } }
+    @container zeus-grid (min-width: 1050px) { .movies-grid > .movie-card { --zeus-grid-columns: 6; } }
+    @container zeus-grid (min-width: 1229px) { .movies-grid > .movie-card { --zeus-grid-columns: 7; } }
+    @container zeus-grid (min-width: 1408px) { .movies-grid > .movie-card { --zeus-grid-columns: 8; } }
+
+    @media (max-width: 768px) {
+      .movies-grid > .movie-card { --zeus-grid-columns: 1; }
+      @container zeus-grid (min-width: 290px) { .movies-grid > .movie-card { --zeus-grid-columns: 2; } }
+      @container zeus-grid (min-width: 442px) { .movies-grid > .movie-card { --zeus-grid-columns: 3; } }
+      @container zeus-grid (min-width: 594px) { .movies-grid > .movie-card { --zeus-grid-columns: 4; } }
+      @container zeus-grid (min-width: 746px) { .movies-grid > .movie-card { --zeus-grid-columns: 5; } }
+    }
+    @media (max-width: 480px) {
+      .movies-grid > .movie-card { --zeus-grid-columns: 1; }
+      @container zeus-grid (min-width: 260px) { .movies-grid > .movie-card { --zeus-grid-columns: 2; } }
+      @container zeus-grid (min-width: 396px) { .movies-grid > .movie-card { --zeus-grid-columns: 3; } }
+      @container zeus-grid (min-width: 532px) { .movies-grid > .movie-card { --zeus-grid-columns: 4; } }
+    }
+  }
 }
 
 /* Genre tile grid — same treatment (hover glow stays intact). */
@@ -8421,33 +8490,37 @@ main {
 
 /* ---------- 46D. Gold scroll state as an opacity crossfade ------ */
 
-/* The base layer is PINNED to its resting gradients + blur —
-   §39B's background/filter/transform swap on the scroll
-   threshold forced a fullscreen re-raster of a blur(40px)
-   layer mid-scroll (the #1 scroll-lag source). All state
-   changes below are opacity-only. */
+/* The gradients already have very soft transitions. Pre-mix the
+   old saturation/contrast into their stops rather than filtering a
+   viewport-sized layer on every composite. The subtle blurred look,
+   drifting motion and gold crossfade remain; no content is hidden. */
+.zeus-bg-blur,
+body[data-scrolled="1"] .zeus-bg-blur {
+  background:
+    radial-gradient(1200px 750px at 18% 14%, rgba(255, 201.54, 22.18, 0.17395), transparent 54%),
+    radial-gradient(1000px 700px at 82% 12%, rgba(255, 155.93, 0, 0.11303), transparent 52%),
+    radial-gradient(900px 700px at 50% 100%, rgba(255, 94.34, 0, 0.09529), transparent 60%),
+    linear-gradient(180deg, rgb(0.9, 0.9, 5.15) 0%, rgb(3.99, 3.99, 11.08) 48%, rgb(0, 0, 1.66) 100%);
+  filter: none;
+}
 .zeus-bg-blur {
+  background-size: 220% 220%;
   transition: opacity .35s ease;
   will-change: transform, opacity;
 }
 
-/* §39B's golden wash, PRE-RENDERED as a child layer: same four
-   radial gradients + same dark-gold linear base — baked once at
-   rest and faded in via opacity (compositor-only). No filter on
-   the child: the parent's pinned blur(34px)/saturate/contrast
-   filters the whole stack (34 vs 40px on 1000px-wide radial
-   washes is imperceptible; the filter DELTA was the lag source).
-   background-size matches the parent's 220% drift canvas. */
+/* The gold wash uses the same pre-mixed colors and retains the
+   original opacity-only transition and 220% drift canvas. */
 .zeus-bg-blur::before {
   content: "";
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(1300px 800px at 16% 12%, rgba(255, 232, 110, 0.42), transparent 50%),
-    radial-gradient(1100px 760px at 84% 10%, rgba(255, 191, 58, 0.30), transparent 48%),
-    radial-gradient(1000px 820px at 48% 96%, rgba(255, 154, 40, 0.20), transparent 58%),
-    radial-gradient(700px 500px at 50% 50%, rgba(255, 215, 70, 0.10), transparent 70%),
-    linear-gradient(180deg, #0a0706 0%, #100b08 48%, #070608 100%);
+    radial-gradient(1300px 800px at 16% 12%, rgba(255, 224, 61.64, 0.44809), transparent 50%),
+    radial-gradient(1100px 760px at 84% 10%, rgba(255, 173.03, 3.79, 0.33506), transparent 48%),
+    radial-gradient(1000px 820px at 48% 96%, rgba(255, 130.48, 0, 0.23177), transparent 58%),
+    radial-gradient(700px 500px at 50% 50%, rgba(255, 202.38, 13.4, 0.10896), transparent 70%),
+    linear-gradient(180deg, rgb(5.02, 0.77, 0) 0%, rgb(11.95, 4.86, 0.61) 48%, rgb(1.21, 0, 2.63) 100%);
   background-size: 220% 220%;
   transform: translateZ(0);
   opacity: 0;
@@ -8456,30 +8529,46 @@ main {
   pointer-events: none;
 }
 
-/* Scrolled: gold layer fades in over the (now pinned) base.
-   Supersedes §39A's 0.55 dim + §39B's live filter/background
-   swap — identical end-state pixels, zero re-raster. */
+/* Scrolled: the gold layer fades in over the same resting base.
+   Keep the scrolled base's original background sizing. */
 body[data-scrolled="1"] .zeus-bg-blur {
   opacity: 1;
-  background: radial-gradient(1200px 750px at 18% 14%, rgba(255, 214, 76, 0.16), transparent 54%),
-              radial-gradient(1000px 700px at 82% 12%, rgba(255, 176, 44, 0.10), transparent 52%),
-              radial-gradient(900px 700px at 50% 100%, rgba(255, 120, 24, 0.08), transparent 60%),
-              linear-gradient(180deg, #07070a 0%, #0a0a0f 48%, #050507 100%);
-  filter: blur(34px) saturate(1.35) contrast(1.05);
+  background-size: auto;
   transform: scale(1.1);
 }
 body[data-scrolled="1"] .zeus-bg-blur::before {
   opacity: 1;
 }
 
-/* Ambient drift, redefined COMPOSITOR-ONLY: the old keyframes
-   animated background-position, re-rasterizing the blurred
-   layer every frame for 24s straight. The new drift translates
-   the whole layer at a CONSTANT scale — the blurred texture is
-   rasterized once, then the GPU moves it (zero main-thread
-   cost, same slow ambient motion feel). Later definition wins
-   the @keyframes cascade; §39A/§39B's animation shorthand is
-   untouched. */
+/* The dim theme formerly replaced the normal filter with its own
+   saturation/contrast/brightness filter in settings.css. Its stops
+   need their own pre-mixed colors, not the already-saturated normal
+   stops. The extra specificity overrides that later-loaded filter. */
+html[data-theme="dim"] body .zeus-bg-blur {
+  background:
+    radial-gradient(1200px 750px at 18% 14%, rgba(187.62, 152.96, 36.32, 0.16), transparent 54%),
+    radial-gradient(1000px 700px at 82% 12%, rgba(190.86, 124.09, 12.52, 0.10), transparent 52%),
+    radial-gradient(900px 700px at 50% 100%, rgba(195.44, 81.33, 0.19, 0.08), transparent 60%),
+    linear-gradient(180deg, rgb(0.66, 0.66, 3.19) 0%, rgb(2.85, 2.85, 7.07) 48%, rgb(0, 0, 0.89) 100%);
+  background-size: 220% 220%;
+  filter: none;
+}
+html[data-theme="dim"] body[data-scrolled="1"] .zeus-bg-blur {
+  background-size: auto;
+}
+html[data-theme="dim"] body .zeus-bg-blur::before {
+  background:
+    radial-gradient(1300px 800px at 16% 12%, rgba(185.93, 166.49, 63.37, 0.42), transparent 50%),
+    radial-gradient(1100px 760px at 84% 10%, rgba(189.57, 135.48, 23.06, 0.30), transparent 48%),
+    radial-gradient(1000px 820px at 48% 96%, rgba(192.63, 107.26, 10.9, 0.20), transparent 58%),
+    radial-gradient(700px 500px at 50% 50%, rgba(187.58, 153.77, 31.21, 0.10), transparent 70%),
+    linear-gradient(180deg, rgb(3.16, 0.62, 0) 0%, rgb(7.76, 3.53, 0.99) 48%, rgb(0.75, 0, 1.6) 100%);
+  background-size: 220% 220%;
+}
+
+/* Ambient drift uses transform instead of background-position,
+   preserving the slow motion without repainting the gradients
+   for each animation frame. Later keyframes win the cascade. */
 @keyframes zeusBgShift {
   0%   { transform: translate3d(-2%, -1.2%, 0) scale(1.1); }
   50%  { transform: translate3d(2%, 1.2%, 0) scale(1.1); }

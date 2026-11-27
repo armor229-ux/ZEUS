@@ -511,7 +511,7 @@ test('a trailer lookup finishing during fast scrolling waits for rest or cancels
 test('fast scrolling is passive and does not repeatedly restyle or suppress all pointer events', () => {
   const source = read('header-autohide.js');
   const start = source.indexOf('   3. SCROLL VELOCITY');
-  const end = source.indexOf('   4. PAGE CROSS-FADE', start);
+  const end = source.indexOf('   3b. BANNER SAFE TOP', start);
   const scrollSource = source.slice(source.lastIndexOf('/*', start), source.lastIndexOf('/*', end));
   assert.ok(scrollSource.includes('FAST_PX_PER_FRAME'));
   assert.doesNotMatch(read('style.css'), /body\[data-scrolling\s*=\s*["']?1["']?\]\s+\*/);
@@ -554,4 +554,297 @@ test('fast scrolling is passive and does not repeatedly restyle or suppress all 
   rafs.shift()(1064);
   timer.tick(140);
   assert.deepEqual(writes, [['data-scroll-fast', '1'], ['data-scroll-fast', null]]);
+});
+
+test('native scrollend holds the fast guard during a drag and releases it only for the document', () => {
+  const source = read('header-autohide.js');
+  const start = source.indexOf('   3. SCROLL VELOCITY');
+  const end = source.indexOf('   3b. BANNER SAFE TOP', start);
+  const scrollSource = source.slice(source.lastIndexOf('/*', start), source.lastIndexOf('/*', end));
+  const timer = clock();
+  const rafs = [];
+  const windowListeners = new Map();
+  const documentListeners = new Map();
+  const writes = [];
+  const body = {
+    setAttribute(name, value) { writes.push([name, value]); },
+    removeAttribute(name) { writes.push([name, null]); }
+  };
+  const document = {
+    body,
+    onscrollend: null,
+    addEventListener(type, listener, options) { documentListeners.set(type, { listener, options }); }
+  };
+  const window = {
+    scrollY: 0,
+    addEventListener(type, listener, options) { windowListeners.set(type, { listener, options }); },
+    requestAnimationFrame(callback) { rafs.push(callback); }
+  };
+  vm.runInNewContext(scrollSource, {
+    window, document, performance: { now: () => 1000 },
+    setTimeout: timer.setTimeout, clearTimeout: timer.clearTimeout
+  });
+  assert.equal(windowListeners.get('scroll').options.passive, true);
+  assert.equal(documentListeners.get('scrollend').options.passive, true);
+  const scroll = windowListeners.get('scroll').listener;
+  const scrollend = documentListeners.get('scrollend').listener;
+
+  window.scrollY = 150;
+  scroll();
+  rafs.shift()(1016);
+  assert.deepEqual(writes, [['data-scroll-fast', '1']]);
+  timer.tick(400); // A held thumb can have long gaps between scroll events.
+  scrollend({ target: {} }); // Nested horizontal carousel must not end the document gesture.
+  timer.tick(400);
+  assert.deepEqual(writes, [['data-scroll-fast', '1']]);
+  scrollend({ target: document });
+  timer.tick(139);
+  assert.deepEqual(writes, [['data-scroll-fast', '1']]);
+  timer.tick(1);
+  assert.deepEqual(writes, [['data-scroll-fast', '1'], ['data-scroll-fast', null]]);
+
+  // The end event can precede the rAF that notices the final scroll.
+  window.scrollY = 400;
+  scroll();
+  scrollend({ target: document });
+  timer.tick(140);
+  assert.equal(rafs.length, 1);
+  rafs.shift()(1032);
+  assert.deepEqual(writes.at(-1), ['data-scroll-fast', '1']);
+  timer.tick(100);
+  window.scrollY = 405;
+  scroll(); // A new gesture cancels the scheduled release immediately.
+  timer.tick(100);
+  assert.deepEqual(writes.at(-1), ['data-scroll-fast', '1']);
+  rafs.shift()(1048);
+  scrollend({ target: document });
+  timer.tick(140);
+  assert.deepEqual(writes.at(-1), ['data-scroll-fast', null]);
+  assert.equal(writes.length, 4);
+});
+
+function bannerEnvironment({ resizeObserver = true } = {}) {
+  const source = read('header-autohide.js');
+  const start = source.indexOf('   3b. BANNER SAFE TOP');
+  const end = source.indexOf('   4. PAGE CROSS-FADE', start);
+  const bannerSource = source.slice(source.lastIndexOf('/*', start), source.lastIndexOf('/*', end));
+  const rafs = [];
+  const mutations = [];
+  const resizes = [];
+  const windowListeners = new Map();
+  const fontListeners = new Map();
+  let fontReady;
+  const writes = [];
+
+  class Node {
+    constructor({ candidate = false, height = 0, top = 0 } = {}) {
+      this.nodeType = 1;
+      this.candidate = candidate;
+      this.rect = { height, top };
+      this.children = [];
+      this.parent = null;
+      this.reads = 0;
+    }
+    append(child) { child.parent = this; this.children.push(child); }
+    remove(child) { this.children.splice(this.children.indexOf(child), 1); child.parent = null; }
+    matches() { return this.candidate; }
+    contains(other) {
+      for (let node = other; node; node = node.parent) if (node === this) return true;
+      return false;
+    }
+    querySelector() {
+      for (const child of this.children) {
+        if (child.candidate) return child;
+        const nested = child.querySelector();
+        if (nested) return nested;
+      }
+      return null;
+    }
+    getBoundingClientRect() { this.reads++; return this.rect; }
+  }
+  const body = new Node();
+  const banner = new Node({ candidate: true });
+  const poster = new Node();
+  body.append(banner);
+  body.append(poster);
+  const values = new Map();
+  const style = {
+    getPropertyValue(name) { return values.get(name) || ''; },
+    setProperty(name, value) { values.set(name, value); writes.push([name, value]); }
+  };
+  const document = {
+    body,
+    documentElement: { style },
+    fonts: {
+      addEventListener(type, listener) { fontListeners.set(type, listener); },
+      ready: { then(listener) { fontReady = listener; } }
+    },
+    querySelectorAll() {
+      const out = [];
+      function visit(node) {
+        if (node.candidate) out.push(node);
+        node.children.forEach(visit);
+      }
+      visit(body);
+      return out;
+    }
+  };
+  const window = {
+    requestAnimationFrame(callback) { rafs.push(callback); },
+    addEventListener(type, callback, options) { windowListeners.set(type, { callback, options }); }
+  };
+  class MutationObserver {
+    constructor(callback) { this.callback = callback; mutations.push(this); }
+    observe(target, options) { this.target = target; this.options = options; }
+  }
+  class ResizeObserver {
+    constructor(callback) { this.callback = callback; this.observed = new Set(); resizes.push(this); }
+    observe(node) { this.observed.add(node); }
+    unobserve(node) { this.observed.delete(node); }
+  }
+  vm.runInNewContext(bannerSource, {
+    document, window, MutationObserver, ResizeObserver: resizeObserver ? ResizeObserver : undefined
+  });
+  return {
+    Node, body, banner, poster, values, writes, rafs, mutations, resizes, windowListeners, fontListeners,
+    fontsReady() { if (fontReady) fontReady(); },
+    flush() { while (rafs.length) rafs.shift()(); }
+  };
+}
+
+test('banner measurement ignores card churn but coalesces visibility, resize and dynamic banner updates', () => {
+  const env = bannerEnvironment();
+  const { Node, body, banner, poster, values, writes, rafs, mutations, resizes } = env;
+  const observer = mutations[0];
+  const resize = resizes[0];
+  assert.equal(observer.target, body);
+  assert.equal(observer.options.subtree, true);
+  assert.equal(values.get('--zeus-safe-top'), '0px');
+  assert.ok(resize.observed.has(banner));
+  assert.equal(env.fontListeners.size, 0); // ResizeObserver already covers font reflow.
+
+  banner.rect.height = 52;
+  observer.callback([
+    { type: 'attributes', target: banner, attributeName: 'hidden' },
+    { type: 'attributes', target: body, attributeName: 'class' }
+  ]);
+  resize.callback();
+  assert.equal(rafs.length, 1);
+  env.flush();
+  assert.equal(values.get('--zeus-safe-top'), '52px');
+  const reads = banner.reads;
+  const count = writes.length;
+  for (let i = 0; i < 100; i++) {
+    observer.callback([
+      { type: 'attributes', target: poster, attributeName: 'class' },
+      { type: 'attributes', target: body, attributeName: 'data-scrolled' },
+      { type: 'attributes', target: body, attributeName: 'data-scroll-fast' },
+      { type: 'childList', target: poster, addedNodes: [new Node()], removedNodes: [] }
+    ]);
+  }
+  assert.equal(rafs.length, 0);
+  assert.equal(banner.reads, reads);
+  assert.equal(writes.length, count);
+
+  banner.rect.height = 78;
+  resize.callback();
+  resize.callback();
+  assert.equal(rafs.length, 1);
+  env.flush();
+  assert.equal(values.get('--zeus-safe-top'), '78px');
+  const unchangedWrites = writes.length;
+  observer.callback([{ type: 'attributes', target: banner, attributeName: 'style' }]);
+  env.flush();
+  assert.equal(writes.length, unchangedWrites); // unchanged height is not rewritten
+
+  banner.rect.height = 0;
+  observer.callback([{ type: 'attributes', target: banner, attributeName: 'hidden' }]);
+  env.flush();
+  assert.equal(values.get('--zeus-safe-top'), '0px');
+
+  const wrapper = new Node();
+  const injected = new Node({ candidate: true, height: 36 });
+  wrapper.append(injected);
+  body.append(wrapper);
+  observer.callback([{ type: 'childList', target: body, addedNodes: [wrapper], removedNodes: [] }]);
+  env.flush();
+  assert.equal(values.get('--zeus-safe-top'), '36px');
+  assert.ok(resize.observed.has(injected));
+  injected.rect.top = 12; // an ancestor can move the banner below the viewport top
+  observer.callback([{ type: 'attributes', target: wrapper, attributeName: 'class' }]);
+  env.flush();
+  assert.equal(values.get('--zeus-safe-top'), '0px');
+  body.remove(wrapper);
+  observer.callback([{ type: 'childList', target: body, addedNodes: [], removedNodes: [wrapper] }]);
+  env.flush();
+  assert.equal(resize.observed.has(injected), false);
+});
+
+test('banner measurement still follows mutations and resize without ResizeObserver', () => {
+  const env = bannerEnvironment({ resizeObserver: false });
+  const observer = env.mutations[0];
+  env.banner.rect.height = 64;
+  observer.callback([{ type: 'attributes', target: env.banner, attributeName: 'hidden' }]);
+  env.flush();
+  assert.equal(env.values.get('--zeus-safe-top'), '64px');
+  env.banner.rect.height = 92;
+  assert.equal(env.windowListeners.get('resize').options.passive, true);
+  env.windowListeners.get('resize').callback();
+  env.flush();
+  assert.equal(env.values.get('--zeus-safe-top'), '92px');
+  env.banner.rect.height = 100;
+  env.fontListeners.get('loadingdone')();
+  env.fontsReady();
+  assert.equal(env.rafs.length, 1); // both font signals share one measurement
+  env.flush();
+  assert.equal(env.values.get('--zeus-safe-top'), '100px');
+});
+
+test('shared banner observer and responsive intrinsic-size fallback load on every intro page', () => {
+  const pages = fs.readdirSync(publicDir).filter((name) => name.endsWith('.html'));
+  let count = 0;
+  const headerVersions = new Set();
+  const styleVersions = new Set();
+  for (const page of pages) {
+    const html = read(page);
+    if (!html.includes('id="page-loader"')) continue;
+    const header = html.match(/header-autohide\.js\?v=([\d.]+)/);
+    const style = html.match(/style\.css\?v=([\d.]+)/);
+    assert.ok(header, `${page} is missing the shared header script`);
+    assert.ok(style, `${page} is missing the versioned stylesheet`);
+    headerVersions.add(header[1]);
+    styleVersions.add(style[1]);
+    assert.doesNotMatch(html, /new MutationObserver\(updateSafeTop\)/);
+    count++;
+  }
+  assert.ok(count >= 15);
+  assert.equal(headerVersions.size, 1);
+  assert.equal(styleVersions.size, 1);
+  const css = read('style.css');
+  assert.match(css, /contain-intrinsic-size:\s*auto 348px/);
+  assert.match(css, /@supports\s*\(container-type:\s*inline-size\)/);
+  assert.match(css, /contain-intrinsic-block-size:\s*auto calc\(var\(--zeus-grid-column-width\)/);
+});
+
+test('container-query fallback track thresholds match the responsive grid', () => {
+  const css = read('style.css');
+  const start = css.indexOf('/* Browsers with container queries but not typed division');
+  const end = css.indexOf('/* Genre tile grid', start);
+  assert.ok(start > 0 && end > start);
+  const fallback = css.slice(start, end);
+  const [desktop, mobileAndSmall] = fallback.split('@media (max-width: 768px)');
+  const [mobile, small] = mobileAndSmall.split('@media (max-width: 480px)');
+  function thresholds(section) {
+    return [...section.matchAll(/@container zeus-grid \(min-width: (\d+)px\)\s*\{\s*\.movies-grid > \.movie-card\s*\{\s*--zeus-grid-columns:\s*(\d+)/g)]
+      .map((match) => [Number(match[1]), Number(match[2])]);
+  }
+  const expected = (min, gap, maxColumns) => Array.from(
+    { length: maxColumns - 1 }, (_, index) => {
+      const columns = index + 2;
+      return [columns * min + (columns - 1) * gap, columns];
+    }
+  );
+  assert.deepEqual(thresholds(desktop), expected(155, 24, 8));
+  assert.deepEqual(thresholds(mobile), expected(138, 14, 5));
+  assert.deepEqual(thresholds(small), expected(124, 12, 4));
 });
