@@ -32,7 +32,10 @@ test('Postgres room functions enforce host authority, membership and reconnect r
         select decode(substr(replace(gen_random_uuid()::text, '-', ''), 1, $1 * 2), 'hex')
       $$;
     `);
-    await db.exec(fs.readFileSync(new URL('../supabase/migrations/20261127142027_watch_party.sql', import.meta.url), 'utf8'));
+    const migrations = new URL('../supabase/migrations/', import.meta.url);
+    const files = fs.readdirSync(migrations).filter((name) => name.endsWith('.sql')).sort();
+    assert.equal(files[0], '20261127142027_watch_party.sql');
+    await db.exec(fs.readFileSync(new URL(files[0], migrations), 'utf8'));
     const query = async (sql, args = []) => (await db.query(sql, args)).rows;
     async function asUser(id) {
       await db.exec('reset role');
@@ -41,8 +44,32 @@ test('Postgres room functions enforce host authority, membership and reconnect r
     }
     async function denied(fn) { await assert.rejects(fn); }
 
+    // Upgrade an already-active room instead of testing only an empty schema.
+    await asUser(host);
+    const [{ snapshot: legacy }] = await query("select public.zeus_party_create('Host','cinesrc','movie','123',1,1,'Existing') as snapshot");
+    await query("select public.zeus_party_playback($1, 'play', 45)", [legacy.room.code]);
+    await query("select public.zeus_party_chat($1, 'Existing message')", [legacy.room.code]);
+    await asUser(guest);
+    const [{ snapshot: beforeUpgrade }] = await query("select public.zeus_party_join($1, 'Guest') as snapshot", [legacy.room.code]);
+    await db.exec('reset role');
+    for (const file of files.slice(1)) await db.exec(fs.readFileSync(new URL(file, migrations), 'utf8'));
+    await asUser(host);
+    const [{ snapshot: afterUpgrade }] = await query('select public.zeus_party_snapshot($1) as snapshot', [legacy.room.code]);
+    assert.equal(afterUpgrade.room.provider, beforeUpgrade.room.provider);
+    assert.equal(afterUpgrade.room.playing, true);
+    assert.equal(afterUpgrade.room.position_seconds, 45);
+    assert.equal(afterUpgrade.room.state_updated_at, beforeUpgrade.room.state_updated_at);
+    assert.equal(afterUpgrade.room.revision, beforeUpgrade.room.revision);
+    assert.equal(afterUpgrade.room.source_sync, true);
+    assert.equal(afterUpgrade.room.source_id, null);
+    assert.equal(afterUpgrade.members.length, 2);
+    assert.equal(afterUpgrade.messages[0].body, 'Existing message');
+    await query('select public.zeus_party_end($1)', [legacy.room.code]);
+
+    await db.exec('reset role');
     await db.exec('set role anon');
     await denied(() => query("select public.zeus_party_create('x','vidspark','movie','123',1,1,'x')"));
+    await denied(() => query("select public.zeus_party_set_source('0123456789ABCDEF0123', 'cinesrc', 'wave', true)"));
     await asUser(host);
     const [{ snapshot: created }] = await query("select public.zeus_party_create('Host','vidspark','movie','533533',1,1,'Test film') as snapshot");
     const code = created.room.code;
@@ -105,8 +132,43 @@ test('Postgres room functions enforce host authority, membership and reconnect r
     assert.equal(snapshot.room.provider, 'cinesrc');
     assert.equal(snapshot.room.position_seconds, 21);
     assert.equal(snapshot.room.playing, false);
+    assert.equal(snapshot.room.source_sync, true);
+    assert.equal(snapshot.room.source_id, null);
+    const playbackUpdatedAt = snapshot.room.state_updated_at;
+    await query("select public.zeus_party_set_source($1, 'cinesrc', 'ember', true)", [code]);
+    [{ snapshot }] = await query('select public.zeus_party_snapshot($1) as snapshot', [code]);
+    assert.equal(snapshot.room.source_id, 'ember');
+    assert.equal(snapshot.room.state_updated_at, playbackUpdatedAt, 'source choice does not reset the playback clock');
+    await denied(() => query("select public.zeus_party_set_source($1, 'cinesrc', E'bad\\nsource', true)", [code]));
+    await denied(() => query("select public.zeus_party_set_source($1, 'cinesrc', repeat('x', 129), true)", [code]));
+    await denied(() => query("select public.zeus_party_set_source($1, 'cinesrc', 'wave', null)", [code]));
+    await denied(() => query("select public.zeus_party_set_source($1, 'vidspark', 'source', true)", [code]));
+    await denied(() => query("select public.zeus_party_set_source($1, 'bingeapi', '80', true)", [code]));
+    await asUser(guest);
+    await denied(() => query("select public.zeus_party_set_source($1, 'cinesrc', 'wave', true)", [code]));
+    [{ snapshot }] = await query('select public.zeus_party_snapshot($1) as snapshot', [code]);
+    assert.equal(snapshot.room.source_id, 'ember', 'guests read the host source but cannot change it');
+    await asUser(host);
+    await query("select public.zeus_party_set_source($1, 'cinesrc', null, false)", [code]);
+    [{ snapshot }] = await query('select public.zeus_party_snapshot($1) as snapshot', [code]);
+    assert.equal(snapshot.room.source_sync, false);
+    assert.equal(snapshot.room.source_id, null);
+    await query("select public.zeus_party_set_source($1, 'cinesrc', 'wave', true)", [code]);
+    await query("select public.zeus_party_set_provider($1, 'bingeapi', 21)", [code]);
+    [{ snapshot }] = await query('select public.zeus_party_snapshot($1) as snapshot', [code]);
+    assert.equal(snapshot.room.provider, 'bingeapi');
+    assert.equal(snapshot.room.source_id, null, 'provider changes clear the old source');
+    await denied(() => query("select public.zeus_party_set_source($1, 'bingeapi', 'unknown', true)", [code]));
+    await query("select public.zeus_party_set_source($1, 'bingeapi', '80', true)", [code]);
+    await query("select public.zeus_party_set_provider($1, 'vidora', 21)", [code]);
+    [{ snapshot }] = await query('select public.zeus_party_snapshot($1) as snapshot', [code]);
+    assert.equal(snapshot.room.provider, 'vidora');
+    assert.equal(snapshot.room.source_id, null);
+    await denied(() => query("select public.zeus_party_set_source($1, 'cinesrc', 'late-source', true)", [code]));
+    await query("select public.zeus_party_set_provider($1, 'cinesrc', 21)", [code]);
     await query("select public.zeus_party_playback($1, 'play', 21)", [code]);
     await query('select public.zeus_party_leave($1)', [code]);
+    await denied(() => query("select public.zeus_party_set_source($1, 'cinesrc', 'wave', true)", [code]));
     await asUser(guest);
     [{ snapshot }] = await query('select public.zeus_party_snapshot($1) as snapshot', [code]);
     assert.equal(snapshot.room.playing, false, 'explicit host departure freezes playback');
@@ -126,5 +188,13 @@ test('Postgres room functions enforce host authority, membership and reconnect r
     assert.equal(snapshot.room.ended, true);
     await denied(() => query("select public.zeus_party_join($1, 'Guest')", [code]));
     await denied(() => query("select public.zeus_party_chat($1, 'post end')", [code]));
+    await denied(() => query("select public.zeus_party_set_source($1, 'cinesrc', 'wave', true)", [code]));
+    await asUser(host);
+    await denied(() => query("select public.zeus_party_set_source($1, 'cinesrc', 'wave', true)", [code]));
+    for (const provider of ['bingeapi', 'vidora']) {
+      const [{ snapshot: next }] = await query("select public.zeus_party_create('Host', $1, 'movie', '533533', 1, 1, 'Film') as snapshot", [provider]);
+      assert.equal(next.room.provider, provider);
+      await query('select public.zeus_party_end($1)', [next.room.code]);
+    }
   } finally { await db.close(); }
 });

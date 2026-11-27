@@ -83,23 +83,46 @@ Option B — **Direct upload:** upload the contents of `public/` as the site roo
 ## In-player Watch Party
 
 The **Watch Party** button on a movie or episode opens a panel in the player.
-A host can create a room, choose VidSpark or CineSrc, share an invite and drive
-play/pause/seek. Guests can join by code or link, view participants and chat;
-the server, not the UI, enforces the host role. Leaving restores ordinary
-Vidora viewing. Hosts can leave without ending the room (it pauses and they
-can rejoin in the same tab), or explicitly end it for everyone. Rooms expire
-12 hours after creation. The players are independent third parties: available
-sources, buffering, autoplay permissions and playback quality can vary. Click
-inside the iframe if playback is blocked. Episode changes made inside an embed
-are not shared; start a new room for another episode.
+Guests join by code or invite link, see participants and chat. The server, not
+just the UI, enforces the host role. Leaving restores ordinary Vidora viewing;
+the host can leave and rejoin in the same tab, or end the room for everyone.
+Rooms expire 12 hours after creation. The host chooses a party player:
 
-The configured ZEUS Supabase project already has this migration recorded and
+- **VidSpark** and **CineSrc** expose play/pause/seek controls. Playback and
+  autoplay still depend on the third-party player, source and each device.
+- **BingeAPI (experimental)** documents those controls too and advertises
+  servers with up to 4K, plus OpenSubtitles search in 42 languages and custom
+  subtitle files. Quality, titles and languages vary; no particular stream or
+  subtitle is guaranteed. Real two-viewer playback has not been verified.
+- **Vidora (manual playback test)** shares the party and player selection, not
+  playback or internal server choice. Each viewer must play, pause, seek and
+  select a server themselves. Vidora does not document inbound playback
+  commands, and its saved progress may override the requested starting time.
+  Ordinary, non-party viewing is unchanged.
+
+For CineSrc and BingeAPI, the host can turn **Match host’s streaming server** on
+or off (on by default). When the host player reports a server change, guests
+reload once with that server as the documented *preference* and the current
+room position. Neither provider documents a runtime server setter: they may
+ignore the preference or fall back. The panel reports a match only after the
+local player reports the same server; mismatches are shown and **Resync my
+player** retries. If the host does not report a recognized server, matching
+cannot be confirmed. VidSpark and Vidora do not expose the needed server API.
+
+Click inside an iframe if autoplay is blocked. Episode changes made inside an
+embed are not shared; return to the room's episode or start a new room. A
+Realtime subscription being established is not proof of broadcast delivery;
+the client also checks the room periodically.
+
+The configured ZEUS Supabase project has the migrations below recorded and
 anonymous sign-ins enabled. For a fresh project or fork, complete these steps
-before creating rooms (do not reapply the migration to ZEUS):
+before creating rooms (do not reapply recorded migrations to ZEUS):
 
-1. Review and apply `supabase/migrations/20261127142027_watch_party.sql` to the
-   intended project. The migration creates room/member/chat tables with RLS,
-   checked RPC functions, and a private Realtime Broadcast read policy.
+1. Review and apply, in order, `supabase/migrations/20261127142027_watch_party.sql`
+   and `supabase/migrations/20261127153149_watch_party_source_sync.sql` to the
+   intended project. The first creates room/member/chat tables with RLS,
+   checked RPC functions, and a private Realtime Broadcast read policy. The
+   second adds host-controlled server preferences and the additional players.
 2. Enable **Anonymous Sign-Ins** under Supabase Authentication providers. The
    project's anonymous sign-in rate limits apply; before a public launch, add
    CAPTCHA-token handling and appropriate quotas/abuse monitoring. Enabling a
@@ -131,8 +154,15 @@ alone does **not** prove that media or synchronization works.
 For regression checks, run `node --test tests/*.test.mjs`. The optional SQL
 test uses `@electric-sql/pglite` (set `ZEUS_PGLITE_MODULE` to its
 `dist/index.js`), and `tests/watchparty-browser.mjs` uses Playwright/Chromium
-specified via `ZEUS_PLAYWRIGHT_MODULE` and `ZEUS_CHROMIUM_PATH`. These latter
-checks use mocks, not real Supabase or third-party video playback.
+specified via `ZEUS_PLAYWRIGHT_MODULE` and `ZEUS_CHROMIUM_PATH`. The SQL test
+stubs Supabase Auth/Realtime; the browser test mocks Supabase and the player
+iframes. Passing them does **not** verify actual video, Realtime delivery, or
+two-viewer sync. To test those, open the preview in two independent browser
+sessions, create a room and join it, then check host play/pause/seek, switch the
+host's internal server and compare both player menus and timestamps. Check the
+fallback warning if a server is unavailable, and test Vidora separately as a
+manual player. Use real devices/networks and verify subtitles and quality for
+the title being watched.
 
 The older `party.html` page is a separate YouTube/direct-MP4 client and still
 requires the legacy Worker URL; the in-player Watch Party does not use it.

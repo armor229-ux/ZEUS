@@ -27,6 +27,7 @@
     channelRetry: null, retryDelay: 2000,
     initialApplied: false, lastSeek: 0, lastPlayCommand: 0, playAttempts: 0,
     episodeChanged: false, switchingProvider: false, enforceSwitchPause: false, lastPlayerNotice: '',
+    sourcePending: null, sourceSyncChanging: false,
   };
   let ui;
 
@@ -262,7 +263,9 @@
         state.retryDelay = 2000;
         clearTimeout(state.channelRetry);
         state.channelRetry = null;
-        setConnection('Live updates', 'online');
+        // Subscription alone does not establish broadcast delivery; polling
+        // continues regardless, so do not claim that live events were proven.
+        setConnection('Connected · auto-checking', 'online');
         refresh();
       } else if (['CHANNEL_ERROR', 'TIMED_OUT', 'CLOSED'].includes(status)) {
         state.live = false;
@@ -296,7 +299,7 @@
       const snapshot = await rpc(state.client, 'zeus_party_snapshot', { p_code: code });
       if (generation !== state.generation || code !== state.code) return;
       applySnapshot(snapshot, started, Date.now());
-      if (state.code === code) setConnection(state.live ? 'Live updates' : 'Checking periodically', state.live ? 'online' : 'connecting');
+      if (state.code === code) setConnection(state.live ? 'Connected · auto-checking' : 'Checking periodically', state.live ? 'online' : 'connecting');
     } catch (error) {
       if (generation === state.generation && code === state.code && error && error.code === '42501') {
         // A long-offline member may have been pruned. Rejoin with the same
@@ -307,7 +310,7 @@
             const rejoined = await rpc(state.client, 'zeus_party_join', { p_code: code, p_name: active.name });
             if (generation === state.generation && code === state.code) {
               applySnapshot(rejoined, started, Date.now());
-              setConnection(state.live ? 'Live updates' : 'Checking periodically', state.live ? 'online' : 'connecting');
+              setConnection(state.live ? 'Connected · auto-checking' : 'Checking periodically', state.live ? 'online' : 'connecting');
               return;
             }
           }
@@ -320,7 +323,9 @@
       }
       if (generation === state.generation && code === state.code) {
         setConnection('Connection lost · retrying', 'error');
-        playerNotice('The room connection was interrupted. Playback will catch up when it returns.');
+        playerNotice(state.provider === 'vidora'
+          ? 'The room connection was interrupted. Vidora playback remains manual.'
+          : 'The room connection was interrupted. Playback will try to catch up when it returns.');
       }
     } finally {
       state.refreshing = false;
@@ -378,6 +383,123 @@
     });
     if (nearBottom) ui.messages.scrollTop = ui.messages.scrollHeight;
   }
+  function renderSourceStatus() {
+    if (!state.snapshot || !state.snapshot.room) return;
+    const room = state.snapshot.room;
+    const supported = players.supportsSource(room.provider);
+    ui.sourceSettings.hidden = !supported;
+    if (!supported) return;
+    const configured = typeof room.source_sync === 'boolean';
+    const enabled = configured && room.source_sync;
+    const target = players.normalizeSource(room.provider, room.source_id);
+    const local = state.player && state.player.source || '';
+    ui.sourceSync.checked = enabled;
+    ui.sourceSync.disabled = !configured || !state.isHost || state.sourceSyncChanging || state.switchingProvider || state.episodeChanged;
+    if (!configured) {
+      ui.sourceStatus.textContent = 'Server matching requires the updated party service.';
+    } else if (state.episodeChanged) {
+      ui.sourceStatus.textContent = 'Server matching is paused after changing episodes. Reload the party player.';
+    } else if (!enabled) {
+      ui.sourceStatus.textContent = 'Automatic server matching is off.';
+    } else if (state.isHost && state.player && state.player.sourceReported && !local) {
+      ui.sourceStatus.textContent = 'The host player reported an unrecognized server. Automatic matching is unavailable for it.';
+    } else if (state.isHost && state.player && state.player.sourceRetryAt > Date.now()) {
+      ui.sourceStatus.textContent = 'Could not share the server choice. Retrying…';
+    } else if (!target) {
+      ui.sourceStatus.textContent = 'Waiting for the host player to report its server. ' +
+        (state.isHost ? 'Choose a server inside the player if needed.' : 'Ask the host to choose a server inside their player.');
+    } else if (state.isHost) {
+      ui.sourceStatus.textContent = local === target
+        ? 'Host server: ' + players.sourceLabel(room.provider, target) + '. Guests will try this server.'
+        : 'Sharing the host’s server choice…';
+    } else if (local === target) {
+      ui.sourceStatus.textContent = 'Player reports the host’s server: ' + players.sourceLabel(room.provider, target) + '.';
+    } else if (state.player && state.player.sourceReported) {
+      const actual = local ? players.sourceLabel(room.provider, local) : 'an unrecognized server';
+      ui.sourceStatus.textContent = 'Host: ' + players.sourceLabel(room.provider, target) + '; yours: ' + actual +
+        '. The player may have fallen back. Use Resync to retry.';
+    } else {
+      ui.sourceStatus.textContent = 'Requesting the host’s server: ' + players.sourceLabel(room.provider, target) + '…';
+    }
+  }
+
+  function reconcileGuestSource(room) {
+    if (state.isHost || !state.player || state.episodeChanged || !players.supportsSource(room.provider)) return;
+    if (!room.source_sync) { state.player.sourceAttempt = ''; return; }
+    const target = players.normalizeSource(room.provider, room.source_id);
+    if (!target) { state.player.sourceAttempt = ''; return; }
+    if (state.player.source === target) {
+      // Record a host change even when the guest already happens to be on it.
+      // If the host later returns to an earlier failed choice, retry once.
+      state.player.sourceAttempt = target;
+      return;
+    }
+    if (state.player.sourceAttempt === target) return;
+    // CineSrc/BingeAPI document a preferred source at load, not a runtime
+    // setter. Reload once per host choice; do not loop if it falls back.
+    loadPlayer(room);
+  }
+
+  function publishSource(source) {
+    if (!state.code || !state.isHost || !state.snapshot || !state.client || state.switchingProvider || state.sourceSyncChanging) return;
+    const room = state.snapshot.room;
+    const provider = room.provider;
+    const player = state.player;
+    if (!room.source_sync || !player || !player.sourceReported || player.sourceRetryAt > Date.now()) return;
+    const value = players.normalizeSource(provider, source) || null;
+    if (state.sourcePending && state.sourcePending.provider === provider && state.sourcePending.value === value) return;
+    if (!state.sourcePending && (players.normalizeSource(provider, room.source_id) || null) === value) return;
+    const request = { code: state.code, generation: state.generation, provider, value };
+    state.sourcePending = request;
+    state.hostQueue = state.hostQueue.catch(() => {}).then(async () => {
+      if (state.code !== request.code || state.generation !== request.generation || !state.isHost || state.provider !== provider || state.episodeChanged) return;
+      // An unknown source clears the previous choice rather than falsely
+      // telling guests that the old server is still active.
+      await rpc(state.client, 'zeus_party_set_source', {
+        p_code: request.code, p_provider: provider, p_source: value, p_enabled: true
+      });
+      if (state.player === player && (players.normalizeSource(provider, player.source) || null) === value) player.sourceRetryAt = 0;
+      scheduleRefresh();
+    }).catch(() => {
+      if (state.code === request.code && state.generation === request.generation && state.player === player &&
+          (players.normalizeSource(provider, player.source) || null) === value) {
+        player.sourceRetryAt = Date.now() + 5000;
+        ui.sourceStatus.textContent = 'Could not share the server choice. Retrying…';
+      }
+    }).finally(() => {
+      if (state.sourcePending === request) state.sourcePending = null;
+    });
+  }
+
+  async function toggleSourceSync() {
+    if (!state.code || !state.isHost || !state.snapshot || state.sourceSyncChanging || state.switchingProvider || !players.supportsSource(state.provider)) return;
+    const enabled = ui.sourceSync.checked;
+    const code = state.code;
+    const generation = state.generation;
+    const provider = state.provider;
+    state.sourceSyncChanging = true;
+    ui.sourceSync.disabled = true;
+    ui.provider.disabled = true;
+    try {
+      await state.hostQueue;
+      if (state.code !== code || state.generation !== generation || state.provider !== provider) return;
+      await rpc(state.client, 'zeus_party_set_source', {
+        p_code: code, p_provider: provider,
+        p_source: enabled && state.player ? state.player.source || null : null, p_enabled: enabled
+      });
+      await refresh();
+    } catch (error) {
+      if (state.code === code && state.generation === generation) playerNotice('Could not change server matching. Please retry.');
+    } finally {
+      if (state.code === code && state.generation === generation) {
+        state.sourceSyncChanging = false;
+        ui.provider.disabled = !state.isHost || state.switchingProvider;
+        renderSourceStatus();
+        if (enabled && state.player) publishSource(state.player.source);
+      }
+    }
+  }
+
   function applySnapshot(snapshot, started, ended) {
     if (!snapshot || !snapshot.room || snapshot.room.code !== state.code) return;
     const serverNow = Date.parse(snapshot.server_now);
@@ -392,21 +514,46 @@
     ui.role.textContent = state.isHost ? 'YOU ARE THE HOST' : 'YOU ARE A GUEST';
     ui.roomCode.textContent = players.formatCode(state.code);
     ui.provider.value = snapshot.room.provider;
-    ui.provider.disabled = !state.isHost;
-    ui.providerHint.textContent = state.isHost
-      ? 'Changing player pauses the room for everyone.'
-      : 'Only the host can change the player or control the room.';
+    ui.provider.disabled = !state.isHost || state.sourceSyncChanging || state.switchingProvider;
+    if (snapshot.room.provider === 'vidora') {
+      ui.providerHint.textContent = 'Vidora test: play, pause, seek and server selection are manual on each device. Saved progress can override the starting time.';
+    } else if (snapshot.room.provider === 'vidspark') {
+      ui.providerHint.textContent = 'VidSpark does not expose its internal server choice. ' +
+        (state.isHost ? 'Changing party player pauses the room.' : 'Only the host controls the room.');
+    } else if (snapshot.room.provider === 'bingeapi') {
+      ui.providerHint.textContent = 'BingeAPI is experimental. Up to 4K and subtitle availability vary by title, server and language. Server matching is best-effort.';
+    } else {
+      ui.providerHint.textContent = state.isHost
+        ? 'Changing player pauses the room. Server matching is best-effort.'
+        : 'Only the host can change the player or control the room.';
+    }
+    ui.resync.hidden = snapshot.room.provider === 'vidora';
     ui.end.hidden = !state.isHost;
     renderMembers(snapshot.members);
     renderMessages(snapshot.messages);
     if (state.provider !== snapshot.room.provider) loadPlayer(snapshot.room);
-    else if (!state.isHost) followHost(false);
+    else if (!state.isHost && snapshot.room.provider !== 'vidora') {
+      reconcileGuestSource(snapshot.room);
+      followHost(false);
+    } else if (state.isHost && state.player && !state.episodeChanged) {
+      // Also retries a source update after a transient network error.
+      publishSource(state.player.source);
+    }
+    if (snapshot.room.provider === 'vidora' && !state.episodeChanged) {
+      playerNotice('Vidora test: playback is not synchronized. Control each player manually.');
+    }
+    renderSourceStatus();
   }
 
   function loadPlayer(room) {
     state.enforceSwitchPause = !!state.provider && state.provider !== room.provider;
+    if (state.provider !== room.provider) state.sourcePending = null;
     state.provider = room.provider;
-    state.player = { time: null, paused: null, lastTimeAt: 0, lastEventAt: 0, suppressedUntil: 0, startedAt: Date.now() };
+    state.player = {
+      time: null, paused: null, lastTimeAt: 0, lastEventAt: 0, suppressedUntil: 0, startedAt: Date.now(),
+      source: '', sourceReported: false, sourceRetryAt: 0,
+      sourceAttempt: room.source_sync ? players.normalizeSource(room.provider, room.source_id) : ''
+    };
     state.initialApplied = false;
     state.episodeChanged = false;
     ui.resync.textContent = 'Resync my player';
@@ -414,7 +561,9 @@
     state.lastPlayCommand = 0;
     state.playAttempts = 0;
     state.lastHostSync = 0;
-    playerNotice('Waiting for ' + (room.provider === 'vidspark' ? 'VidSpark' : 'CineSrc') + '. If needed, click inside the player.');
+    playerNotice(room.provider === 'vidora'
+      ? 'Vidora test: playback is not synchronized. Control each player manually.'
+      : 'Waiting for ' + (players.LABELS[room.provider] || 'the player') + '. If needed, click inside the player.');
     const frame = document.getElementById('player-frame');
     try {
       frame.src = players.buildUrl(room, players.targetTime(room, state.serverOffset, Date.now()));
@@ -427,7 +576,8 @@
     players.send(frame, state.provider, action, time);
   }
   function followHost(force) {
-    if (!state.code || !state.snapshot || !state.player || state.isHost || state.episodeChanged) return;
+    if (!state.code || !state.snapshot || !state.player || state.isHost || state.episodeChanged ||
+        !state.initialApplied || state.provider === 'vidora') return;
     const now = Date.now();
     const room = state.snapshot.room;
     const target = players.targetTime(room, state.serverOffset, now);
@@ -452,7 +602,7 @@
     } else if (room.playing && state.playAttempts >= 3 && state.player.paused !== false) {
       playerNotice('Playback may be blocked. Click inside the player to allow it, then use Resync.');
     } else if (state.player.lastEventAt) {
-      playerNotice('Following the host. If playback stalls, click inside the player or use Resync.');
+      playerNotice('Trying to follow the host. If playback stalls, click inside the player or use Resync.');
     }
   }
   function queueHost(action, time) {
@@ -474,24 +624,62 @@
     const frame = document.getElementById('player-frame');
     const received = players.readEvent(event, frame, state.provider);
     if (!received) return;
-    if (received.kind === 'error') {
-      playerNotice('The selected player reported an error. The host can try the other player.');
-      return;
-    }
     if (received.kind === 'nextepisode') {
       // Do not replace CineSrc's iframe during its internal navigation. Stop
       // sharing its events and let the viewer explicitly return to the room.
       state.episodeChanged = true;
       ui.resync.textContent = 'Reload party player';
       playerNotice('This player changed episodes locally. Reload the party player to return to the shared episode.');
+      renderSourceStatus();
       return;
     }
-    if (state.episodeChanged) return;
+    if (state.episodeChanged && state.provider !== 'vidora') return;
+    if (received.kind === 'sourceused') {
+      if (state.player.source !== received.sourceId) state.player.sourceRetryAt = 0;
+      state.player.sourceReported = true;
+      state.player.source = received.sourceId;
+      if (state.isHost) publishSource(received.sourceId);
+      renderSourceStatus();
+      if (state.provider === 'bingeapi' && !state.initialApplied && !state.player.bootstrapSent) {
+        // BingeAPI drops commands before its first event and has no status
+        // getter. Its first server event is the documented point to seek.
+        state.player.bootstrapSent = true;
+        command('seek', players.targetTime(state.snapshot.room, state.serverOffset, Date.now()));
+      }
+      return;
+    }
+    if (received.kind === 'error') {
+      playerNotice('The selected player reported an error. The host can try another player.');
+      return;
+    }
+    if (state.provider === 'vidora') {
+      const media = event.data.data;
+      const room = state.snapshot.room;
+      const different = (media.tmdbId != null && String(media.tmdbId) !== String(room.tmdb_id)) ||
+        (media.mediaType != null && media.mediaType !== room.media_type) ||
+        (room.media_type === 'tv' && ((media.season != null && Number(media.season) !== Number(room.season)) ||
+          (media.episode != null && Number(media.episode) !== Number(room.episode))));
+      if (different) {
+        state.episodeChanged = true;
+        state.player.time = null;
+        playerNotice('Vidora changed episodes locally. Return to the room’s episode or start a new party. Playback is manual.');
+        return;
+      }
+      if (state.episodeChanged) {
+        state.episodeChanged = false;
+        playerNotice('Vidora test: playback is not synchronized. Control each player manually.');
+      }
+    }
     const now = Date.now();
     // A mere iframe/ready event is not evidence that a playable source exists.
     if (received.time !== null || received.paused !== null) state.player.lastEventAt = now;
     if (received.time !== null) { state.player.time = received.time; state.player.lastTimeAt = now; }
     if (received.paused !== null) state.player.paused = received.paused;
+    if (state.provider === 'vidora') {
+      // Outgoing events provide local progress for a later player switch.
+      // The room is deliberately not driven by unsupported Vidora controls.
+      return;
+    }
     if (!state.initialApplied && (received.time !== null || received.paused !== null)) {
       state.initialApplied = true;
       const room = state.snapshot.room;
@@ -531,7 +719,7 @@
     }
   }
   function checkPlayer() {
-    if (!state.code || !state.player || !state.snapshot || state.episodeChanged) return;
+    if (!state.code || !state.player || !state.snapshot || state.episodeChanged || state.provider === 'vidora') return;
     command('status');
     const now = Date.now();
     if (state.isHost && state.initialApplied && state.player.time !== null && state.player.paused !== null &&
@@ -559,26 +747,35 @@
     finally { ui.send.disabled = false; }
   }
   async function switchProvider() {
-    if (!state.code || !state.isHost || !state.snapshot) return;
+    if (!state.code || !state.isHost || !state.snapshot || state.switchingProvider || state.sourceSyncChanging) return;
     const provider = ui.provider.value;
     if (provider === state.provider) return;
     ui.provider.disabled = true;
+    ui.sourceSync.disabled = true;
     state.switchingProvider = true;
     const code = state.code;
+    const generation = state.generation;
     try {
       // Keep provider changes ordered after the host's pending playback events.
       await state.hostQueue;
+      if (state.code !== code || state.generation !== generation || !state.isHost || !state.snapshot) return;
       await rpc(state.client, 'zeus_party_set_provider', {
         p_code: code, p_provider: provider,
         p_time: players.finiteTime(state.player && state.player.time) ?? players.targetTime(state.snapshot.room, state.serverOffset, Date.now())
       });
-      await refresh();
+      if (state.code === code && state.generation === generation) await refresh();
     } catch (error) {
-      if (state.snapshot) ui.provider.value = state.snapshot.room.provider;
-      playerNotice(friendlyError(error));
+      if (state.code === code && state.generation === generation) {
+        if (state.snapshot) ui.provider.value = state.snapshot.room.provider;
+        playerNotice(friendlyError(error));
+      }
     } finally {
-      state.switchingProvider = false;
-      ui.provider.disabled = !state.isHost;
+      if (state.code === code && state.generation === generation) {
+        state.switchingProvider = false;
+        ui.provider.disabled = !state.isHost || state.sourceSyncChanging;
+        if (state.snapshot) renderSourceStatus();
+        if (state.player && state.provider === provider) publishSource(state.player.source);
+      }
     }
   }
   async function leave(end) {
@@ -613,6 +810,8 @@
     state.live = false;
     state.isHost = false;
     state.switchingProvider = false;
+    state.sourceSyncChanging = false;
+    state.sourcePending = null;
     state.refreshAgain = false;
     state.hostQueue = Promise.resolve();
     removeSession(ACTIVE_KEY);
@@ -654,11 +853,12 @@
           <button class="wp-close" type="button" aria-label="Close party panel">×</button></div>
         <div class="wp-welcome">
           <div class="wp-intro-icon" aria-hidden="true">✦</div>
-          <h3>Better together.</h3><p>Bring your people along. The host controls the shared playback.</p>
+          <h3>Better together.</h3><p>Bring your people along. Controls depend on the selected player.</p>
           <p class="wp-error" role="status" hidden></p>
           <label for="wp-name">YOUR NAME</label><input id="wp-name" maxlength="32" autocomplete="nickname" placeholder="Enter your name">
           <label for="wp-create-provider">PARTY PLAYER</label>
-          <select id="wp-create-provider"><option value="vidspark">VidSpark</option><option value="cinesrc">CineSrc</option></select>
+          <select id="wp-create-provider"><option value="vidspark">VidSpark</option><option value="cinesrc">CineSrc</option><option value="bingeapi">BingeAPI (experimental · up to 4K)</option><option value="vidora">Vidora (manual playback test)</option></select>
+          <p class="wp-create-hint" role="status"></p>
           <button class="wp-primary wp-create" type="button">Start a party</button>
           <div class="wp-divider"><span>OR JOIN A PARTY</span></div>
           <form class="wp-join-form"><label class="wp-sr-only" for="wp-code-input">Party code or invitation link</label>
@@ -674,12 +874,16 @@
           </div>
           <p class="wp-player-notice" role="status">Waiting for the player…</p>
           <div class="wp-party-view">
+            <div class="wp-source-settings" hidden>
+              <label class="wp-source-toggle"><input class="wp-source-sync" type="checkbox"><span>Match host’s streaming server</span></label>
+              <p class="wp-source-status" role="status"></p>
+            </div>
             <div class="wp-card"><span class="wp-label">INVITE CODE</span><strong class="wp-room-code"></strong>
               <button class="wp-copy wp-secondary" type="button">Copy invite link</button><p>Anyone with this link can join. Share it with people you trust.</p></div>
             <div class="wp-section-title"><span>IN THE PARTY</span><span><span class="wp-member-count">0</span> online</span></div>
             <ul class="wp-members" aria-label="Participants"></ul>
             <label for="wp-provider">PARTY PLAYER</label>
-            <select id="wp-provider"><option value="vidspark">VidSpark</option><option value="cinesrc">CineSrc</option></select>
+            <select id="wp-provider"><option value="vidspark">VidSpark</option><option value="cinesrc">CineSrc</option><option value="bingeapi">BingeAPI (experimental · up to 4K)</option><option value="vidora">Vidora (manual playback test)</option></select>
             <p class="wp-provider-hint"></p>
             <button class="wp-resync wp-secondary" type="button">Resync my player</button>
             <div class="wp-actions"><button class="wp-leave wp-secondary" type="button">Leave party</button>
@@ -701,12 +905,24 @@
       createProvider: q('#wp-create-provider'), create: q('.wp-create'), join: q('.wp-join'),
       welcome: q('.wp-welcome'), room: q('.wp-room'), error: q('.wp-error'),
       connection: q('.wp-connection'), role: q('.wp-role'), roomCode: q('.wp-room-code'),
-      provider: q('#wp-provider'), providerHint: q('.wp-provider-hint'), end: q('.wp-end'), leave: q('.wp-leave'),
+      provider: q('#wp-provider'), providerHint: q('.wp-provider-hint'), createHint: q('.wp-create-hint'),
+      sourceSettings: q('.wp-source-settings'), sourceSync: q('.wp-source-sync'), sourceStatus: q('.wp-source-status'),
+      end: q('.wp-end'), leave: q('.wp-leave'),
       members: q('.wp-members'), memberCount: q('.wp-member-count'), messages: q('.wp-messages'),
       chatInput: q('#wp-chat-input'), send: q('.wp-send'), chatError: q('.wp-chat-error'), playerNotice: q('.wp-player-notice'), resync: q('.wp-resync'),
       partyTab: q('.wp-party-tab'), chatTab: q('.wp-chat-tab'), partyView: q('.wp-party-view'), chatView: q('.wp-chat-view')
     };
+    function updateCreateHint() {
+      ui.createHint.textContent = ui.createProvider.value === 'vidora'
+        ? 'Vidora test: play, pause, seek and servers must be controlled manually by each viewer.'
+        : ui.createProvider.value === 'bingeapi'
+          ? 'Experimental: BingeAPI advertises up to 4K and subtitles; availability varies by title, server and language.'
+          : '';
+      ui.createHint.hidden = !ui.createHint.textContent;
+    }
     ui.name.value = savedName();
+    updateCreateHint();
+    ui.createProvider.addEventListener('change', updateCreateHint);
     button.addEventListener('click', () => setPanel(ui.panel.hidden));
     q('.wp-close').addEventListener('click', () => setPanel(false));
     ui.create.addEventListener('click', () => begin('create'));
@@ -724,11 +940,15 @@
       if (!state.snapshot || !state.player) return;
       if (state.episodeChanged) { loadPlayer(state.snapshot.room); return; }
       state.playAttempts = 0;
-      if (!state.isHost) { state.lastSeek = 0; state.lastPlayCommand = 0; followHost(true); }
+      const room = state.snapshot.room;
+      const target = room.source_sync && players.normalizeSource(room.provider, room.source_id);
+      if (!state.isHost && target && state.player.source !== target) loadPlayer(room);
+      else if (!state.isHost) { state.lastSeek = 0; state.lastPlayCommand = 0; followHost(true); }
       else command('status');
       refresh();
     });
     ui.provider.addEventListener('change', switchProvider);
+    ui.sourceSync.addEventListener('change', toggleSourceSync);
     ui.leave.addEventListener('click', () => leave(false));
     ui.end.addEventListener('click', () => leave(true));
     q('.wp-chat-form').addEventListener('submit', sendChat);

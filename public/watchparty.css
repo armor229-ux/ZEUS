@@ -45,7 +45,7 @@
 .wp-card { padding: 12px; border: 1px solid #30363d; border-radius: 11px; background: #191d21; }
 .wp-room-code { display: block; margin: 5px 0 10px; font-size: 14px; letter-spacing: .05em; overflow-wrap: anywhere; }
 .wp-copy { width: 100%; }
-.wp-card p, .wp-provider-hint, .wp-player-notice { margin-top: 8px !important; color: #9ca6af; font-size: 10.5px; line-height: 1.45; }
+.wp-card p, .wp-provider-hint, .wp-create-hint, .wp-source-status, .wp-player-notice { margin-top: 8px !important; color: #9ca6af; font-size: 10.5px; line-height: 1.45; }
 .wp-section-title { display: flex; justify-content: space-between; margin: 17px 0 8px; }
 .wp-members { list-style: none; margin: 0; padding: 0; }
 .wp-member { display: flex; align-items: center; gap: 8px; padding: 5px 0; }
@@ -53,6 +53,10 @@
 .wp-member-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }
 .wp-member-role { color: #8ea1a8; font-size: 9px; font-weight: 700; white-space: nowrap; }
 .wp-provider-hint { min-height: 1em; }
+.wp-source-settings { padding-bottom: 12px; }
+.wp-panel label.wp-source-toggle { display: flex; align-items: center; gap: 8px; margin: 8px 0 0; color: #e5e9ed; font-size: 10px; letter-spacing: .03em; text-transform: none; cursor: pointer; }
+.wp-panel .wp-source-toggle input { width: 16px; height: 16px; margin: 0; padding: 0; flex: 0 0 auto; accent-color: #7de7f2; }
+.wp-source-status { overflow-wrap: anywhere; }
 .wp-resync { width: 100%; margin-top: 10px; }
 .wp-player-notice { color: #b4c7cb; margin: -5px 0 12px !important; }
 .wp-actions { display: flex; gap: 7px; margin-top: 16px; }
