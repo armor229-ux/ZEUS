@@ -234,20 +234,40 @@
      and card effects. Once enabled, keep that state until the
      gesture settles: switching it at every velocity threshold
      crossing causes costly restyles across long card grids.
-   • Frosted blur and hovers return ~140ms after the last scroll;
-     no wheel, touch, or scrollbar input is intercepted.
+   • Native scrollend keeps the guard active throughout a thumb
+     drag or touch fling, even when frames stall. Frosted blur and
+     hovers return ~140ms after scrolling ends. Older browsers use
+     the previous idle-timer fallback. Input remains native.
    ============================================================ */
 (function () {
   'use strict';
 
   var FAST_PX_PER_FRAME = 22;  // ≈1300 px/s — fast fling / drag
-  var SETTLE_MS = 140;         // grace after the last scroll event
+  var SETTLE_MS = 140;         // grace after native scroll completion
+  var hasScrollEnd = 'onscrollend' in document;
 
   var ticking = false;
   var fast = false;
+  var ended = false;
   var lastY = window.scrollY || 0;
   var lastTs = 0;
   var settleTimer;
+
+  function scheduleRelease() {
+    if (settleTimer) clearTimeout(settleTimer);
+    settleTimer = setTimeout(function () {
+      settleTimer = null;
+      // scrollend can arrive before the rAF that enables fast mode.
+      if (ticking) {
+        scheduleRelease();
+        return;
+      }
+      if (fast) {
+        fast = false;
+        document.body.removeAttribute('data-scroll-fast');
+      }
+    }, SETTLE_MS);
+  }
 
   function frame(ts) {
     ticking = false;
@@ -269,18 +289,14 @@
       document.body.setAttribute('data-scroll-fast', '1');
     }
 
-    // Debounced release: the fling may end without further
-    // events (scrollbar drag release, trackpad stop).
-    if (settleTimer) clearTimeout(settleTimer);
-    settleTimer = setTimeout(function () {
-      if (fast) {
-        fast = false;
-        document.body.removeAttribute('data-scroll-fast');
-      }
-    }, SETTLE_MS);
+    // With native scrollend, a quiet interval during a held scrollbar
+    // is not the end of the gesture. Avoid toggling every card's styles
+    // while the browser is still processing the drag.
+    if (!hasScrollEnd || ended) scheduleRelease();
   }
 
   function onScroll() {
+    ended = false;
     // Cancel the pending idle release immediately: a delayed rAF
     // must not let it flip the fast state between scroll events.
     if (settleTimer) {
@@ -295,9 +311,102 @@
   }
 
   window.addEventListener('scroll', onScroll, { passive: true });
+  if (hasScrollEnd) {
+    document.addEventListener('scrollend', function (event) {
+      if (event.target !== document) return; // ignore nested carousels
+      ended = true;
+      scheduleRelease();
+    }, { passive: true });
+  }
 
   // Initial state (e.g. page restored mid-scroll by the browser)
   frame(performance.now ? performance.now() : Date.now());
+})();
+
+/* ============================================================
+   3b. BANNER SAFE TOP
+   ------------------------------------------------------------
+   Measure the banner only when it or something affecting it
+   changes. The old body-wide observer measured on every poster,
+   card and hover mutation, forcing style/layout during scroll.
+   ============================================================ */
+(function () {
+  'use strict';
+
+  var selector = '.disclaimer-banner, .notice-bar, .site-banner, .disclaimer-bar, ' +
+    '[data-site-banner], #top-banner, #notice, #banner';
+  var candidates = [];
+  var pending = false;
+  var resizeObserver = typeof ResizeObserver === 'function'
+    ? new ResizeObserver(scheduleUpdate) : null;
+
+  function updateSafeTop() {
+    pending = false;
+    var next = Array.prototype.slice.call(document.querySelectorAll(selector));
+    if (resizeObserver) {
+      candidates.forEach(function (el) {
+        if (next.indexOf(el) === -1) resizeObserver.unobserve(el);
+      });
+      next.forEach(function (el) {
+        if (candidates.indexOf(el) === -1) resizeObserver.observe(el);
+      });
+    }
+    candidates = next;
+
+    var height = 0;
+    candidates.forEach(function (el) {
+      var rect = el.getBoundingClientRect();
+      if (rect.top <= 0 && rect.height > height) height = rect.height;
+    });
+    var value = height + 'px';
+    var style = document.documentElement.style;
+    if (style.getPropertyValue('--zeus-safe-top') !== value) {
+      style.setProperty('--zeus-safe-top', value);
+    }
+  }
+
+  function scheduleUpdate() {
+    if (pending) return;
+    pending = true;
+    window.requestAnimationFrame(updateSafeTop);
+  }
+
+  function containsCandidate(node) {
+    if (node.nodeType !== 1) return false;
+    return node.matches(selector) || !!node.querySelector(selector) ||
+      candidates.some(function (el) { return node.contains(el); });
+  }
+
+  function affectsBanner(record) {
+    var target = record.target;
+    if (record.type === 'attributes') {
+      // These two scroll states affect cards/background, not the banner.
+      if (target === document.body) {
+        return record.attributeName !== 'data-scrolled' &&
+          record.attributeName !== 'data-scroll-fast';
+      }
+      if (target.matches(selector)) return true;
+      return candidates.some(function (el) {
+        return target.contains(el) || el.contains(target);
+      });
+    }
+    if (candidates.some(function (el) { return el.contains(target); })) return true;
+    return Array.prototype.some.call(record.addedNodes, containsCandidate) ||
+      Array.prototype.some.call(record.removedNodes, containsCandidate);
+  }
+
+  var observer = new MutationObserver(function (records) {
+    if (records.some(affectsBanner)) scheduleUpdate();
+  });
+  observer.observe(document.body, { childList: true, subtree: true, attributes: true });
+  window.addEventListener('resize', scheduleUpdate, { passive: true });
+  // Without ResizeObserver, a late-loading font can reflow the banner
+  // without causing a DOM mutation or window resize.
+  if (!resizeObserver && document.fonts) {
+    if (document.fonts.addEventListener) document.fonts.addEventListener('loadingdone', scheduleUpdate);
+    if (document.fonts.ready && document.fonts.ready.then) document.fonts.ready.then(scheduleUpdate);
+  }
+  updateSafeTop();
 })();
 
 /* ============================================================
