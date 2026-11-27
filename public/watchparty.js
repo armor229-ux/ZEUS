@@ -167,8 +167,9 @@
   async function getClient() {
     if (state.client) return state.client;
     await loadSdk();
-    // Per-tab storage gives separate viewers separate anonymous identities,
-    // while preserving the host identity across a reload of this tab.
+    // Session storage preserves the host across a reload. Browsers can clone
+    // it into a duplicated or opener-created tab, so independent viewers
+    // should use separate browsers/profiles or fresh tabs without an opener.
     const probe = AUTH_KEY + '_test';
     if (!writeSession(probe, '1')) throw new Error('Enable session storage to use Watch Party.');
     removeSession(probe);
@@ -551,7 +552,7 @@
     state.provider = room.provider;
     state.player = {
       time: null, paused: null, lastTimeAt: 0, lastEventAt: 0, suppressedUntil: 0, startedAt: Date.now(),
-      source: '', sourceReported: false, sourceRetryAt: 0,
+      source: '', sourceReported: false, sourceRetryAt: 0, commandReady: false, errorNotice: '',
       sourceAttempt: room.source_sync ? players.normalizeSource(room.provider, room.source_id) : ''
     };
     state.initialApplied = false;
@@ -577,7 +578,7 @@
   }
   function followHost(force) {
     if (!state.code || !state.snapshot || !state.player || state.isHost || state.episodeChanged ||
-        !state.initialApplied || state.provider === 'vidora') return;
+        (!state.initialApplied && !state.player.commandReady) || state.provider === 'vidora') return;
     const now = Date.now();
     const room = state.snapshot.room;
     const target = players.targetTime(room, state.serverOffset, now);
@@ -597,7 +598,9 @@
       if (room.playing && needsPlay) state.playAttempts += 1;
     }
     const hostOnline = Array.isArray(state.snapshot.members) && state.snapshot.members.some((member) => member.host && member.online);
-    if (!hostOnline) {
+    if (state.player.errorNotice) {
+      playerNotice(state.player.errorNotice);
+    } else if (!hostOnline) {
       playerNotice('The host is away. The room is paused until they return.');
     } else if (room.playing && state.playAttempts >= 3 && state.player.paused !== false) {
       playerNotice('Playback may be blocked. Click inside the player to allow it, then use Resync.');
@@ -640,17 +643,33 @@
       state.player.source = received.sourceId;
       if (state.isHost) publishSource(received.sourceId);
       renderSourceStatus();
-      if (state.provider === 'bingeapi' && !state.initialApplied && !state.player.bootstrapSent) {
-        // BingeAPI drops commands before its first event and has no status
-        // getter. Its first server event is the documented point to seek.
-        state.player.bootstrapSent = true;
-        command('seek', players.targetTime(state.snapshot.room, state.serverOffset, Date.now()));
+      if (state.provider === 'bingeapi' && !state.initialApplied && !state.player.commandReady) {
+        // The first server event means commands can be attempted, not that
+        // the source is playable. BingeAPI has no status getter and a seek
+        // need not produce an event, so do not wait for one before following.
+        state.player.commandReady = true;
+        if (state.isHost) {
+          const room = state.snapshot.room;
+          command('seek', players.targetTime(room, state.serverOffset, Date.now()));
+          if (room.playing) command('play');
+        } else followHost(true);
       }
       return;
     }
     if (received.kind === 'error') {
-      playerNotice('The selected player reported an error. The host can try another player.');
+      // Show enough of the provider's message to diagnose a failing source,
+      // without exposing a potentially signed stream URL in the panel.
+      const detail = String(received.error || 'Player error').replace(/https?:\/\/\S+/gi, '[link omitted]')
+        .replace(/\s+/g, ' ').trim().slice(0, 140);
+      state.player.errorNotice = (players.LABELS[state.provider] || 'Player') + ': ' + detail +
+        '. The player may try another server; use Resync to retry or ask the host to switch players.';
+      playerNotice(state.player.errorNotice);
       return;
+    }
+    if (state.player.errorNotice &&
+        (received.kind === 'play' || (received.kind === 'timeupdate' && received.time !== null && received.time > 0))) {
+      state.player.errorNotice = '';
+      if (state.isHost) playerNotice('You control playback for the room.');
     }
     if (state.provider === 'vidora') {
       const media = event.data.data;
@@ -686,16 +705,22 @@
       const target = players.targetTime(room, state.serverOffset, now);
       if (state.isHost) {
         state.player.suppressedUntil = now + 1200;
+        // A status response may describe the player before this initial seek.
+        // Do not use that old measurement as the time of a later play/pause.
+        state.player.time = null;
+        state.player.lastTimeAt = 0;
         command('seek', target);
         if (received.kind === 'play' && !room.playing && !state.enforceSwitchPause) {
           // A host can press play before the first status poll. Treat that
-          // first play as authoritative rather than swallowing the click.
+          // first play as authoritative rather than swallowing the click,
+          // and do not suppress an immediate subsequent pause.
+          state.player.suppressedUntil = 0;
           queueHost('play', target);
         } else {
           command(room.playing ? 'play' : 'pause');
         }
         state.enforceSwitchPause = false;
-        playerNotice('You control playback for the room. Click inside the player to start.');
+        if (!state.player.errorNotice) playerNotice('You control playback for the room. Click inside the player to start.');
       } else followHost(true);
       return;
     }
@@ -709,9 +734,17 @@
         const echo = (action === 'play' && room.playing) || (action === 'pause' && !room.playing) ||
           (action === 'seeked' && state.player.time !== null && Math.abs(state.player.time - target) < DRIFT_SECONDS);
         if (echo) return;
+        // Once a different host action is observed, the old snapshot can no
+        // longer distinguish echoes from the host's next quick action.
+        if (['play', 'pause', 'seeked'].includes(action)) state.player.suppressedUntil = 0;
       }
       if (['play', 'pause', 'seeked'].includes(action)) {
-        queueHost(action === 'seeked' ? 'seek' : action, state.player.time ?? 0);
+        // CineSrc and BingeAPI play/pause events do not contain a time. Until
+        // the player reports one, preserve the room clock instead of jumping
+        // a resumed room to zero. A seek without a position is not actionable.
+        if (action === 'seeked' && received.time === null) return;
+        const position = state.player.time ?? players.targetTime(state.snapshot.room, state.serverOffset, now);
+        queueHost(action === 'seeked' ? 'seek' : action, position);
       }
     } else if (state.initialApplied) {
       if (state.player.paused === false) state.playAttempts = 0;
@@ -727,9 +760,9 @@
       state.lastHostSync = now;
       queueHost(state.player.paused ? 'sync_pause' : 'sync_play', state.player.time);
     }
-    if (!state.isHost && state.initialApplied) followHost(false);
-    if (!state.player.lastEventAt && now - state.player.startedAt > 14000) {
-      playerNotice('The player has not responded. Try clicking inside it or ask the host to switch players.');
+    if (!state.isHost && (state.initialApplied || state.player.commandReady)) followHost(false);
+    if (!state.player.errorNotice && !state.player.lastEventAt && now - state.player.startedAt > 14000) {
+      playerNotice('The player has not responded. Click inside it or use Resync to reload; the host can also switch players.');
     }
   }
 
@@ -938,13 +971,18 @@
     });
     ui.resync.addEventListener('click', () => {
       if (!state.snapshot || !state.player) return;
-      if (state.episodeChanged) { loadPlayer(state.snapshot.room); return; }
+      // Reload if the player failed or never responded. The host's room is
+      // authoritative, so a host retry reloads instead of just requesting a
+      // status (which would not recover a failed source).
+      if (state.episodeChanged || !state.initialApplied || state.player.errorNotice || state.isHost) {
+        loadPlayer(state.snapshot.room);
+        return;
+      }
       state.playAttempts = 0;
       const room = state.snapshot.room;
       const target = room.source_sync && players.normalizeSource(room.provider, room.source_id);
-      if (!state.isHost && target && state.player.source !== target) loadPlayer(room);
-      else if (!state.isHost) { state.lastSeek = 0; state.lastPlayCommand = 0; followHost(true); }
-      else command('status');
+      if (target && state.player.source !== target) loadPlayer(room);
+      else { state.lastSeek = 0; state.lastPlayCommand = 0; followHost(true); }
       refresh();
     });
     ui.provider.addEventListener('change', switchProvider);
