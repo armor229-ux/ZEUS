@@ -25,10 +25,9 @@ Notes
 -----
 - public/index.html is the homepage; public/style.css is the main stylesheet.
 - All internal links are relative, so the site also works under a sub-path.
-- Watch Party rooms need the party backend deployed once (separate Worker,
-  not part of this static upload):
-      cd party-worker && npx wrangler deploy
-  Then open any party page, paste the worker URL
-  (https://zeus-party.<your-subdomain>.workers.dev) into the
-  "Party backend URL" field and press Save. It is stored per browser in
-  localStorage under the key "zeus_party_backend".
+- The in-player Watch Party uses Supabase, not the legacy Worker. Before it
+  can create rooms, review/apply the Watch Party SQL migration and enable
+  anonymous sign-ins in the intended Supabase project. See README.md for
+  access controls, retention, configuration and testing details.
+- The older standalone party.html client is separate and still needs its own
+  configured Worker URL for its YouTube/direct-MP4 rooms.

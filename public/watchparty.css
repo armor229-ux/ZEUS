@@ -1,0 +1,83 @@
+/* Party UI is scoped to the watch player and never changes normal provider styling. */
+.wp-workspace { display: flex; align-items: stretch; min-width: 0; }
+.wp-workspace > .player-wrapper { flex: 1 1 auto; width: 100%; min-width: 0; }
+.wp-panel[hidden], .wp-panel [hidden] { display: none !important; }
+.wp-panel { position: relative; flex: 0 0 332px; min-width: 0; background: #101114; border-left: 1px solid rgba(255,255,255,.09); color: #f4f6f8; }
+.wp-panel-inner { position: absolute; inset: 0; overflow: auto; padding: 19px; scrollbar-width: thin; scrollbar-color: #40454d transparent; }
+.wp-panel h2, .wp-panel h3, .wp-panel p { margin: 0; }
+.wp-panel button, .wp-panel input, .wp-panel select { font: inherit; }
+.wp-panel button { cursor: pointer; }
+.wp-panel button:disabled { opacity: .48; cursor: not-allowed; }
+.wp-panel :is(button,input,select):focus-visible { outline: 2px solid #83ebfb; outline-offset: 2px; }
+.wp-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding-bottom: 11px; border-bottom: 1px solid rgba(255,255,255,.08); }
+.wp-heading h2 { font-size: 17px; font-weight: 750; letter-spacing: -.02em; }
+.wp-kicker, .wp-label, .wp-panel label, .wp-section-title, .wp-role { font-size: 9px; font-weight: 800; letter-spacing: .13em; text-transform: uppercase; color: #858f99; }
+.wp-kicker { color: #62dbe9; }
+.wp-close { border: 0; background: #25282d; color: #d1d6db; border-radius: 9px; width: 30px; height: 30px; font-size: 23px !important; line-height: 1; }
+.wp-welcome { padding-top: 11px; }
+.wp-intro-icon { display: grid; place-items: center; width: 32px; height: 32px; margin-bottom: 7px; border-radius: 10px; color: #8cf3fb; background: rgba(66,215,234,.13); font-size: 20px; }
+.wp-welcome h3 { font-size: 17px; font-weight: 750; letter-spacing: -.03em; }
+.wp-welcome > p:not(.wp-error) { color: #9ca6af; font-size: 11.5px; line-height: 1.4; margin: 4px 0 8px; }
+.wp-panel label { display: block; margin: 8px 0 4px; }
+.wp-panel input, .wp-panel select { display: block; width: 100%; min-width: 0; border-radius: 9px; border: 1px solid #353a41; padding: 8px 10px; color: #f4f6f8; background: #1a1d21; font-size: 12px; }
+.wp-panel input::placeholder { color: #7c858e; }
+.wp-panel select { color-scheme: dark; }
+.wp-primary, .wp-secondary, .wp-end { border-radius: 9px; padding: 10px 12px; font-size: 11.5px !important; font-weight: 750 !important; }
+.wp-primary { border: 1px solid #7de7f2; color: #071518; background: #7de7f2; }
+.wp-primary:hover { background: #b1f6fc; }
+.wp-secondary { border: 1px solid #3c424b; color: #e5e9ed; background: #23272c; }
+.wp-secondary:hover { background: #30363d; }
+.wp-create { width: 100%; margin-top: 8px; }
+.wp-divider { display: flex; align-items: center; gap: 9px; margin: 10px 0 7px; color: #7d8791; font-size: 9px; font-weight: 800; letter-spacing: .12em; }
+.wp-divider::before, .wp-divider::after { content: ''; height: 1px; flex: 1; background: #30343a; }
+.wp-join-form { display: flex; gap: 7px; }
+.wp-join-form input { flex: 1; }
+.wp-welcome .wp-disclaimer { font-size: 10px !important; color: #77818b !important; margin-top: 8px !important; }
+.wp-error { padding: 9px 10px; border: 1px solid rgba(255,144,130,.3); border-radius: 8px; background: rgba(255,103,89,.09); color: #ffb3a9; font-size: 11px; line-height: 1.4; }
+.wp-status-line { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 12px 0 3px; }
+.wp-connection { color: #9ca7b0; font-size: 10px; }
+.wp-connection::before { content: ''; display: inline-block; width: 6px; height: 6px; margin-right: 6px; vertical-align: 1px; border-radius: 50%; background: #c9a55e; }
+.wp-connection[data-state="online"]::before { background: #77e6b7; }
+.wp-connection[data-state="error"]::before { background: #ff8c7e; }
+.wp-tabs { display: flex; gap: 20px; border-bottom: 1px solid #30343a; margin: 5px 0 15px; }
+.wp-tabs button { border: 0; border-bottom: 2px solid transparent; padding: 10px 1px; background: none; color: #8e98a2; font-size: 12px; font-weight: 700; }
+.wp-tabs button[aria-selected="true"] { border-color: #82eaf4; color: #fff; }
+.wp-card { padding: 12px; border: 1px solid #30363d; border-radius: 11px; background: #191d21; }
+.wp-room-code { display: block; margin: 5px 0 10px; font-size: 14px; letter-spacing: .05em; overflow-wrap: anywhere; }
+.wp-copy { width: 100%; }
+.wp-card p, .wp-provider-hint, .wp-player-notice { margin-top: 8px !important; color: #9ca6af; font-size: 10.5px; line-height: 1.45; }
+.wp-section-title { display: flex; justify-content: space-between; margin: 17px 0 8px; }
+.wp-members { list-style: none; margin: 0; padding: 0; }
+.wp-member { display: flex; align-items: center; gap: 8px; padding: 5px 0; }
+.wp-avatar { display: grid; place-items: center; flex: 0 0 28px; width: 28px; height: 28px; border-radius: 9px; background: #293b42; color: #a5f1f7; font-size: 11px; font-weight: 800; }
+.wp-member-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }
+.wp-member-role { color: #8ea1a8; font-size: 9px; font-weight: 700; white-space: nowrap; }
+.wp-provider-hint { min-height: 1em; }
+.wp-resync { width: 100%; margin-top: 10px; }
+.wp-player-notice { color: #b4c7cb; margin: -5px 0 12px !important; }
+.wp-actions { display: flex; gap: 7px; margin-top: 16px; }
+.wp-actions > * { flex: 1; }
+.wp-end { color: #ffaaa0; background: rgba(255,115,105,.08); border: 1px solid rgba(255,115,105,.28); }
+.wp-chat-view { display: flex; flex-direction: column; min-height: 230px; }
+.wp-messages { flex: 1; max-height: 270px; min-height: 145px; overflow-y: auto; padding-bottom: 12px; overflow-wrap: anywhere; }
+.wp-empty-chat { color: #8e98a2; font-size: 12px; }
+.wp-message { margin-bottom: 12px; font-size: 12px; line-height: 1.4; }
+.wp-message strong { color: #9deaf2; font-size: 10px; }
+.wp-message p { color: #e6e9eb; white-space: pre-wrap; }
+.wp-chat-form { display: flex; gap: 7px; }
+.wp-chat-form input { flex: 1; }
+.wp-chat-error { color: #ffb3a9; font-size: 11px; margin-top: 6px !important; }
+.wp-sr-only { position: absolute !important; width: 1px !important; height: 1px !important; overflow: hidden !important; clip-path: inset(50%); white-space: nowrap; }
+.chrome-btn--watchparty.wp-active { border-color: rgba(125,231,242,.6); color: #aaf4fa; }
+.chrome-btn--watchparty.wp-active::after { content: ''; width: 6px; height: 6px; border-radius: 50%; background: #7de7f2; }
+@media (max-width: 760px) {
+  .wp-workspace { flex-direction: column; }
+  .wp-workspace > .player-wrapper { flex: none; width: 100%; }
+  .wp-panel { flex: none; width: 100%; height: 420px; border-left: 0; border-top: 1px solid rgba(255,255,255,.09); }
+  .wp-panel-inner { padding: 16px; }
+  .wp-chat-view { min-height: 245px; }
+}
+@media (max-width: 420px) {
+  .wp-panel { height: 400px; }
+  .wp-actions { flex-direction: column; }
+}

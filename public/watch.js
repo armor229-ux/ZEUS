@@ -369,12 +369,13 @@ function restoreAutoNext() {
 /** Advance to the next TV episode on the current Premium server.
  *  Returns true when a new episode actually started. */
 async function autoNextAdvance(trigger) {
-  if (!autoNextEnabled || watchType !== 'tv' || !watchId) return false;
+  if (window.ZeusWatchPartyActive || !autoNextEnabled || watchType !== 'tv' || !watchId) return false;
   const failureHop = trigger !== 'video-ended';
   if (failureHop && autoNextFailHops >= AUTO_NEXT_MAX_FAIL_HOPS) return false;
   if (Date.now() - lastAutoNextAt < 15000) return false; // cooldown
 
   const episodes = await getEpisodes(currentSeason);
+  if (window.ZeusWatchPartyActive) return false;
   const hasNextInSeason = episodes.some((e) => e.episode_number === currentEpisode + 1);
   if (hasNextInSeason) {
     currentEpisode += 1;
@@ -1156,7 +1157,7 @@ function reportCurrentServer() {
  *  an AUTO pass, an automatic fallback pass tries the next
  *  servers. */
 async function setActiveServer(server, viaFallback = false, reason = 'manual') {
-  if (!server || !SERVER_URLS[server.id]) return false;
+  if (window.ZeusWatchPartyActive || !server || !SERVER_URLS[server.id]) return false;
 
   // A user-driven switch aborts any in-flight AUTO pass (the
   // user's pick wins). AUTO's own candidate loads pass through
@@ -1554,8 +1555,8 @@ async function getEpisodes(seasonNumber) {
 function updateEpisodeNavButtons() {
   const prev = $('#prev-episode');
   const next = $('#next-episode');
-  if (prev) prev.disabled = currentSeason === 1 && currentEpisode === 1;
-  if (next) next.disabled = false; // enabled; rollover checked on click
+  if (prev) prev.disabled = !!window.ZeusWatchPartyActive || (currentSeason === 1 && currentEpisode === 1);
+  if (next) next.disabled = !!window.ZeusWatchPartyActive; // rollover checked on click
 }
 
 function syncUrl() {
@@ -1643,3 +1644,52 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 });
+
+/* The party player is temporary. Ordinary playback continues to use Vidora.
+   This bridge prevents in-flight source/episode changes from replacing the
+   party iframe and restores the normal player when the viewer leaves. */
+window.ZeusWatchPartyBridge = (() => {
+  let savedDisabled = null;
+  const ids = ['servers-btn', 'watch-season-select', 'watch-episode-select',
+    'prev-episode', 'next-episode', 'autonext-toggle-input'];
+  return {
+    getMedia() {
+      if (!watchId || !/^\d+$/.test(String(watchId))) return null;
+      const title = $('#watch-title');
+      const label = title && title.textContent.trim();
+      return {
+        id: String(watchId), type: watchType, season: currentSeason, episode: currentEpisode,
+        title: label && label !== 'Loading title…' && label !== 'Watch Online Free'
+          ? label : (watchType === 'tv' ? 'Series #' : 'Movie #') + watchId
+      };
+    },
+    enter() {
+      if (window.ZeusWatchPartyActive) return;
+      window.ZeusWatchPartyActive = true;
+      if (autoSelectAbort) autoSelectAbort();
+      switchGeneration += 1;
+      if (pendingPlayerLoad) pendingPlayerLoad(false);
+      closeServerModal();
+      hideSourceCheckOverlay();
+      showPlayerLoading(false);
+      serverLoaded = false;
+      const frame = $('#player-frame');
+      if (frame) frame.src = 'about:blank'; // stop Vidora, including its audio
+      savedDisabled = new Map();
+      ids.forEach((id) => {
+        const node = document.getElementById(id);
+        if (node) { savedDisabled.set(node, node.disabled); node.disabled = true; }
+      });
+      document.documentElement.classList.remove('zeus-scroll-lock');
+    },
+    exit() {
+      if (!window.ZeusWatchPartyActive) return;
+      window.ZeusWatchPartyActive = false;
+      if (savedDisabled) savedDisabled.forEach((disabled, node) => { node.disabled = disabled; });
+      savedDisabled = null;
+      updateEpisodeNavButtons();
+      const normalServer = activeServer || findServerById('vidora');
+      if (normalServer) setActiveServer(normalServer, false, 'party-exit');
+    }
+  };
+})();
