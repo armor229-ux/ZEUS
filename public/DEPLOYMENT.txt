@@ -25,9 +25,9 @@ Notes
 -----
 - public/index.html is the homepage; public/style.css is the main stylesheet.
 - All internal links are relative, so the site also works under a sub-path.
-- The in-player Watch Party uses Supabase, not the legacy Worker. Before it
-  can create rooms, review/apply the Watch Party SQL migration and enable
-  anonymous sign-ins in the intended Supabase project. See README.md for
-  access controls, retention, configuration and testing details.
+- The in-player Watch Party uses Supabase, not the legacy Worker. Apply both
+  ordered Watch Party migrations and enable anonymous sign-ins in the intended
+  project. Server matching is best-effort; Vidora party playback is manual.
+  See README.md for setup, access controls, retention and testing details.
 - The older standalone party.html client is separate and still needs its own
   configured Worker URL for its YouTube/direct-MP4 rooms.
