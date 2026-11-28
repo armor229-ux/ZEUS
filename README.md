@@ -30,8 +30,8 @@ Then connect it to Cloudflare Pages for automated deploys (see
 | Path | What it is |
 | --- | --- |
 | `public/` | **The website.** All HTML pages, `style.css`, page scripts (`index.js`, `api.js`, `watch.js`, …), `config.js` (TMDB settings), assets and `_redirects` (clean-URL rules). This folder is the deployable site root. |
-| `supabase/migrations/` | Schema, access rules and server-checked functions for the in-player Watch Party. |
-| `party-worker/` | Legacy Worker backend for the separate `party.html` client; not used by the in-player party. |
+| `supabase/migrations/` | Existing schema, access rules and server-checked functions for Watch Party. |
+| `party-worker/` | Legacy Worker backend, not used by the CineSrc Watch Party. |
 | `party-server/` | Superseded Node/Socket.IO party backend. Dead code, kept for reference. |
 | `src/`, `next.config.ts`, … | Next.js dev-server wrapper used for local development. Rewrites serve `public/index.html` at `/` and map the clean routes (`/anime`, `/genre`, `/discover`) so local URLs match production. |
 | `worklog.md` | Detailed per-task development history. |
@@ -42,7 +42,7 @@ Home (`index.html`) · Anime (`anime.html`) · Discover/Browse (`browse.html`) �
 Movie & TV detail (`movie.html`, `tv.html`) · Watch (`watch.html`) · Search
 (`search.html`) · Genre (`genre.html`) · Watchlist (`watchlist.html`) · Login /
 Settings / Account (`login.html`, `settings.html`, `account.html`) · Watch Party
-(in the `watch.html` player; `party.html` is the older, separate client) · Legal
+(separate CineSrc page at `party.html`) · Legal
 (`privacy.html`, `terms.html`, `dmca.html`).
 
 ## Local development
@@ -80,114 +80,25 @@ clean routes (`/anime`, `/genre`, `/discover` → their pages; everything else �
 
 Option B — **Direct upload:** upload the contents of `public/` as the site root.
 
-## In-player Watch Party
+## Watch Party
 
-The **Party** button over the movie or episode opens the ZEUS party panel on top
-of the player (the top bar has the same button). Guests join by code or invite
-link, see participants and chat. This is ZEUS UI over a cross-origin iframe, not
-a modification of Vidora's own document. Use the ZEUS fullscreen button beside
-**Party** to keep the overlay available in fullscreen; the iframe's own
-fullscreen cannot show its parent page's controls. The server, not just the UI,
-enforces the host role. Leaving restores ordinary Vidora viewing; the host can
-leave and rejoin in the same tab, or end the room for everyone. Rooms expire 12
-hours after creation. The host chooses a party player:
+The **Watch Party** button on a title opens a separate CineSrc-only party page
+in the same tab. Normal ZEUS viewing remains on Vidora. Hosts create a room;
+invited guests can join, chat and follow the host's playback. CineSrc chooses
+its own internal sources: ZEUS cannot guarantee a match, availability, autoplay
+or accurate timing across browsers.
 
-- **VidSpark** and **CineSrc** expose play/pause/seek controls. Playback and
-  autoplay still depend on the third-party player, source and each device.
-- **BingeAPI (experimental)** documents those controls too and advertises
-  servers with up to 4K, plus OpenSubtitles search in 42 languages and custom
-  subtitle files. Quality, titles and languages vary; no particular stream or
-  subtitle is guaranteed. Real two-viewer playback has not been verified.
-- **Vidora (manual follow)** is the default. The host's documented player
-  events share an approximate play/pause state and timestamp; guests can compare
-  their own reported time and get manual-follow instructions. A playing clock
-  that stops receiving updates becomes stale instead of advancing indefinitely.
-  Each viewer must play, pause, seek and select a server themselves: Vidora
-  documents no inbound commands or server-selection API. **Try reload at host
-  time** makes a best-effort `startAt` request, not a remote seek; Vidora's saved
-  progress can override it. A newly created room can keep an already-loaded
-  Vidora iframe playing rather than interrupting it. For TV, events that do not
-  identify the current season and episode cannot be shared safely. Ordinary,
-  non-party viewing remains Vidora.
+The client uses the existing ZEUS Supabase Auth, room RPCs and private Realtime
+setup; no additional migration is required for this client. Room codes are
+bearer invitations and should be shared only with trusted people. Live
+CineSrc/Supabase synchronization has not been verified by the local fixtures.
+Check actual quota and usage before testing with real viewers.
 
-For CineSrc and BingeAPI, the host can turn **Match host’s streaming server** on
-or off (on by default). When the host player reports a server change, guests
-reload once with that server as the documented *preference* and the current
-room position. Neither provider documents a runtime server setter: they may
-ignore the preference or fall back. The panel reports a match only after the
-local player reports the same server; mismatches are shown and **Resync my
-player** retries. If the host does not report a recognized server, matching
-cannot be confirmed. VidSpark and Vidora do not expose the needed server API.
-
-Click inside an iframe if autoplay is blocked. For VidSpark, CineSrc and
-BingeAPI, **Resync my player** retries following the room or reloads an
-unresponsive player. For Vidora, the reload button uses its documented start
-parameter and cannot guarantee where the player resumes. A BingeAPI server event
-permits a command attempt but does not prove that the stream has loaded. Episode
-changes made inside an embed are not shared; return to the room's episode or
-start a new room. A Realtime subscription being established is not proof of
-broadcast delivery; the client also checks the room periodically.
-
-The configured ZEUS Supabase project has the migrations below recorded and
-anonymous sign-ins enabled. For a fresh project or fork, complete these steps
-before creating rooms (do not reapply recorded migrations to ZEUS):
-
-1. Review and apply, in order, `supabase/migrations/20261127142027_watch_party.sql`,
-   `supabase/migrations/20261127153149_watch_party_source_sync.sql`, and
-   `supabase/migrations/20261127172021_watch_party_vidora_assist.sql` to the
-   intended project. The first creates room/member/chat tables with RLS,
-   checked RPC functions, and a private Realtime Broadcast read policy. The
-   second adds host-controlled server preferences and the additional players.
-   The third adds host-only Vidora observations and distinguishes an actual
-   observation from the initial room clock.
-2. Enable **Anonymous Sign-Ins** under Supabase Authentication providers. The
-   project's anonymous sign-in rate limits apply; before a public launch, add
-   CAPTCHA-token handling and appropriate quotas/abuse monitoring. Enabling a
-   CAPTCHA before the client handles its token will prevent guest sign-ins.
-3. Make sure Supabase Realtime and the Data API are available. The client uses
-   private channels and receives data-free wakeups; it fetches authorized room
-   snapshots through RPC and falls back to periodic checks if Realtime fails.
-4. `public/watchparty.js` contains this project's **publishable** URL/key. A fork
-   should use its own project and publishable key; never place a secret or
-   `service_role` key in the browser. The self-hosted Supabase JavaScript client
-   is version 2.119.2, with its license in `public/vendor/`.
-
-A room code is an invitation, so share it only with trusted people. The invite
-uses a URL fragment, and the Supabase session survives a reload of the tab.
-Browsers may copy session storage to a duplicated tab or one opened with an
-opener, so use separate browsers/profiles or fresh tabs without an opener for
-independent viewers. **Security note:** `watch.html` already loads third-party
-advertising scripts in the page's own JavaScript
-context. Such scripts can read the invitation and session storage and act as
-the viewer. Audit or isolate those scripts before treating rooms as private in
-production. Each room stores up to 200 chat messages and snapshots return the
-latest 50. Expired rooms and their messages
-are deleted lazily on new room creation, at least 12 hours after expiry. If no
-new room is created, cleanup is delayed: configure a trusted scheduled job if
-a firm deletion window is required. Supabase anonymous Auth users also need a
-separate administrative retention/cleanup policy; deleting the Auth identity
-prevents that session from rejoining as host. The migration and Auth settings
-must be in place before this is a working live feature; a player iframe loading
-alone does **not** prove that media or synchronization works.
-
-For regression checks, run `node --test tests/*.test.mjs`. The optional SQL
-test uses `@electric-sql/pglite` (set `ZEUS_PGLITE_MODULE` to its
-`dist/index.js`). The optional `tests/watchparty-browser.mjs` and
-`tests/watchparty-startup-browser.mjs` use Playwright/Chromium specified via
-`ZEUS_PLAYWRIGHT_MODULE` and `ZEUS_CHROMIUM_PATH`. The SQL test stubs Supabase
-Auth/Realtime; both browser tests mock Supabase and the player iframes. Passing
-them does **not** verify actual video, Realtime delivery, or two-viewer sync.
-To test those, open the preview in two independent browser sessions, create a
-room and join it, then check host play/pause/seek, switch the host's internal
-server and compare both player menus and timestamps. Check the fallback warning
-if a server is unavailable. For Vidora, verify that host events update the
-manual-follow display while the guest's player stays under the guest's control;
-try a reload and check whether Vidora actually honors the requested time. Use
-real devices/networks and verify subtitles and quality for the title being
-watched.
-
-The older `party.html` page is a separate YouTube/direct-MP4 client and still
-requires the legacy Worker URL; the in-player Watch Party does not use it.
+See [CineSrc Watch Party](docs/cinesrc-watch-party.md) for security, usage,
+limitations, setup and two-browser testing. Local `node --test tests/*.test.mjs`
+tests can use PGlite via `ZEUS_PGLITE_MODULE`; browser fixtures require
+Playwright and Chromium via `ZEUS_PLAYWRIGHT_MODULE` and `ZEUS_CHROMIUM_PATH`.
+Fixtures mock Supabase and CineSrc and are not proof of real synchronization.
 
 ## Scroll performance architecture (the 60fps pipeline)
 

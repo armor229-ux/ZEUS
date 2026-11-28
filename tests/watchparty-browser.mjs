@@ -1,4 +1,5 @@
-// Optional isolated browser integration: mocks Supabase and all party video players.
+// Legacy in-player regression. This fixture explicitly loads the earlier
+// in-player scripts, not the CineSrc party page; all services are mocked.
 // Example: ZEUS_PLAYWRIGHT_MODULE=/path/to/playwright-core ZEUS_CHROMIUM_PATH=/path/to/chromium node tests/watchparty-browser.mjs
 import http from 'node:http';
 import fs from 'node:fs';
@@ -101,7 +102,12 @@ let browser;
     fs.readFile(file, (error, data) => {
       if (error) { res.writeHead(404).end(); return; }
       const type = {'.html':'text/html','.js':'application/javascript','.css':'text/css','.svg':'image/svg+xml'}[path.extname(file)] || 'application/octet-stream';
-      res.writeHead(200, {'content-type':type}); res.end(data);
+      // Exercise the preserved in-player implementation, not the active launcher.
+      const body = name === 'watch.html' ? data.toString().replace(
+        '<script src="watchparty-launch.js?v=1"></script>',
+        '<script src="watchparty-player.js?v=1.2"></script><script src="watchparty.js?v=5.2"></script>'
+      ) : data;
+      res.writeHead(200, {'content-type':type}); res.end(body);
     });
   });
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));

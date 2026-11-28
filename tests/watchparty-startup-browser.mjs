@@ -1,5 +1,5 @@
-// Focused browser regressions for player startup and retry behavior.
-// Both the Supabase RPCs and player iframes below are fixtures, not live services.
+// Legacy in-player startup regressions. The fixture explicitly loads the
+// earlier scripts, not the active CineSrc party page; services are mocked.
 // Example: ZEUS_PLAYWRIGHT_MODULE=/path/to/playwright-core/index.mjs \
 //   ZEUS_CHROMIUM_PATH=/path/to/chromium node tests/watchparty-startup-browser.mjs
 import http from 'node:http';
@@ -159,7 +159,11 @@ try {
     fs.readFile(file, (error, data) => {
       if (error) { res.writeHead(404).end(); return; }
       const type = {'.html': 'text/html', '.js': 'application/javascript', '.css': 'text/css', '.svg': 'image/svg+xml'}[path.extname(file)] || 'application/octet-stream';
-      res.writeHead(200, {'content-type': type}); res.end(data);
+      const body = name === 'watch.html' ? data.toString().replace(
+        '<script src="watchparty-launch.js?v=1"></script>',
+        '<script src="watchparty-player.js?v=1.2"></script><script src="watchparty.js?v=5.2"></script>'
+      ) : data;
+      res.writeHead(200, {'content-type': type}); res.end(body);
     });
   });
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
