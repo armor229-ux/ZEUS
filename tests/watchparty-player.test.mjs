@@ -97,3 +97,28 @@ test('target playback compensates for server clock offset and does not advance a
   assert.equal(player.targetTime({ ...paused, playing: true }, -20000, now), 15);
   assert.equal(player.targetTime({ ...paused, position_seconds: 86399, playing: true }, 0, now), 86400);
 });
+
+test('Vidora observations must identify the requested movie or episode', () => {
+  const movie = { ...room, provider: 'vidora' };
+  const event = { tmdbId: 533533, mediaType: 'movie', currentTime: 20 };
+  assert.equal(player.vidoraMediaMatch(event, movie), 'match');
+  assert.equal(player.vidoraMediaMatch({ ...event, tmdbId: 42 }, movie), 'different');
+  assert.equal(player.vidoraMediaMatch({ ...event, tmdbId: null }, movie), 'unconfirmed');
+  const tv = { ...movie, media_type: 'tv', season: 2, episode: 3 };
+  assert.equal(player.vidoraMediaMatch({ ...event, mediaType: 'tv', season: 2, episode: 3 }, tv), 'match');
+  assert.equal(player.vidoraMediaMatch({ ...event, mediaType: 'tv', season: 2, episode: 4 }, tv), 'different');
+  assert.equal(player.vidoraMediaMatch({ ...event, mediaType: 'tv', season: 2 }, tv), 'unconfirmed');
+});
+
+test('Vidora clock shows only observed, fresh estimates and formats long times', () => {
+  const now = Date.parse('2026-01-01T00:00:20Z');
+  const observed = { vidora_observed: true, position_seconds: 120, playing: true, state_updated_at: '2026-01-01T00:00:10Z' };
+  assert.deepEqual(player.vidoraClock({ ...observed, vidora_observed: false }, 0, now), { status: 'waiting', time: null });
+  assert.deepEqual(player.vidoraClock(observed, 2000, now), { status: 'ready', time: 132 });
+  assert.deepEqual(player.vidoraClock(observed, 0, now + 15000), { status: 'stale', time: 120 });
+  assert.deepEqual(player.vidoraClock({ ...observed, playing: false }, 0, now + 60000), { status: 'ready', time: 120 });
+  assert.deepEqual(player.vidoraClock({ ...observed, state_updated_at: 'bad' }, 0, now), { status: 'stale', time: 120 });
+  assert.equal(player.formatTime(65), '1:05');
+  assert.equal(player.formatTime(3661), '1:01:01');
+  assert.equal(player.formatTime(null), '–:––');
+});

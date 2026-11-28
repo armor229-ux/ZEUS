@@ -1,4 +1,5 @@
-// Optional isolated browser integration: mocks Supabase and all party video players.
+// Legacy in-player regression. This fixture explicitly loads the earlier
+// in-player scripts, not the CineSrc party page; all services are mocked.
 // Example: ZEUS_PLAYWRIGHT_MODULE=/path/to/playwright-core ZEUS_CHROMIUM_PATH=/path/to/chromium node tests/watchparty-browser.mjs
 import http from 'node:http';
 import fs from 'node:fs';
@@ -12,7 +13,7 @@ let server;
 const publicDir = path.join(__dirname, '..', 'public');
 const CODE='1234567890ABCDEF1234';
 const users = new Map();
-let room = null, messages = [], calls = [], nextMsg=1, failNextSource=false;
+let room = null, messages = [], calls = [], nextMsg=1, failNextSource=false, failNextVidora=false;
 const fallbackSource = new Map();
 function snapshot(id) {
   return { you:id, server_now:new Date().toISOString(), room: structuredClone(room),
@@ -21,7 +22,7 @@ function snapshot(id) {
 function rpc(id, name, p) {
   calls.push({id,name,p:structuredClone(p)});
   if(name==='zeus_party_create') {
-    room = {code:CODE,host_id:id,provider:p.p_provider,media_type:p.p_media_type,tmdb_id:p.p_tmdb_id,season:p.p_season,episode:p.p_episode,title:p.p_title,playing:false,position_seconds:0,state_updated_at:new Date().toISOString(),revision:0,source_sync:true,source_id:null,ended:false};
+    room = {code:CODE,host_id:id,provider:p.p_provider,media_type:p.p_media_type,tmdb_id:p.p_tmdb_id,season:p.p_season,episode:p.p_episode,title:p.p_title,playing:false,position_seconds:0,state_updated_at:new Date().toISOString(),revision:0,source_sync:true,source_id:null,vidora_observed:false,ended:false};
     users.set(id,{id,name:p.p_name}); return snapshot(id);
   }
   if(name==='zeus_party_join') {
@@ -38,9 +39,18 @@ function rpc(id, name, p) {
     if(['pause','sync_pause'].includes(p.p_action)) room.playing=false;
     return null;
   }
+  if(name==='zeus_party_vidora_update') {
+    if(id!==room.host_id || room.provider!=='vidora') throw new Error('Only the host can report the current Vidora player');
+    if(failNextVidora) { failNextVidora=false; throw new Error('Temporary Vidora update failure'); }
+    room.position_seconds=p.p_time; room.state_updated_at=new Date().toISOString(); room.revision++;
+    room.vidora_observed=p.p_action!=='clear';
+    if(['play','sync_play'].includes(p.p_action)) room.playing=true;
+    if(['pause','sync_pause','clear'].includes(p.p_action)) room.playing=false;
+    return null;
+  }
   if(name==='zeus_party_set_provider') {
     if(id!==room.host_id) throw new Error('Only the host can change players');
-    room.provider=p.p_provider; room.position_seconds=p.p_time; room.playing=false; room.source_id=null; room.revision++; room.state_updated_at=new Date().toISOString(); return null;
+    room.provider=p.p_provider; room.position_seconds=p.p_time; room.playing=false; room.source_id=null; room.vidora_observed=false; room.revision++; room.state_updated_at=new Date().toISOString(); return null;
   }
   if(name==='zeus_party_set_source') {
     if(id!==room.host_id || p.p_provider!==room.provider) throw new Error('Only the host can change the current player source');
@@ -58,7 +68,7 @@ const params=new URLSearchParams(location.search);
 const bingeNames={'80':'Sirius','94':'Tarazed','87':'Yildun','84':'Wezen','88':'Nashira'};
 let selected=provider==='cinesrc'?(params.get('lastserver')||'ember'):(bingeNames[(params.get('servers')||'80').split(',')[0]]||'Sirius');
 selected=fallback||selected;
-let time=provider==='cinesrc'||provider==='vidspark'?Number(params.get('t')||0):0,paused=true,firstEvent=false,prematureCommands=0;
+let time=provider==='cinesrc'||provider==='vidspark'?Number(params.get('t')||0):provider==='vidora'?Number(params.get('startAt')||0):0,paused=true,firstEvent=false,prematureCommands=0;
 const loads=Number(sessionStorage.getItem('fixtureLoads')||0)+1;sessionStorage.setItem('fixtureLoads',String(loads));window.commands=[];
 function emit(event,extra={}) {
   let data;
@@ -77,6 +87,7 @@ const action=provider==='vidspark'?d.action:d.command;
 if(action==='getStatus') emit('playerstatus'); else if(action==='getCurrentTime') emit('response',{command:action,result:time}); else if(action==='getPaused') emit('response',{command:action,result:paused}); else if(action==='play') play();else if(action==='pause')pause();else if(action==='seek')seek(provider==='vidspark'?d.time:(provider==='bingeapi'?d.value:d.args[0]));});
 window.changeServer=(value)=>{selected=value;emit(provider==='cinesrc'?'sourceused':'serverchange',provider==='cinesrc'?{sourceId:value}:{})};
 window.emitMedia=(fields)=>emit('timeupdate',fields);
+window.emitPlayback=(kind,fields)=>emit(kind,fields);
 window.getFakeState=()=>({time,paused,source:selected,loads,prematureCommands,commands:window.commands});
 setInterval(()=>{if(!paused){time+=0.5;emit(provider==='bingeapi'?'time':'timeupdate')}},500);
 if(provider==='cinesrc')setTimeout(()=>{emit('ready');emit('sourceused',{sourceId:selected})},50);
@@ -91,7 +102,12 @@ let browser;
     fs.readFile(file, (error, data) => {
       if (error) { res.writeHead(404).end(); return; }
       const type = {'.html':'text/html','.js':'application/javascript','.css':'text/css','.svg':'image/svg+xml'}[path.extname(file)] || 'application/octet-stream';
-      res.writeHead(200, {'content-type':type}); res.end(data);
+      // Exercise the preserved in-player implementation, not the active launcher.
+      const body = name === 'watch.html' ? data.toString().replace(
+        '<script src="watchparty-launch.js?v=1"></script>',
+        '<script src="watchparty-player.js?v=1.2"></script><script src="watchparty.js?v=5.2"></script>'
+      ) : data;
+      res.writeHead(200, {'content-type':type}); res.end(body);
     });
   });
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
@@ -134,7 +150,8 @@ let browser;
   await host.page.waitForSelector('#watch-party-btn');
   await host.page.locator('#watch-party-btn').click();
   await host.page.locator('#wp-name').fill('Host');
-  assert.equal(await host.page.locator('#wp-create-provider').inputValue(),'vidspark');
+  assert.equal(await host.page.locator('#wp-create-provider').inputValue(),'vidora', 'Vidora is the default party player');
+  await host.page.locator('#wp-create-provider').selectOption('vidspark');
   await host.page.locator('.wp-create').click();
   await host.page.waitForSelector('.wp-room:not([hidden])');
   await host.page.waitForFunction(()=>document.querySelector('#player-frame').src.startsWith('https://vidspark.to/'));
@@ -350,29 +367,103 @@ let browser;
   await guest.page.waitForFunction(()=>document.querySelector('.wp-resync').textContent==='Resync my player');
   await sourceText(guest.page,'Player reports the host’s server: wave');
 
-  // Vidora shares the room selection only: no made-up playback commands.
+  // Vidora reports host observations but never receives invented playback commands.
   await host.page.locator('#wp-provider').selectOption('vidora');
   await host.page.waitForFunction(()=>document.querySelector('#player-frame').src.startsWith('https://vidora.ac/'));
   await wake(guest.page); await guest.page.waitForFunction(()=>document.querySelector('#player-frame').src.startsWith('https://vidora.ac/'));
-  assert.match(await host.page.locator('.wp-player-notice').textContent(),/not synchronized/i);
+  assert.match(await host.page.locator('.wp-player-notice').textContent(),/not automatically synchronized/i);
   assert.match(await guest.page.locator('.wp-provider-hint').textContent(),/manual on each device/i);
-  assert.equal(await guest.page.locator('.wp-resync').isVisible(),false);
+  assert.equal(await guest.page.locator('.wp-resync').isVisible(),true);
   assert.equal(await guest.page.locator('.wp-source-settings').isVisible(),false);
+  const stageBox=await guest.page.locator('#player-wrapper').boundingBox();
+  const overlayBox=await guest.page.locator('#wp-panel').boundingBox();
+  assert.ok(overlayBox.x>=stageBox.x && Math.abs(overlayBox.x+overlayBox.width-stageBox.x-stageBox.width)<2,
+    'the party panel overlays the player instead of replacing or shrinking it');
+  assert.equal(room.vidora_observed,false,'a player switch is not a host observation');
+  assert.match(await guest.page.locator('.wp-host-clock').textContent(),/waiting for the host/i);
+  const forcedGuestVidora=await guest.page.evaluate(async code=>{
+    const response=await fetch('/__test_rpc',{method:'POST',headers:{'content-type':'application/json'},
+      body:JSON.stringify({id:'guest',name:'zeus_party_vidora_update',params:{p_code:code,p_action:'play',p_time:900}})});
+    return response.json();
+  }, CODE);
+  assert.match(forcedGuestVidora.error.message,/Only the host/);
   const playbackCallsBeforeVidora=calls.filter(c=>c.name==='zeus_party_playback').length;
   await host.page.frameLocator('#player-frame').locator('#play').click();
-  await host.page.frameLocator('#player-frame').locator('#seek').click();
-  await wake(guest.page); await guest.page.waitForTimeout(500);
-  assert.equal(room.playing,false,'Vidora does not claim to update synchronized room playback');
+  await until(()=>room.playing && room.vidora_observed,'Vidora host play observation');
+  await wake(guest.page); await guest.page.waitForFunction(()=>document.querySelector('.wp-host-clock').textContent.includes('playing'));
   assert.equal(calls.filter(c=>c.name==='zeus_party_playback').length,playbackCallsBeforeVidora);
-  assert.equal((await playerState(guest.page)).paused,true,'host Vidora play does not claim to control guest');
+  assert.equal((await playerState(guest.page)).paused,true,'a host play observation does not control the guest iframe');
   assert.deepEqual((await playerState(guest.page)).commands,[],'no invented Vidora commands sent to guest');
   await guest.page.frameLocator('#player-frame').locator('#play').click();
-  await guest.page.waitForTimeout(300);
-  assert.equal((await playerState(guest.page)).paused,false,'guest controls their own Vidora playback');
+  await host.page.frameLocator('#player-frame').locator('#seek').click();
+  await until(()=>room.position_seconds>=120,'Vidora host seek observation');
+  await wake(guest.page); await guest.page.waitForFunction(()=>document.querySelector('.wp-vidora-advice').textContent.includes('behind'));
+  assert.ok((await playerState(guest.page)).time<120,'the guest must seek manually');
+  await guest.page.frameLocator('#player-frame').locator('#seek').click();
+  await host.page.frameLocator('#player-frame').locator('#pause').click();
+  await until(()=>!room.playing,'Vidora host pause observation');
+  await wake(guest.page); await guest.page.waitForFunction(()=>document.querySelector('.wp-host-clock').textContent.includes('paused'));
+  assert.equal((await playerState(guest.page)).paused,false,'host pause does not pause the guest');
+  assert.match(await guest.page.locator('.wp-vidora-advice').textContent(),/host paused/i);
+  await guest.page.frameLocator('#player-frame').locator('#pause').click();
+  assert.match(await guest.page.locator('.wp-resync').textContent(),/reload at host time/i);
+  const guestLoads=(await playerState(guest.page)).loads;
+  await guest.page.locator('.wp-resync').click();
+  await waitForPlayer(guest.page,p=>p.loads>guestLoads,'guest chose documented Vidora reload');
+  assert.equal(new URL(await guest.page.locator('#player-frame').getAttribute('src')).searchParams.get('startAt'),String(Math.floor(room.position_seconds)));
+  assert.deepEqual((await playerState(guest.page)).commands,[],'reload did not send a remote command');
+
+  failNextVidora=true;
+  await host.page.frameLocator('#player-frame').locator('#play').click();
+  await host.page.waitForFunction(()=>document.querySelector('.wp-player-notice').textContent.includes('Could not share Vidora'));
+  await until(()=>room.playing,'Vidora host observation retried',9000);
+  await host.page.waitForFunction(()=>!document.querySelector('.wp-player-notice').textContent.includes('Could not share Vidora'));
+  failNextVidora=true;
+  await host.page.frameLocator('#player-frame').locator('#pause').click();
+  await host.page.waitForFunction(()=>document.querySelector('.wp-player-notice').textContent.includes('Could not share Vidora'));
+  await until(()=>!room.playing,'a paused Vidora observation retries without further player events',9000);
+  await host.page.evaluate(()=>window.postMessage({type:'PLAYER_EVENT',data:{event:'play',currentTime:999,tmdbId:533533,mediaType:'movie'}},'*'));
+  await host.page.waitForTimeout(200);
+  assert.equal(calls.some(c=>c.name==='zeus_party_vidora_update' && c.p.p_time===999),false,'forged Vidora observations are ignored');
+  failNextVidora=true;
   await host.page.frameLocator('#player-frame').locator('body').evaluate(()=>window.emitMedia({tmdbId:42}));
-  await host.page.waitForFunction(()=>document.querySelector('.wp-player-notice').textContent.includes('changed episodes locally'));
+  await host.page.waitForFunction(()=>document.querySelector('.wp-player-notice').textContent.includes('Could not share Vidora'));
+  await until(()=>!room.vidora_observed,'different-media invalidation retries',9000);
+  await host.page.waitForFunction(()=>document.querySelector('.wp-player-notice').textContent.includes('media is not confirmed'));
+  await wake(guest.page); await guest.page.waitForFunction(()=>document.querySelector('.wp-host-clock').textContent.includes('Waiting'));
   await host.page.frameLocator('#player-frame').locator('body').evaluate(()=>window.emitMedia({tmdbId:533533}));
-  await host.page.waitForFunction(()=>document.querySelector('.wp-player-notice').textContent.includes('not synchronized'));
+  await host.page.waitForFunction(()=>document.querySelector('.wp-player-notice').textContent.includes('not automatically synchronized'));
+  assert.equal(room.vidora_observed,false,'a timeupdate alone does not guess play/pause after media changed');
+  await host.page.frameLocator('#player-frame').locator('#play').click();
+  await until(()=>room.playing && room.vidora_observed,'host play restores an observation');
+  await host.page.frameLocator('#player-frame').locator('#pause').click();
+  await until(()=>!room.playing,'host paused for timestamp test');
+  const beforeMissingTime=calls.filter(c=>c.name==='zeus_party_vidora_update').length;
+  await host.page.frameLocator('#player-frame').locator('body').evaluate(()=>window.emitPlayback('play',{currentTime:null}));
+  await host.page.waitForFunction(()=>document.querySelector('.wp-player-notice').textContent.includes('valid time'));
+  await host.page.waitForTimeout(200);
+  assert.equal(calls.filter(c=>c.name==='zeus_party_vidora_update').length,beforeMissingTime,'a missing timestamp is not replaced with an older time');
+  await host.page.frameLocator('#player-frame').locator('body').evaluate(()=>window.emitMedia({currentTime:200}));
+  await until(()=>room.playing && room.position_seconds===200,'a later valid time publishes the known play state');
+  await host.page.frameLocator('#player-frame').locator('#pause').click();
+  await until(()=>!room.playing,'host paused for stale-clock test');
+  room.playing=true; room.state_updated_at=new Date(Date.now()-30000).toISOString();
+  await wake(guest.page); await guest.page.waitForFunction(()=>document.querySelector('.wp-vidora-advice').textContent.includes('stopped updating'));
+  assert.match(await guest.page.locator('.wp-resync').textContent(),/reload my Vidora/i,'stale clock is not presented as a host-time reload');
+  room.playing=false; room.state_updated_at=new Date().toISOString();
+  await wake(guest.page);
+
+  // The ZEUS party overlay remains available in ZEUS fullscreen; the
+  // third-party iframe's own fullscreen is a different browser top layer.
+  await host.page.locator('.wp-close').click();
+  await host.page.locator('.wp-fullscreen').click();
+  await host.page.waitForFunction(()=>document.fullscreenElement?.id==='player-shell');
+  await host.page.locator('.wp-stage-button').click();
+  assert.equal(await host.page.locator('#wp-panel').isVisible(),true);
+  await host.page.locator('.wp-close').click();
+  await host.page.locator('.wp-fullscreen').click();
+  await host.page.waitForFunction(()=>!document.fullscreenElement);
+  await host.page.locator('.wp-stage-button').click();
 
   // BingeAPI uses its documented first-event handshake and event/command shapes.
   await host.page.locator('#wp-provider').selectOption('bingeapi');
@@ -416,13 +507,25 @@ let browser;
     users.clear(); messages=[];
     const creator=await context('creator-'+provider);
     await creator.page.goto(base+'/watch.html?id=533533&type=movie');
-    await creator.page.locator('#watch-party-btn').click();
+    let originalLoads;
+    if(provider==='vidora') {
+      await creator.page.frameLocator('#player-frame').locator('#play').waitFor();
+      await creator.page.frameLocator('#player-frame').locator('#play').click();
+      await creator.page.waitForTimeout(250);
+      originalLoads=(await playerState(creator.page)).loads;
+    }
+    await creator.page.locator('.wp-stage-button').click();
     await creator.page.locator('#wp-name').fill('Creator');
     await creator.page.locator('#wp-create-provider').selectOption(provider);
     assert.match(await creator.page.locator('.wp-create-hint').textContent(),provider==='vidora'?/manual/i:/experimental/i);
     await creator.page.locator('.wp-create').click();
     await creator.page.waitForSelector('.wp-room:not([hidden])');
     assert.equal(room.provider,provider,'room can be created directly with '+provider);
+    if(provider==='vidora') {
+      await until(()=>room.vidora_observed && room.playing,'existing Vidora playback is reported');
+      assert.equal((await playerState(creator.page)).loads,originalLoads,'starting a Vidora party preserves the loaded player');
+      assert.equal((await playerState(creator.page)).paused,false,'starting the room does not interrupt existing playback');
+    }
     creator.page.once('dialog',dialog=>dialog.accept()); await creator.page.locator('.wp-end').click();
     await creator.page.waitForSelector('.wp-welcome:not([hidden])');
     await creator.ctx.close();
@@ -445,7 +548,7 @@ let browser;
   assert.equal(await offline.page.evaluate(()=>typeof window.supabase.createClient), 'function', 'self-hosted official SDK loads');
 
   assert.deepEqual(errors,[]);
-  console.log('PASS: isolated mocked sessions; VidSpark/CineSrc/BingeAPI play, pause, seek, source matching/toggle/fallback/retry, Vidora manual mode, private channel, forged messages, permissions, XSS, rejoin, episode navigation, end and mobile layout.');
+  console.log('PASS: isolated mocked sessions; controllable players, source matching/retry, Vidora assisted manual follow and retry, preserved player, ZEUS fullscreen, private channel, permissions, XSS, rejoin, episode navigation and mobile layout.');
   console.log('Mocks only: no real Supabase or third-party video playback. RPC calls:',calls.length);
   await browser.close();
   await new Promise((resolve) => server.close(resolve));

@@ -1,8 +1,19 @@
-/* Party UI is scoped to the watch player and never changes normal provider styling. */
-.wp-workspace { display: flex; align-items: stretch; min-width: 0; }
+/* ZEUS overlays the external player; it does not inject into its iframe. */
+.wp-workspace { position: relative; display: flex; align-items: stretch; min-width: 0; background: #08090a; }
 .wp-workspace > .player-wrapper { flex: 1 1 auto; width: 100%; min-width: 0; }
-.wp-panel[hidden], .wp-panel [hidden] { display: none !important; }
-.wp-panel { position: relative; flex: 0 0 332px; min-width: 0; background: #101114; border-left: 1px solid rgba(255,255,255,.09); color: #f4f6f8; }
+.wp-panel[hidden], .wp-panel [hidden], .wp-stage-tools [hidden] { display: none !important; }
+.wp-panel { position: absolute; z-index: 10; inset: 0 0 0 auto; width: min(332px, 100%); min-width: 0; background: #101114; border-left: 1px solid rgba(255,255,255,.13); box-shadow: -12px 0 32px rgba(0,0,0,.35); color: #f4f6f8; }
+.wp-stage-tools { position: absolute; z-index: 5; top: 12px; right: 12px; display: flex; align-items: center; gap: 6px; }
+.wp-stage-tools button { display: inline-flex; align-items: center; gap: 7px; min-height: 34px; border: 1px solid rgba(255,255,255,.22); border-radius: 9px; padding: 7px 10px; background: rgba(12,15,18,.9); color: #fff; font-family: inherit; font-size: 11px; font-weight: 700; line-height: 1.1; cursor: pointer; }
+.wp-stage-tools button:hover { background: #252d32; }
+.wp-stage-tools button:focus-visible { outline: 2px solid #83ebfb; outline-offset: 2px; }
+.wp-stage-tools svg { width: 15px; height: 15px; fill: currentColor; }
+.wp-stage-button.wp-active { border-color: rgba(125,231,242,.7); color: #aaf4fa; }
+.wp-stage-status { padding-left: 7px; border-left: 1px solid rgba(255,255,255,.24); color: #f4f6f8; font-size: 10px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.wp-stage-tools .wp-fullscreen { justify-content: center; min-width: 34px; padding: 5px 8px; font-size: 20px; }
+.player-shell:fullscreen { width: 100%; height: 100%; max-width: none; display: flex; flex-direction: column; border: 0; border-radius: 0; background: #000; }
+.player-shell:fullscreen .wp-workspace { flex: 1 1 auto; min-height: 0; }
+.player-shell:fullscreen .wp-workspace > .player-wrapper { height: 100%; aspect-ratio: auto; border-radius: 0; }
 .wp-panel-inner { position: absolute; inset: 0; overflow: auto; padding: 19px; scrollbar-width: thin; scrollbar-color: #40454d transparent; }
 .wp-panel h2, .wp-panel h3, .wp-panel p { margin: 0; }
 .wp-panel button, .wp-panel input, .wp-panel select { font: inherit; }
@@ -59,6 +70,12 @@
 .wp-source-status { overflow-wrap: anywhere; }
 .wp-resync { width: 100%; margin-top: 10px; }
 .wp-player-notice { color: #b4c7cb; margin: -5px 0 12px !important; }
+.wp-vidora-guide { margin: 0 0 14px; padding: 11px 12px; border: 1px solid rgba(125,231,242,.22); border-radius: 11px; background: rgba(67,140,152,.09); }
+.wp-vidora-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 7px; color: #8bdfe7; font-size: 9px; font-weight: 800; letter-spacing: .1em; }
+.wp-vidora-heading span:last-child { color: #bdc8ce; font-size: 8px; }
+.wp-host-clock { display: block; color: #f1fcfd; font-size: 13px; line-height: 1.4; font-variant-numeric: tabular-nums; }
+.wp-vidora-guide .wp-local-clock { margin-top: 4px; color: #a7b6bc; font-size: 10.5px; line-height: 1.4; font-variant-numeric: tabular-nums; }
+.wp-vidora-guide .wp-vidora-advice { margin-top: 8px; color: #c3d4d7; font-size: 10.5px; line-height: 1.45; }
 .wp-actions { display: flex; gap: 7px; margin-top: 16px; }
 .wp-actions > * { flex: 1; }
 .wp-end { color: #ffaaa0; background: rgba(255,115,105,.08); border: 1px solid rgba(255,115,105,.28); }
@@ -75,13 +92,17 @@
 .chrome-btn--watchparty.wp-active { border-color: rgba(125,231,242,.6); color: #aaf4fa; }
 .chrome-btn--watchparty.wp-active::after { content: ''; width: 6px; height: 6px; border-radius: 50%; background: #7de7f2; }
 @media (max-width: 760px) {
-  .wp-workspace { flex-direction: column; }
-  .wp-workspace > .player-wrapper { flex: none; width: 100%; }
-  .wp-panel { flex: none; width: 100%; height: 420px; border-left: 0; border-top: 1px solid rgba(255,255,255,.09); }
+  /* Give the overlaid sheet enough vertical room to scroll on a short 16:9
+     phone player, without shrinking the iframe itself. */
+  .wp-workspace.wp-open { min-height: 400px; }
+  .wp-workspace > .player-wrapper { flex: none; align-self: flex-start; width: 100%; }
+  .wp-panel { width: min(332px, 100%); }
   .wp-panel-inner { padding: 16px; }
   .wp-chat-view { min-height: 245px; }
+  .player-shell:fullscreen .wp-workspace.wp-open { min-height: 0; }
+  .player-shell:fullscreen .wp-workspace > .player-wrapper { align-self: stretch; }
 }
 @media (max-width: 420px) {
-  .wp-panel { height: 400px; }
+  .wp-stage-tools { top: 8px; right: 8px; }
   .wp-actions { flex-direction: column; }
 }

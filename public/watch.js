@@ -1663,8 +1663,19 @@ window.ZeusWatchPartyBridge = (() => {
           ? label : (watchType === 'tv' ? 'Series #' : 'Movie #') + watchId
       };
     },
-    enter() {
-      if (window.ZeusWatchPartyActive) return;
+    enter(provider) {
+      if (window.ZeusWatchPartyActive) return false;
+      const frame = $('#player-frame');
+      let preserveVidora = false;
+      try {
+        const expected = new URL(SERVER_URLS.vidora(watchId, currentSeason, currentEpisode, watchType));
+        const current = new URL(frame.src);
+        // Reuse the already-loaded player when joining a Vidora party for
+        // this media. An iframe load is not proof of playable video; it only
+        // tells us that there is no pending ZEUS navigation to supersede.
+        preserveVidora = provider === 'vidora' && serverLoaded && !pendingPlayerLoad &&
+          current.origin === expected.origin && current.pathname === expected.pathname;
+      } catch (e) { /* a missing/invalid iframe will be replaced */ }
       window.ZeusWatchPartyActive = true;
       if (autoSelectAbort) autoSelectAbort();
       switchGeneration += 1;
@@ -1673,14 +1684,14 @@ window.ZeusWatchPartyBridge = (() => {
       hideSourceCheckOverlay();
       showPlayerLoading(false);
       serverLoaded = false;
-      const frame = $('#player-frame');
-      if (frame) frame.src = 'about:blank'; // stop Vidora, including its audio
+      if (frame && !preserveVidora) frame.src = 'about:blank'; // stop the previous player and its audio
       savedDisabled = new Map();
       ids.forEach((id) => {
         const node = document.getElementById(id);
         if (node) { savedDisabled.set(node, node.disabled); node.disabled = true; }
       });
       document.documentElement.classList.remove('zeus-scroll-lock');
+      return preserveVidora;
     },
     exit() {
       if (!window.ZeusWatchPartyActive) return;

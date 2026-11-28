@@ -1,206 +1,105 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Watch Party - ZEUS</title>
-
-  <meta name="description" content="Watch videos together in perfect sync with friends — ZEUS Watch Party rooms with synced playback and live chat.">
-  <meta name="robots" content="noindex, follow">
-  <meta name="theme-color" content="#000000">
-
-  <meta property="og:type" content="website">
-  <meta property="og:site_name" content="ZEUS">
-  <meta property="og:title" content="Watch Party - ZEUS">
-  <meta property="og:description" content="Watch videos together in sync with live chat.">
-
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#10100e">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self' https://gqjgmniwvqcpsurzmbet.supabase.co wss://gqjgmniwvqcpsurzmbet.supabase.co; frame-src 'self' https://cinesrc.st; object-src 'none'; base-uri 'none'; form-action 'self'">
+  <title>Watch Party · ZEUS</title>
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
-  <link rel="apple-touch-icon" href="favicon.svg">
-
-  <!-- Inter typography (same as the rest of ZEUS) -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap">
-
-  <!-- Styles -->
-  <link rel="stylesheet" href="party.css?v=2.1">
-  <!-- Subtitle colour + timing preferences (saved locally, applied globally) -->
-  <script src="subtitle-prefs.js?v=1.4" defer></script>
+  <link rel="stylesheet" href="watchparty-cinesrc.css?v=1">
+  <script defer src="vendor/supabase-2.119.2.js"></script>
+  <script defer src="watchparty-cinesrc-player.js?v=1"></script>
+  <script defer src="watchparty-cinesrc.js?v=1"></script>
 </head>
 <body>
-
-  <!-- Keyboard navigation: jump straight past the chrome to the content -->
-  <a class="skip-link" href="#main-content">Skip to content</a>
-
-  <!-- ============ HEADER ============ -->
-  <header class="party-header">
-    <a class="party-brand" href="index.html" aria-label="Back to ZEUS homepage">
-      <img src="logo.svg" alt="ZEUS">
-      <span class="party-word">ZEUS <em>Party</em></span>
-    </a>
-
-    <span class="party-header-spacer"></span>
-
-    <span class="room-code" id="room-code-badge" aria-label="Room code">
-      <span class="dot" aria-hidden="true"></span>
-      <span id="room-code-text">------</span>
-    </span>
-
-    <span class="conn-pill" id="conn-pill" role="status" aria-live="polite">
-      <span class="led" aria-hidden="true"></span>
-      <span id="conn-label">Connecting…</span>
-    </span>
+  <a class="sr-only skip-link" href="#main-content">Skip to content</a>
+  <header class="topbar">
+    <a class="brand" href="index.html" aria-label="ZEUS home"><span class="brand-mark" aria-hidden="true">ϟ</span><span>ZEUS</span><span class="brand-divider"></span><span class="brand-section">WATCH PARTY</span></a>
+    <span class="topbar-note"><span class="dot"></span> A space for watching together</span>
+    <a class="back-link" id="back-to-viewing" href="index.html">Back to ZEUS <span aria-hidden="true">↗</span></a>
   </header>
 
-  <!-- ============ MAIN ============ -->
-  <main class="party-main" id="main-content" tabindex="-1">
-    <div class="party-layout">
-
-      <!-- ============ LEFT: PLAYER ============ -->
-      <section class="party-left" aria-label="Video player">
-
-        <div class="media-card">
-          <div class="media-head">
-            <div class="media-title-wrap">
-              <p class="media-eyebrow" id="media-eyebrow">Now watching</p>
-              <h1 class="media-title" id="media-title">No video yet</h1>
-            </div>
-            <span class="type-badge" id="type-badge" hidden>—</span>
-            <span class="sync-pill" id="sync-pill">
-              <span class="led" aria-hidden="true"></span>
-              <span id="sync-label">Waiting…</span>
-            </span>
-          </div>
-
-          <!-- Player stage: YouTube iframe target / MP4 <video> / empty / notice -->
-          <div class="player-stage" id="player-stage">
-            <div id="yt-player" aria-label="YouTube player"></div>
-            <video id="mp4-player" controls playsinline preload="auto" aria-label="Video player"></video>
-
-            <div class="stage-empty" id="stage-empty">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5s-3 1.34-3 3 1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
-              <h2>Your party room is ready</h2>
-              <p>Paste a YouTube link or a direct MP4 link below and press <strong>Set Video</strong> to start watching together in sync.</p>
-            </div>
-
-            <div class="stage-notice" id="stage-notice" role="alert">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/></svg>
-              <h2>This source can&rsquo;t be synced automatically</h2>
-              <p>This source can&rsquo;t be synced automatically. Use YouTube or a direct MP4 link.</p>
-              <p class="notice-url" id="notice-url"></p>
-            </div>
-
-            <button class="tap-overlay" id="tap-overlay" type="button" aria-label="Resume playback">
-              <span class="tap-inner">
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
-                Tap to start playback
-              </span>
-            </button>
-          </div>
-
-          <!-- Set video -->
-          <form class="media-controls" id="media-form">
-            <label class="visually-hidden" for="media-url-input">Video URL</label>
-            <input type="text" id="media-url-input" placeholder="Paste a YouTube link or direct .mp4 link…" autocomplete="off" spellcheck="false" inputmode="url">
-            <button class="btn btn-primary" id="set-video-btn" type="submit">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 16.5l6-4.5-6-4.5v9zM12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/></svg>
-              Set Video
-            </button>
-            <p class="host-hint" id="host-hint">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l-2.4 7.2H2l6.2 4.5L5.8 21 12 16.6 18.2 21l-2.4-7.3L22 9.2h-7.6z"/></svg>
-              <span id="host-hint-text">Connecting…</span>
-            </p>
-          </form>
-        </div>
-
-        <!-- Invite -->
-        <div class="invite-card">
-          <h3>
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5s-3 1.34-3 3 1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
-            Invite your friends
-          </h3>
-          <div class="invite-row">
-            <span class="invite-code" id="invite-code" aria-label="Room code">------</span>
-            <div class="invite-link-box">
-              <label class="visually-hidden" for="invite-link">Invite link</label>
-              <input type="text" id="invite-link" readonly aria-readonly="true" value="">
-              <button class="btn" id="copy-invite-btn" type="button">
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 1H4a2 2 0 0 0-2 2v14h2V3h12V1zm3 4H8a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2zm0 16H8V7h11v14z"/></svg>
-                Copy
-              </button>
-            </div>
-          </div>
-          <p class="invite-note">Anyone who opens this link joins the room, sees the same video and stays in sync automatically.</p>
-        </div>
-
-      </section>
-
-      <!-- ============ RIGHT: CHAT ============ -->
-      <section class="chat-card" aria-label="Party chat">
-        <div class="chat-head">
-          <h3>
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 2H4a2 2 0 0 0-2 2v18l4-4h14a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2z"/></svg>
-            Party chat
-          </h3>
-          <div class="members-row" id="members-row"></div>
-        </div>
-
-        <div class="chat-messages" id="chat-messages" role="log" aria-live="polite" aria-label="Chat messages">
-          <div class="chat-empty" id="chat-empty">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 2H4a2 2 0 0 0-2 2v18l4-4h14a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2z"/></svg>
-            No messages yet.<br>Say hi to your party! 👋
-          </div>
-        </div>
-
-        <form class="chat-entry" id="chat-form">
-          <label class="visually-hidden" for="chat-input">Message</label>
-          <input type="text" id="chat-input" placeholder="Type a message…" autocomplete="off" maxlength="500">
-          <button class="btn btn-primary" id="chat-send-btn" type="submit" aria-label="Send message">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2.01 21 23 12 2.01 3 2 10l15 2-15 2z"/></svg>
-            Send
-          </button>
-        </form>
-      </section>
-
-    </div>
-  </main>
-
-  <!-- ============ FOOTER ============ -->
-  <footer class="party-footer">
-    <span><span class="accent">ZEUS Party</span> — watch together, stay in sync. Videos play directly from YouTube or their original source.</span>
-  </footer>
-
-  <!-- ============ JOIN OVERLAY (display name) ============ -->
-  <div class="join-overlay" id="join-overlay" role="dialog" aria-modal="true" aria-labelledby="join-title">
-    <div class="join-card">
-      <img src="logo.svg" alt="ZEUS">
-      <h1 id="join-title">ZEUS <em>Party</em></h1>
-      <p class="join-sub">Watch together in perfect sync — synced playback + live chat.</p>
-
-      <label for="name-input">Your display name</label>
-      <input type="text" id="name-input" maxlength="24" autocomplete="nickname" spellcheck="false">
-
-      <!-- Party backend URL — the deployed Cloudflare Worker
-           (party-worker/). Paste your URL once and press Save — it is
-           stored per browser (localStorage "zeus_party_backend") so
-           the room works from any deployment (Pages, Vercel, …). -->
-      <label for="backend-input" style="margin-top:16px;">Party backend URL</label>
-      <div class="backend-row">
-        <input type="text" id="backend-input" placeholder="https://zeus-party.YOUR_WORKERS_SUBDOMAIN.workers.dev" autocomplete="off" spellcheck="false" inputmode="url">
-        <button class="btn" id="save-backend-btn" type="button">Save</button>
+  <main class="page" id="main-content" tabindex="-1">
+    <section class="intro" aria-labelledby="page-title">
+      <div>
+        <div class="eyebrow"><span class="eyebrow-line"></span> WATCH TOGETHER</div>
+        <h1 id="page-title">The same moment,<br><span>wherever you are.</span></h1>
+        <p class="intro-copy">Bring your people together in a private room. One host controls play, pause and seeking; everyone else can follow along.</p>
       </div>
-      <p class="backend-hint">Paste your deployed Worker URL once — it&rsquo;s saved in this browser. Deploy with <code>cd party-worker &amp;&amp; npx wrangler deploy</code>.</p>
+      <div class="intro-aside"><span class="aside-icon" aria-hidden="true">✳</span><div><strong>A separate party player</strong><p>Watch Party opens CineSrc on this page. Normal ZEUS viewing stays separate.</p></div></div>
+    </section>
 
-      <p class="join-error" id="join-error" role="alert"></p>
+    <div class="layout">
+      <section class="stage-column" aria-labelledby="stage-heading">
+        <div class="stage-heading"><div><p class="section-label">THE SCREEN</p><h2 id="stage-heading">Your shared screen</h2></div><span class="chip"><span class="dot"></span> CINESRC</span></div>
+        <div class="screen" id="screen">
+          <div class="screen-empty" id="screen-empty">
+            <div class="screen-orbit"><span class="screen-play" aria-hidden="true">▶</span></div>
+            <p class="screen-overline">READY WHEN YOU ARE</p>
+            <h3>Your next favorite moment<br>starts here.</h3>
+            <p>Create or join a party to load the CineSrc player.</p>
+          </div>
+          <iframe id="party-player" title="CineSrc party player" src="about:blank" hidden
+                  allow="autoplay; encrypted-media; fullscreen; picture-in-picture" allowfullscreen
+                  referrerpolicy="no-referrer"></iframe>
+        </div>
+        <div class="screen-bottom">
+          <div class="screen-meta"><span class="screen-meta-icon" aria-hidden="true">◫</span><div><strong id="video-title">Nothing playing yet</strong><span id="video-subtitle">CineSrc opens after you create or join</span></div></div>
+          <div class="screen-actions"><button type="button" class="subtle-button" id="resync-button" hidden>↻ &nbsp;Resync</button></div>
+        </div>
+        <p class="player-notice" id="player-notice" role="status">Only the host changes the room’s playback. Autoplay and timing depend on each browser and stream.</p>
+        <div class="trust-note"><span class="trust-icon" aria-hidden="true">↗</span><p><strong>Video stays with its provider.</strong> Each viewer connects to CineSrc directly. ZEUS stores room coordination and chat, not video.</p></div>
+      </section>
 
-      <button class="btn btn-primary" id="join-btn" type="button">Join the Party</button>
-      <p class="join-meta" id="join-meta"></p>
+      <aside class="panel" aria-label="Watch party controls">
+        <div id="lobby">
+          <div class="panel-top"><div><p class="section-label">YOUR WATCH PARTY</p><h2>Gather the gang<span class="heading-spark">✦</span></h2><p class="panel-description">CineSrc is the only party player.</p></div><div class="panel-glyph" aria-hidden="true">✳</div></div>
+          <div class="tabs" role="tablist" aria-label="Party action">
+            <button type="button" id="create-tab" role="tab" aria-selected="true" aria-controls="create-form">Create a party</button>
+            <button type="button" id="join-tab" role="tab" aria-selected="false" aria-controls="join-form">Join a party</button>
+          </div>
+          <div class="field shared-name"><label for="display-name">YOUR NAME <span>WHAT OTHERS WILL SEE</span></label><input id="display-name" type="text" autocomplete="nickname" maxlength="32" placeholder="Enter your name"></div>
+          <form id="create-form" role="tabpanel" aria-labelledby="create-tab" novalidate>
+            <div class="field"><label for="video-name">TITLE</label><input id="video-name" type="text" maxlength="200" placeholder="Movie or show title"></div>
+            <div class="field"><label for="media-type">MEDIA TYPE</label><select id="media-type"><option value="movie">Movie</option><option value="tv">TV show</option></select></div>
+            <div class="field"><label for="tmdb-id">TMDB ID</label><input id="tmdb-id" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="12" autocomplete="off" placeholder="For example, 12345"><p class="field-hint">When you open Watch Party from a ZEUS title, these details are filled in for you.</p></div>
+            <div id="episode-fields" class="episode-fields" hidden>
+              <div class="field"><label for="season">SEASON</label><input id="season" type="number" min="1" max="999" value="1"></div>
+              <div class="field"><label for="episode">EPISODE</label><input id="episode" type="number" min="1" max="9999" value="1"></div>
+            </div>
+            <label class="check-row"><input id="rights" type="checkbox"><span>I am authorized to watch and share this title with the people in this party.</span></label>
+            <button type="submit" id="create-button" class="button button-primary"><span>Start a party</span><span aria-hidden="true">↗</span></button>
+          </form>
+          <form id="join-form" role="tabpanel" aria-labelledby="join-tab" hidden novalidate>
+            <div class="field"><label for="invite-code">PARTY CODE OR INVITE LINK</label><input id="invite-code" type="text" maxlength="2048" autocomplete="off" spellcheck="false" placeholder="Paste your invite here"><p class="field-hint">Ask your host for the private party link or code.</p></div>
+            <button type="submit" id="join-button" class="button button-primary"><span>Join the party</span><span aria-hidden="true">↗</span></button>
+          </form>
+          <p class="panel-footnote"><span aria-hidden="true">◇</span> The invite is a bearer link: share it only with people you trust.</p>
+        </div>
+
+        <div id="room" hidden>
+          <div class="room-heading"><div><p class="section-label">YOU’RE IN THE PARTY</p><h2 id="room-title">Watch party</h2></div><span id="room-role" class="role-chip">GUEST</span></div>
+          <div class="room-connection"><span class="dot" id="connection-dot"></span><span id="connection-text">Connecting…</span></div>
+          <div class="invite-box"><div><span class="tiny-label">PARTY CODE</span><strong id="room-code"></strong></div><button id="copy-invite" type="button" class="copy-button">Copy invite ↗</button></div>
+          <div class="room-section-heading"><span>People <span id="member-count" class="count">0</span></span><span class="tiny-label">IN THIS ROOM</span></div>
+          <ul class="members" id="members" aria-label="Participants"></ul>
+          <div class="room-section-heading chat-heading"><span>Party chat</span><span class="tiny-label">SAY HELLO</span></div>
+          <div id="messages" class="messages" aria-live="polite"><p class="empty-chat">It’s quiet in here. Start the conversation.</p></div>
+          <form id="chat-form" class="chat-form"><label for="chat-input" class="sr-only">Message</label><input id="chat-input" maxlength="500" placeholder="Say something…" autocomplete="off"><button type="submit" aria-label="Send message">↑</button></form>
+          <div class="room-footer"><button id="leave-button" type="button">Leave party</button><button id="end-button" type="button" hidden>End for everyone</button></div>
+        </div>
+        <p id="form-message" class="form-message" role="status" aria-live="polite" hidden></p>
+      </aside>
     </div>
-  </div>
 
-  <!-- Toasts -->
-  <div id="toast-container" aria-live="polite"></div>
-
-  <script src="party.js?v=2.0.1" defer></script>
+    <section class="how-it-works" aria-labelledby="how-title"><div class="how-heading"><p class="section-label">GOOD TO KNOW</p><h2 id="how-title">Better together, in three steps.</h2></div>
+      <div class="steps"><article><span>01</span><h3>Choose a title</h3><p>Use a movie or episode you are authorized to share.</p></article><article><span>02</span><h3>Invite your people</h3><p>Send the private link or code to friends you trust.</p></article><article><span>03</span><h3>Press play together</h3><p>The host controls the room; guests can use Resync if they drift.</p></article></div>
+    </section>
+    <p class="source-limitation">CineSrc chooses its own internal sources. ZEUS cannot lock those sources or guarantee availability, matching, or playback on every device.</p>
+    <footer class="footer"><span>© ZEUS · WATCH PARTY</span><span>A separate CineSrc party mode.</span></footer>
+  </main>
 </body>
 </html>

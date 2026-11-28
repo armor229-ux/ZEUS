@@ -25,9 +25,10 @@ Notes
 -----
 - public/index.html is the homepage; public/style.css is the main stylesheet.
 - All internal links are relative, so the site also works under a sub-path.
-- The in-player Watch Party uses Supabase, not the legacy Worker. Apply both
-  ordered Watch Party migrations and enable anonymous sign-ins in the intended
-  project. Server matching is best-effort; Vidora party playback is manual.
-  See README.md for setup, access controls, retention and testing details.
-- The older standalone party.html client is separate and still needs its own
-  configured Worker URL for its YouTube/direct-MP4 rooms.
+- The separate CineSrc-only party.html client uses the existing ZEUS Supabase
+  setup, not the legacy Worker. Normal viewing continues to use Vidora.
+  CineSrc's internal source selection, autoplay and playback are not guaranteed.
+  See docs/cinesrc-watch-party.md for setup, quota, security and testing details.
+- The existing three Watch Party migrations are already recorded for ZEUS; this
+  client needs no new migration. Verify any fresh project's configuration before
+  use and never put a secret or service_role key in browser code.
