@@ -9,7 +9,7 @@
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self' https://gqjgmniwvqcpsurzmbet.supabase.co wss://gqjgmniwvqcpsurzmbet.supabase.co; frame-src 'self' https://cinesrc.st; object-src 'none'; base-uri 'none'; form-action 'self'">
   <title>Watch Party · ZEUS</title>
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="watchparty-cinesrc.css?v=1">
+  <link rel="stylesheet" href="watchparty-cinesrc.css?v=2">
   <script defer src="vendor/supabase-2.119.2.js"></script>
   <script defer src="watchparty-cinesrc-player.js?v=1"></script>
   <script defer src="watchparty-cinesrc.js?v=1"></script>
@@ -25,11 +25,10 @@
   <main class="page" id="main-content" tabindex="-1">
     <section class="intro" aria-labelledby="page-title">
       <div>
-        <div class="eyebrow"><span class="eyebrow-line"></span> WATCH TOGETHER</div>
-        <h1 id="page-title">The same moment,<br><span>wherever you are.</span></h1>
+        <div class="eyebrow">WATCH TOGETHER</div>
+        <h1 id="page-title">The same moment, <span>wherever you are.</span></h1>
         <p class="intro-copy">Bring your people together in a private room. One host controls play, pause and seeking; everyone else can follow along.</p>
       </div>
-      <div class="intro-aside"><span class="aside-icon" aria-hidden="true">✳</span><div><strong>A separate party player</strong><p>Watch Party opens CineSrc on this page. Normal ZEUS viewing stays separate.</p></div></div>
     </section>
 
     <div class="layout">
@@ -51,12 +50,11 @@
           <div class="screen-actions"><button type="button" class="subtle-button" id="resync-button" hidden>↻ &nbsp;Resync</button></div>
         </div>
         <p class="player-notice" id="player-notice" role="status">Only the host changes the room’s playback. Autoplay and timing depend on each browser and stream.</p>
-        <div class="trust-note"><span class="trust-icon" aria-hidden="true">↗</span><p><strong>Video stays with its provider.</strong> Each viewer connects to CineSrc directly. ZEUS stores room coordination and chat, not video.</p></div>
       </section>
 
       <aside class="panel" aria-label="Watch party controls">
         <div id="lobby">
-          <div class="panel-top"><div><p class="section-label">YOUR WATCH PARTY</p><h2>Gather the gang<span class="heading-spark">✦</span></h2><p class="panel-description">CineSrc is the only party player.</p></div><div class="panel-glyph" aria-hidden="true">✳</div></div>
+          <div class="panel-top"><div><p class="section-label">YOUR WATCH PARTY</p><h2>Watch party</h2><p class="panel-description">CineSrc is the only party player.</p></div></div>
           <div class="tabs" role="tablist" aria-label="Party action">
             <button type="button" id="create-tab" role="tab" aria-selected="true" aria-controls="create-form">Create a party</button>
             <button type="button" id="join-tab" role="tab" aria-selected="false" aria-controls="join-form">Join a party</button>
@@ -95,6 +93,7 @@
       </aside>
     </div>
 
+    <div class="trust-note"><p><strong>Video stays with its provider.</strong> Each viewer connects to CineSrc directly. ZEUS stores room coordination and chat, not video.</p></div>
     <section class="how-it-works" aria-labelledby="how-title"><div class="how-heading"><p class="section-label">GOOD TO KNOW</p><h2 id="how-title">Better together, in three steps.</h2></div>
       <div class="steps"><article><span>01</span><h3>Choose a title</h3><p>Use a movie or episode you are authorized to share.</p></article><article><span>02</span><h3>Invite your people</h3><p>Send the private link or code to friends you trust.</p></article><article><span>03</span><h3>Press play together</h3><p>The host controls the room; guests can use Resync if they drift.</p></article></div>
     </section>
